@@ -24,91 +24,79 @@ export default function LogbookIndex({ logs, filters }) {
 
     return (
         <AuthenticatedLayout title="Logbook Transaksi Peminjaman & Pengembalian">
-            <Head title="Logbook Transaksi" />
+            <Head title="Logbook Transaksi - WAMS" />
 
-            {/* Filter Bar */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-6">
-                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                    <form onSubmit={handleFilter} className="relative w-full sm:w-80">
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Cari user, NIP, kode unit, atau barang..."
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                        />
-                        <Search size={16} className="absolute left-3.5 top-3 text-slate-500" />
-                    </form>
+            <div className="space-y-6 max-w-7xl mx-auto">
+                {/* Filter Bar */}
+                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        <form onSubmit={handleFilter} className="relative w-full sm:w-80">
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Cari user, NIP, kode unit, atau barang..."
+                                className="w-full pl-10 pr-4 py-2.5 bg-[#FFF2DB] border border-[#F0DFC4] rounded-xl text-xs text-[#1E232A] placeholder-[#8C93A0] focus:outline-none focus:border-[#F62440]"
+                            />
+                            <Search size={16} className="absolute left-3.5 top-3 text-[#6B7280]" />
+                        </form>
 
-                    <select
-                        value={selectedStatus}
-                        onChange={(e) => {
-                            setSelectedStatus(e.target.value);
-                            router.get('/admin/logbook', { q: search, status: e.target.value }, { preserveState: true });
-                        }}
-                        className="py-2.5 px-3 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-blue-500"
-                    >
-                        <option value="">Semua Status Transaksi</option>
-                        <option value="dipinjam">Sedang Dipinjam</option>
-                        <option value="dikembalikan">Sudah Dikembalikan</option>
-                    </select>
+                        <select
+                            value={selectedStatus}
+                            onChange={(e) => {
+                                setSelectedStatus(e.target.value);
+                                router.get('/admin/logbook', { q: search, status: e.target.value }, { preserveState: true });
+                            }}
+                            className="py-2.5 px-3.5 bg-[#FFF2DB] border border-[#F0DFC4] rounded-xl text-xs text-[#1E232A] font-semibold focus:outline-none focus:border-[#F62440]"
+                        >
+                            <option value="">Semua Status Transaksi</option>
+                            <option value="dipinjam">Sedang Dipinjam</option>
+                            <option value="dikembalikan">Sudah Dikembalikan</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
 
-            {/* Table */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-950/60 border-b border-slate-800 text-slate-400 uppercase tracking-wider font-semibold">
-                            <tr>
-                                <th className="p-4">Peminjam</th>
-                                <th className="p-4">Alat & Unit Fisik</th>
-                                <th className="p-4">Tanggal Pinjam</th>
-                                <th className="p-4">Tanggal Kembali</th>
-                                <th className="p-4">Kondisi Saat Kembali</th>
-                                <th className="p-4 text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                            {logs.data.length === 0 ? (
+                {/* Flat Table */}
+                <div className="bg-[#FFF2DB] border border-[#F0DFC4] rounded-2xl overflow-hidden shadow-none">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-[#FFE5BF] border-b border-[#F0DFC4] text-[#1E232A] uppercase tracking-wider font-bold">
                                 <tr>
-                                    <td colSpan={6} className="p-8 text-center text-slate-500">
-                                        Tidak ada catatan logbook transaksi ditemukan.
-                                    </td>
+                                    <th className="p-4">Peminjam</th>
+                                    <th className="p-4">Alat & Unit Fisik</th>
+                                    <th className="p-4">Tanggal Pinjam</th>
+                                    <th className="p-4">Tanggal Kembali</th>
+                                    <th className="p-4">Kondisi Saat Kembali</th>
+                                    <th className="p-4 text-center">Status</th>
                                 </tr>
-                            ) : (
-                                logs.data.map((log) => {
-                                    const isDipinjam = log.status_transaksi === 'dipinjam';
-                                    return (
-                                        <tr key={log.id} className="hover:bg-slate-800/30">
-                                            <td className="p-4">
-                                                <div className="font-bold text-white text-sm">{log.user?.nama || 'N/A'}</div>
-                                                <div className="text-[11px] font-mono text-slate-400 mt-0.5">NIP: {log.user?.nip || '-'}</div>
-                                                <div className="text-[10px] text-slate-500">{log.user?.email}</div>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="font-semibold text-slate-200">{log.barang_unit?.barang?.nama_barang || 'Barang'}</div>
-                                                <div className="text-[11px] font-mono text-blue-400 font-bold mt-0.5">
-                                                    {log.barang_unit?.kode_unit || 'Unit'}
-                                                </div>
-                                            </td>
-                                            <td className="p-4 text-slate-300">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Calendar size={13} className="text-slate-500" />
-                                                    {new Date(log.tanggal_pinjam).toLocaleString('id-ID', {
-                                                        day: 'numeric',
-                                                        month: 'short',
-                                                        year: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
-                                                    })}
-                                                </div>
-                                            </td>
-                                            <td className="p-4 text-slate-300">
-                                                {log.tanggal_kembali ? (
+                            </thead>
+                            <tbody className="divide-y divide-[#F0DFC4]">
+                                {logs.data.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="p-8 text-center text-[#6B7280] bg-[#FFFAF3]">
+                                            Tidak ada catatan logbook transaksi ditemukan.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    logs.data.map((log) => {
+                                        const isDipinjam = log.status_transaksi === 'dipinjam';
+                                        return (
+                                            <tr key={log.id} className="hover:bg-[#FFE5BF]/40 bg-[#FFFAF3] transition-colors">
+                                                <td className="p-4">
+                                                    <div className="font-bold text-[#1E232A] text-sm">{log.user?.nama || 'N/A'}</div>
+                                                    <div className="text-[11px] font-mono text-[#6B7280] mt-0.5">NIP: {log.user?.nip || '-'}</div>
+                                                    <div className="text-[10px] text-[#6B7280]">{log.user?.email}</div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="font-bold text-[#1E232A]">{log.barang_unit?.barang?.nama_barang || 'Barang'}</div>
+                                                    <div className="text-[11px] font-mono text-[#F62440] font-bold mt-0.5">
+                                                        {log.barang_unit?.kode_unit || 'Unit'}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-[#1E232A] font-medium">
                                                     <div className="flex items-center gap-1.5">
-                                                        <Calendar size={13} className="text-emerald-500" />
-                                                        {new Date(log.tanggal_kembali).toLocaleString('id-ID', {
+                                                        <Calendar size={13} className="text-[#F62440]" />
+                                                        {new Date(log.tanggal_pinjam).toLocaleString('id-ID', {
                                                             day: 'numeric',
                                                             month: 'short',
                                                             year: 'numeric',
@@ -116,43 +104,57 @@ export default function LogbookIndex({ logs, filters }) {
                                                             minute: '2-digit',
                                                         })}
                                                     </div>
-                                                ) : (
-                                                    <span className="text-amber-400 font-medium italic">Belum dikembalikan</span>
-                                                )}
-                                            </td>
-                                            <td className="p-4">
-                                                {log.kondisi_kembali ? (
+                                                </td>
+                                                <td className="p-4 text-[#1E232A] font-medium">
+                                                    {log.tanggal_kembali ? (
+                                                        <div className="flex items-center gap-1.5 text-[#059669] font-bold">
+                                                            <CheckCircle2 size={13} />
+                                                            {new Date(log.tanggal_kembali).toLocaleString('id-ID', {
+                                                                day: 'numeric',
+                                                                month: 'short',
+                                                                year: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[#6B7280] italic">Belum dikembalikan</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4">
+                                                    {log.kondisi_kembali ? (
+                                                        <span
+                                                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold capitalize ${
+                                                                log.kondisi_kembali === 'baik'
+                                                                    ? 'bg-[#FFE5BF] text-[#059669]'
+                                                                    : 'bg-[#F62440]/10 text-[#F62440]'
+                                                            }`}
+                                                        >
+                                                            {log.kondisi_kembali}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[#6B7280]">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 text-center">
                                                     <span
-                                                        className={`font-semibold capitalize px-2 py-0.5 rounded text-[11px] ${
-                                                            log.kondisi_kembali === 'baik'
-                                                                ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
-                                                                : 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
+                                                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-bold ${
+                                                            isDipinjam
+                                                                ? 'bg-[#F62440] text-white'
+                                                                : 'bg-[#FFE5BF] text-[#1E232A]'
                                                         }`}
                                                     >
-                                                        {log.kondisi_kembali}
+                                                        {isDipinjam ? <Clock size={12} /> : <CheckCircle2 size={12} />}
+                                                        {isDipinjam ? 'Dipinjam' : 'Dikembalikan'}
                                                     </span>
-                                                ) : (
-                                                    <span className="text-slate-600">-</span>
-                                                )}
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                <span
-                                                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-semibold ${
-                                                        isDipinjam
-                                                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                                            : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                                    }`}
-                                                >
-                                                    {isDipinjam ? <Clock size={12} /> : <CheckCircle2 size={12} />}
-                                                    {isDipinjam ? 'Dipinjam' : 'Dikembalikan'}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>

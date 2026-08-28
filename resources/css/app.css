@@ -7,6 +7,13 @@
 @source '../**/*.jsx';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --color-cream-light: #FFFAF3;
+    --color-cream-base: #FFF2DB;
+    --color-cream-card: #FFE5BF;
+    --color-coral-accent: #F62440;
+    --color-coral-hover: #D91A33;
+    --color-dark-slate: #1E232A;
+    --color-dark-muted: #6B7280;
+    --color-border-warm: #F0DFC4;
 }

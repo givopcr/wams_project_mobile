@@ -49,29 +49,24 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 3. Create Kategori Barang
+        // 3. Create 3 Kategori Barang: Perkakas, Elektronik, Komponen
         $kategori1 = KategoriBarang::create([
-            'nama_kategori' => 'Peralatan Tangan (Hand Tools)',
+            'nama_kategori' => 'Perkakas',
             'qr_code' => '/scan/kategori/1',
         ]);
 
         $kategori2 = KategoriBarang::create([
-            'nama_kategori' => 'Mesin & Power Tools',
+            'nama_kategori' => 'Elektronik',
             'qr_code' => '/scan/kategori/2',
         ]);
 
         $kategori3 = KategoriBarang::create([
-            'nama_kategori' => 'Alat Ukur & Kalibrasi',
+            'nama_kategori' => 'Komponen',
             'qr_code' => '/scan/kategori/3',
         ]);
 
-        $kategori4 = KategoriBarang::create([
-            'nama_kategori' => 'Alat Keselamatan Kerja (K3)',
-            'qr_code' => '/scan/kategori/4',
-        ]);
-
         // 4. Create Master Barang
-        // Barang Kategori 1 (Hand Tools)
+        // Kategori 1: Perkakas
         $barang1 = Barang::create([
             'kategori_id' => $kategori1->id,
             'nama_barang' => 'Obeng Plus & Minus Set',
@@ -92,16 +87,6 @@ class DatabaseSeeder extends Seeder
 
         $barang3 = Barang::create([
             'kategori_id' => $kategori1->id,
-            'nama_barang' => 'Tang Kombinasi 8 Inch',
-            'kode_barang' => 'TNG-003',
-            'detail_spesifikasi' => 'Heavy duty combination pliers high leverage rubber grip',
-            'lokasi' => 'Rak A-03',
-            'gambar' => null,
-        ]);
-
-        // Barang Kategori 2 (Power Tools)
-        $barang4 = Barang::create([
-            'kategori_id' => $kategori2->id,
             'nama_barang' => 'Mesin Bor Cordless 18V',
             'kode_barang' => 'BOR-101',
             'detail_spesifikasi' => 'Brushless cordless drill driver max torque 50Nm + 2 baterai',
@@ -109,18 +94,9 @@ class DatabaseSeeder extends Seeder
             'gambar' => null,
         ]);
 
-        $barang5 = Barang::create([
+        // Kategori 2: Elektronik
+        $barang4 = Barang::create([
             'kategori_id' => $kategori2->id,
-            'nama_barang' => 'Mesin Gerinda Tangan 4 Inch',
-            'kode_barang' => 'GRD-102',
-            'detail_spesifikasi' => 'Angle grinder 750 Watt 11000 RPM spindle M10',
-            'lokasi' => 'Lemari B-02',
-            'gambar' => null,
-        ]);
-
-        // Barang Kategori 3 (Alat Ukur)
-        $barang6 = Barang::create([
-            'kategori_id' => $kategori3->id,
             'nama_barang' => 'Digital Multimeter Auto-range',
             'kode_barang' => 'DMM-201',
             'detail_spesifikasi' => 'True RMS 6000 counts AC/DC voltage current resistance tester',
@@ -128,22 +104,40 @@ class DatabaseSeeder extends Seeder
             'gambar' => null,
         ]);
 
-        $barang7 = Barang::create([
-            'kategori_id' => $kategori3->id,
-            'nama_barang' => 'Jangka Sorong Digital (Vernier Caliper)',
-            'kode_barang' => 'JSD-202',
-            'detail_spesifikasi' => 'Stainless steel 150mm / 6 inch akurasi 0.01mm LCD display',
-            'lokasi' => 'Lemari C-02',
+        $barang5 = Barang::create([
+            'kategori_id' => $kategori2->id,
+            'nama_barang' => 'Solder Station Temperature Control 60W',
+            'kode_barang' => 'SLD-202',
+            'detail_spesifikasi' => 'Adjustable temperature 200-480C with ceramic heating core',
+            'lokasi' => 'Meja Kerja E-01',
             'gambar' => null,
         ]);
 
-        // Barang Kategori 4 (K3)
+        $barang6 = Barang::create([
+            'kategori_id' => $kategori2->id,
+            'nama_barang' => 'Digital Storage Oscilloscope 100MHz',
+            'kode_barang' => 'OSC-203',
+            'detail_spesifikasi' => 'Dual channel 1GSa/s real time sample rate with 7 inch TFT LCD',
+            'lokasi' => 'Laboratorium E-02',
+            'gambar' => null,
+        ]);
+
+        // Kategori 3: Komponen
+        $barang7 = Barang::create([
+            'kategori_id' => $kategori3->id,
+            'nama_barang' => 'Arduino Uno R3 Development Board',
+            'kode_barang' => 'ARD-301',
+            'detail_spesifikasi' => 'Microcontroller ATmega328P 5V operating voltage 14 digital I/O pins',
+            'lokasi' => 'Laci Komponen D-01',
+            'gambar' => null,
+        ]);
+
         $barang8 = Barang::create([
-            'kategori_id' => $kategori4->id,
-            'nama_barang' => 'Helm Las Otomatis (Auto Darkening)',
-            'kode_barang' => 'HLM-301',
-            'detail_spesifikasi' => 'Solar powered auto darkening welding helmet shade DIN 9-13',
-            'lokasi' => 'Rak D-01',
+            'kategori_id' => $kategori3->id,
+            'nama_barang' => 'ESP32 Wi-Fi + Bluetooth IoT Module',
+            'kode_barang' => 'ESP-302',
+            'detail_spesifikasi' => 'Dual core 240MHz 4MB Flash memory with antenna module',
+            'lokasi' => 'Laci Komponen D-02',
             'gambar' => null,
         ]);
 
@@ -159,33 +153,35 @@ class DatabaseSeeder extends Seeder
         $unit6 = BarangUnit::create(['barang_id' => $barang2->id, 'kode_unit' => 'KPR-002-02', 'status' => 'dipinjam', 'kondisi' => 'baik']);
         $unit7 = BarangUnit::create(['barang_id' => $barang2->id, 'kode_unit' => 'KPR-002-03', 'status' => 'tersedia', 'kondisi' => 'baik']);
 
-        // Unit Tang (2 unit: 2 tersedia)
-        $unit8 = BarangUnit::create(['barang_id' => $barang3->id, 'kode_unit' => 'TNG-003-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
-        $unit9 = BarangUnit::create(['barang_id' => $barang3->id, 'kode_unit' => 'TNG-003-02', 'status' => 'tersedia', 'kondisi' => 'baik']);
-
         // Unit Bor Cordless (3 unit: 2 tersedia, 1 dipinjam)
-        $unit10 = BarangUnit::create(['barang_id' => $barang4->id, 'kode_unit' => 'BOR-101-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
-        $unit11 = BarangUnit::create(['barang_id' => $barang4->id, 'kode_unit' => 'BOR-101-02', 'status' => 'dipinjam', 'kondisi' => 'baik']);
-        $unit12 = BarangUnit::create(['barang_id' => $barang4->id, 'kode_unit' => 'BOR-101-03', 'status' => 'tersedia', 'kondisi' => 'baik']);
-
-        // Unit Gerinda (2 unit: 1 tersedia, 1 maintenance)
-        $unit13 = BarangUnit::create(['barang_id' => $barang5->id, 'kode_unit' => 'GRD-102-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
-        $unit14 = BarangUnit::create(['barang_id' => $barang5->id, 'kode_unit' => 'GRD-102-02', 'status' => 'maintenance', 'kondisi' => 'rusak']);
+        $unit8 = BarangUnit::create(['barang_id' => $barang3->id, 'kode_unit' => 'BOR-101-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        $unit9 = BarangUnit::create(['barang_id' => $barang3->id, 'kode_unit' => 'BOR-101-02', 'status' => 'dipinjam', 'kondisi' => 'baik']);
+        $unit10 = BarangUnit::create(['barang_id' => $barang3->id, 'kode_unit' => 'BOR-101-03', 'status' => 'tersedia', 'kondisi' => 'baik']);
 
         // Unit Multimeter (2 unit: 2 tersedia)
-        $unit15 = BarangUnit::create(['barang_id' => $barang6->id, 'kode_unit' => 'DMM-201-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
-        $unit16 = BarangUnit::create(['barang_id' => $barang6->id, 'kode_unit' => 'DMM-201-02', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        $unit11 = BarangUnit::create(['barang_id' => $barang4->id, 'kode_unit' => 'DMM-201-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        $unit12 = BarangUnit::create(['barang_id' => $barang4->id, 'kode_unit' => 'DMM-201-02', 'status' => 'tersedia', 'kondisi' => 'baik']);
 
-        // Unit Jangka Sorong (2 unit: 2 tersedia)
-        $unit17 = BarangUnit::create(['barang_id' => $barang7->id, 'kode_unit' => 'JSD-202-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
-        $unit18 = BarangUnit::create(['barang_id' => $barang7->id, 'kode_unit' => 'JSD-202-02', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        // Unit Solder Station (2 unit: 1 tersedia, 1 maintenance)
+        $unit13 = BarangUnit::create(['barang_id' => $barang5->id, 'kode_unit' => 'SLD-202-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        $unit14 = BarangUnit::create(['barang_id' => $barang5->id, 'kode_unit' => 'SLD-202-02', 'status' => 'maintenance', 'kondisi' => 'rusak']);
 
-        // Unit Helm Las (2 unit: 2 tersedia)
-        $unit19 = BarangUnit::create(['barang_id' => $barang8->id, 'kode_unit' => 'HLM-301-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
-        $unit20 = BarangUnit::create(['barang_id' => $barang8->id, 'kode_unit' => 'HLM-301-02', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        // Unit Osiloskop (2 unit: 2 tersedia)
+        $unit15 = BarangUnit::create(['barang_id' => $barang6->id, 'kode_unit' => 'OSC-203-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        $unit16 = BarangUnit::create(['barang_id' => $barang6->id, 'kode_unit' => 'OSC-203-02', 'status' => 'tersedia', 'kondisi' => 'baik']);
 
-        // 6. Create Logbook Transaksi (Peminjaman & Riwayat Pengembalian)
-        // Transaksi 1 (Aktif - dipinjam oleh user1)
+        // Unit Arduino Uno (4 unit: 3 tersedia, 1 dipinjam)
+        $unit17 = BarangUnit::create(['barang_id' => $barang7->id, 'kode_unit' => 'ARD-301-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        $unit18 = BarangUnit::create(['barang_id' => $barang7->id, 'kode_unit' => 'ARD-301-02', 'status' => 'dipinjam', 'kondisi' => 'baik']);
+        $unit19 = BarangUnit::create(['barang_id' => $barang7->id, 'kode_unit' => 'ARD-301-03', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        $unit20 = BarangUnit::create(['barang_id' => $barang7->id, 'kode_unit' => 'ARD-301-04', 'status' => 'tersedia', 'kondisi' => 'baik']);
+
+        // Unit ESP32 (3 unit: 3 tersedia)
+        $unit21 = BarangUnit::create(['barang_id' => $barang8->id, 'kode_unit' => 'ESP-302-01', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        $unit22 = BarangUnit::create(['barang_id' => $barang8->id, 'kode_unit' => 'ESP-302-02', 'status' => 'tersedia', 'kondisi' => 'baik']);
+        $unit23 = BarangUnit::create(['barang_id' => $barang8->id, 'kode_unit' => 'ESP-302-03', 'status' => 'tersedia', 'kondisi' => 'baik']);
+
+        // 6. Create Logbook Transaksi
         Logbook::create([
             'user_id' => $user1->id,
             'barang_unit_id' => $unit2->id,
@@ -195,7 +191,6 @@ class DatabaseSeeder extends Seeder
             'status_transaksi' => 'dipinjam',
         ]);
 
-        // Transaksi 2 (Aktif - dipinjam oleh user2)
         Logbook::create([
             'user_id' => $user2->id,
             'barang_unit_id' => $unit6->id,
@@ -205,17 +200,24 @@ class DatabaseSeeder extends Seeder
             'status_transaksi' => 'dipinjam',
         ]);
 
-        // Transaksi 3 (Aktif - dipinjam oleh user1)
         Logbook::create([
             'user_id' => $user1->id,
-            'barang_unit_id' => $unit11->id,
+            'barang_unit_id' => $unit9->id,
             'tanggal_pinjam' => now()->subDay(),
             'tanggal_kembali' => null,
             'kondisi_kembali' => null,
             'status_transaksi' => 'dipinjam',
         ]);
 
-        // Transaksi 4 (Selesai - dikembalikan dalam kondisi baik)
+        Logbook::create([
+            'user_id' => $user2->id,
+            'barang_unit_id' => $unit18->id,
+            'tanggal_pinjam' => now()->subHours(5),
+            'tanggal_kembali' => null,
+            'kondisi_kembali' => null,
+            'status_transaksi' => 'dipinjam',
+        ]);
+
         Logbook::create([
             'user_id' => $user1->id,
             'barang_unit_id' => $unit1->id,
@@ -225,7 +227,6 @@ class DatabaseSeeder extends Seeder
             'status_transaksi' => 'dikembalikan',
         ]);
 
-        // Transaksi 5 (Selesai - dikembalikan dalam kondisi rusak -> unit menjadi maintenance)
         Logbook::create([
             'user_id' => $user2->id,
             'barang_unit_id' => $unit4->id,

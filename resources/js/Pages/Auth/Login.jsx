@@ -17,35 +17,33 @@ export default function Login() {
     return (
         <>
             <Head title="Admin Login - WAMS" />
-            <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 relative overflow-hidden">
-                {/* Background glow effects */}
-                <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-
-                <div className="max-w-md w-full relative z-10">
+            <div className="min-h-screen bg-[#FFFAF3] flex flex-col justify-center items-center px-4 font-sans">
+                <div className="max-w-md w-full">
+                    {/* Brand Header */}
                     <div className="text-center mb-8">
-                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-xl shadow-blue-500/20 mb-4">
+                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#F62440] mb-4">
                             <span className="text-2xl font-black text-white">W</span>
                         </div>
-                        <h2 className="text-2xl font-bold tracking-tight text-white">WAMS Admin Portal</h2>
-                        <p className="text-sm text-slate-400 mt-1">Workshop Asset Management System</p>
+                        <h2 className="text-2xl font-extrabold tracking-tight text-[#1E232A]">WAMS Admin Portal</h2>
+                        <p className="text-xs text-[#6B7280] font-medium mt-1">Workshop Asset Management System</p>
                     </div>
 
-                    <div className="bg-slate-900/90 border border-slate-800 backdrop-blur-xl p-8 rounded-2xl shadow-2xl">
+                    {/* Flat Form Container */}
+                    <div className="bg-[#FFF2DB] border border-[#F0DFC4] p-8 rounded-2xl">
                         {errors.login && (
-                            <div className="mb-6 p-3 rounded-xl bg-rose-950/60 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                                <ShieldAlert size={16} className="text-rose-400 shrink-0" />
+                            <div className="mb-6 p-3 rounded-xl bg-[#F62440]/10 border border-[#F62440]/30 text-[#991B1B] text-xs font-bold flex items-center gap-2">
+                                <ShieldAlert size={16} className="text-[#F62440] shrink-0" />
                                 <span>{errors.login}</span>
                             </div>
                         )}
 
                         <form onSubmit={submit} className="space-y-5">
                             <div>
-                                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                                <label className="block text-xs font-bold text-[#1E232A] uppercase tracking-wider mb-2">
                                     Email atau NIP
                                 </label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#6B7280]">
                                         <Mail size={18} />
                                     </div>
                                     <input
@@ -54,17 +52,17 @@ export default function Login() {
                                         onChange={(e) => setData('login', e.target.value)}
                                         placeholder="admin@wams.test atau NIP"
                                         required
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                                        className="w-full pl-10 pr-4 py-2.5 bg-[#FFFAF3] border border-[#F0DFC4] rounded-xl text-xs text-[#1E232A] placeholder-[#8C93A0] focus:outline-none focus:border-[#F62440] font-medium transition-colors"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                                <label className="block text-xs font-bold text-[#1E232A] uppercase tracking-wider mb-2">
                                     Password
                                 </label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#6B7280]">
                                         <Lock size={18} />
                                     </div>
                                     <input
@@ -73,11 +71,11 @@ export default function Login() {
                                         onChange={(e) => setData('password', e.target.value)}
                                         placeholder="••••••••"
                                         required
-                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                                        className="w-full pl-10 pr-4 py-2.5 bg-[#FFFAF3] border border-[#F0DFC4] rounded-xl text-xs text-[#1E232A] placeholder-[#8C93A0] focus:outline-none focus:border-[#F62440] font-medium transition-colors"
                                     />
                                 </div>
                                 {errors.password && (
-                                    <p className="text-rose-400 text-xs mt-1.5">{errors.password}</p>
+                                    <p className="text-[#F62440] text-xs font-bold mt-1.5">{errors.password}</p>
                                 )}
                             </div>
 
@@ -87,25 +85,25 @@ export default function Login() {
                                         type="checkbox"
                                         checked={data.remember}
                                         onChange={(e) => setData('remember', e.target.checked)}
-                                        className="w-4 h-4 rounded bg-slate-950 border-slate-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900"
+                                        className="w-4 h-4 rounded bg-[#FFFAF3] border-[#F0DFC4] text-[#F62440] focus:ring-[#F62440]"
                                     />
-                                    <span className="text-xs text-slate-400 select-none">Ingat saya</span>
+                                    <span className="text-xs text-[#6B7280] font-medium select-none">Ingat saya</span>
                                 </label>
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/25 transition-all disabled:opacity-50"
+                                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#F62440] hover:bg-[#D91A33] text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
                             >
                                 <span>{processing ? 'Memproses...' : 'Masuk ke Panel Admin'}</span>
                                 <ArrowRight size={16} />
                             </button>
                         </form>
 
-                        <div className="mt-6 pt-6 border-t border-slate-800/80 text-center">
-                            <p className="text-xs text-slate-500">
-                                Default Admin: <span className="text-slate-300 font-mono">admin@wams.test</span> / <span className="text-slate-300 font-mono">password</span>
+                        <div className="mt-6 pt-6 border-t border-[#F0DFC4] text-center">
+                            <p className="text-xs text-[#6B7280]">
+                                Default Admin: <span className="text-[#1E232A] font-mono font-bold">admin@wams.test</span> / <span className="text-[#1E232A] font-mono font-bold">password</span>
                             </p>
                         </div>
                     </div>
