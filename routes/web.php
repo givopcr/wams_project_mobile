@@ -10,12 +10,25 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Auth Routes (Guest)
-Route::middleware('guest')->group(function () {
-    Route::get('/', [AuthWebController::class, 'showLogin'])->name('login');
-    Route::get('/login', [AuthWebController::class, 'showLogin']);
-    Route::post('/login', [AuthWebController::class, 'login'])->name('login.post');
+// Root redirect → cek auth dulu untuk menghindari redirect loop
+Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect('/admin/dashboard');
+    }
+    return redirect('/admin/login');
 });
+
+// Auth Routes (Guest only)
+Route::middleware('guest')->group(function () {
+    Route::get('/admin/login', [AuthWebController::class, 'showLogin'])->name('login');
+    Route::post('/admin/login', [AuthWebController::class, 'login'])->name('login.post');
+
+    // Legacy aliases (opsional, redirect ke /admin/login)
+    Route::get('/login', fn() => redirect('/admin/login'))->name('login.legacy');
+});
+
+// POST /login alias di luar guest middleware agar tidak terblokir
+Route::post('/login', [AuthWebController::class, 'login'])->name('login.post.alias');
 
 // Admin Protected Routes
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {

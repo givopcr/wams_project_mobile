@@ -11,7 +11,7 @@ export default function Login() {
 
     const submit = (e) => {
         e.preventDefault();
-        post('/login');
+        post('/admin/login');
     };
 
     return (

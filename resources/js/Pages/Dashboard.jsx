@@ -14,11 +14,21 @@ import {
     Sparkles
 } from 'lucide-react';
 
-export default function Dashboard({ stats, recentLogbooks, kategoriSummary }) {
+export default function Dashboard({ stats = {}, recentLogbooks = [], kategoriSummary = [] }) {
+    const s = {
+        total_kategori: 0,
+        total_barang: 0,
+        total_unit: 0,
+        unit_tersedia: 0,
+        unit_dipinjam: 0,
+        unit_maintenance: 0,
+        ...stats,
+    };
+
     const statCards = [
         {
             title: 'Total Kategori',
-            value: stats.total_kategori,
+            value: s.total_kategori,
             icon: Boxes,
             color: 'text-blue-400',
             bg: 'bg-blue-500/10 border-blue-500/20',
@@ -26,7 +36,7 @@ export default function Dashboard({ stats, recentLogbooks, kategoriSummary }) {
         },
         {
             title: 'Master Barang',
-            value: stats.total_barang,
+            value: s.total_barang,
             icon: Package,
             color: 'text-indigo-400',
             bg: 'bg-indigo-500/10 border-indigo-500/20',
@@ -34,7 +44,7 @@ export default function Dashboard({ stats, recentLogbooks, kategoriSummary }) {
         },
         {
             title: 'Total Unit Fisik',
-            value: stats.total_unit,
+            value: s.total_unit,
             icon: Layers,
             color: 'text-cyan-400',
             bg: 'bg-cyan-500/10 border-cyan-500/20',
@@ -42,7 +52,7 @@ export default function Dashboard({ stats, recentLogbooks, kategoriSummary }) {
         },
         {
             title: 'Unit Tersedia',
-            value: stats.unit_tersedia,
+            value: s.unit_tersedia,
             icon: CheckCircle2,
             color: 'text-emerald-400',
             bg: 'bg-emerald-500/10 border-emerald-500/20',
@@ -50,7 +60,7 @@ export default function Dashboard({ stats, recentLogbooks, kategoriSummary }) {
         },
         {
             title: 'Unit Dipinjam',
-            value: stats.unit_dipinjam,
+            value: s.unit_dipinjam,
             icon: Clock,
             color: 'text-amber-400',
             bg: 'bg-amber-500/10 border-amber-500/20',
@@ -58,7 +68,7 @@ export default function Dashboard({ stats, recentLogbooks, kategoriSummary }) {
         },
         {
             title: 'Unit Maintenance',
-            value: stats.unit_maintenance,
+            value: s.unit_maintenance,
             icon: AlertTriangle,
             color: 'text-rose-400',
             bg: 'bg-rose-500/10 border-rose-500/20',

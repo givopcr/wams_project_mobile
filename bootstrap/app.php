@@ -19,6 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
+
+        // Redirect guest yang sudah login ke dashboard (mencegah redirect loop)
+        $middleware->redirectUsersTo('/admin/dashboard');
+        // Redirect unauthenticated users ke halaman login admin
+        $middleware->redirectGuestsTo('/admin/login');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

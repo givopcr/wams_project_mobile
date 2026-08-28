@@ -101,7 +101,8 @@ export default function AuthenticatedLayout({ title, children }) {
                                     </h3>
                                     <div className="space-y-1 pt-1">
                                         {section.items.map((item) => {
-                                            const active = url.startsWith(item.href);
+                                            const currentUrl = url || window.location.pathname;
+                                            const active = currentUrl.startsWith(item.href);
                                             const Icon = item.icon;
                                             return (
                                                 <Link
