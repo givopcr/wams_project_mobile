@@ -36,7 +36,7 @@ export default function LogbookIndex({ logs, filters }) {
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Cari user, NIP, kode unit, atau barang..."
-                                className="w-full pl-10 pr-4 py-2.5 bg-[#FFF2DB] border border-[#F0DFC4] rounded-xl text-xs text-[#1E232A] placeholder-[#8C93A0] focus:outline-none focus:border-[#F62440]"
+                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] placeholder-[#8C93A0] focus:outline-none focus:border-[#D84040]"
                             />
                             <Search size={16} className="absolute left-3.5 top-3 text-[#6B7280]" />
                         </form>
@@ -47,7 +47,7 @@ export default function LogbookIndex({ logs, filters }) {
                                 setSelectedStatus(e.target.value);
                                 router.get('/admin/logbook', { q: search, status: e.target.value }, { preserveState: true });
                             }}
-                            className="py-2.5 px-3.5 bg-[#FFF2DB] border border-[#F0DFC4] rounded-xl text-xs text-[#1E232A] font-semibold focus:outline-none focus:border-[#F62440]"
+                            className="py-2.5 px-3.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none focus:border-[#D84040]"
                         >
                             <option value="">Semua Status Transaksi</option>
                             <option value="dipinjam">Sedang Dipinjam</option>
@@ -56,11 +56,11 @@ export default function LogbookIndex({ logs, filters }) {
                     </div>
                 </div>
 
-                {/* Flat Table */}
-                <div className="bg-[#FFF2DB] border border-[#F0DFC4] rounded-2xl overflow-hidden shadow-none">
+                {/* Table */}
+                <div className="bg-white border border-[#E0E0E0] rounded-2xl overflow-hidden shadow-2xs">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs">
-                            <thead className="bg-[#FFE5BF] border-b border-[#F0DFC4] text-[#1E232A] uppercase tracking-wider font-bold">
+                            <thead className="bg-[#EEEEEE] border-b border-[#E0E0E0] text-[#1D1616] uppercase tracking-wider font-bold">
                                 <tr>
                                     <th className="p-4">Peminjam</th>
                                     <th className="p-4">Alat & Unit Fisik</th>
@@ -70,10 +70,10 @@ export default function LogbookIndex({ logs, filters }) {
                                     <th className="p-4 text-center">Status</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-[#F0DFC4]">
+                            <tbody className="divide-y divide-[#E0E0E0]">
                                 {logs.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-[#6B7280] bg-[#FFFAF3]">
+                                        <td colSpan={6} className="p-8 text-center text-[#6B7280] bg-white">
                                             Tidak ada catatan logbook transaksi ditemukan.
                                         </td>
                                     </tr>
@@ -81,21 +81,21 @@ export default function LogbookIndex({ logs, filters }) {
                                     logs.data.map((log) => {
                                         const isDipinjam = log.status_transaksi === 'dipinjam';
                                         return (
-                                            <tr key={log.id} className="hover:bg-[#FFE5BF]/40 bg-[#FFFAF3] transition-colors">
+                                            <tr key={log.id} className="hover:bg-[#EEEEEE]/50 bg-white transition-colors">
                                                 <td className="p-4">
-                                                    <div className="font-bold text-[#1E232A] text-sm">{log.user?.nama || 'N/A'}</div>
+                                                    <div className="font-bold text-[#1D1616] text-sm">{log.user?.nama || 'N/A'}</div>
                                                     <div className="text-[11px] font-mono text-[#6B7280] mt-0.5">NIP: {log.user?.nip || '-'}</div>
                                                     <div className="text-[10px] text-[#6B7280]">{log.user?.email}</div>
                                                 </td>
                                                 <td className="p-4">
-                                                    <div className="font-bold text-[#1E232A]">{log.barang_unit?.barang?.nama_barang || 'Barang'}</div>
-                                                    <div className="text-[11px] font-mono text-[#F62440] font-bold mt-0.5">
+                                                    <div className="font-bold text-[#1D1616]">{log.barang_unit?.barang?.nama_barang || 'Barang'}</div>
+                                                    <div className="text-[11px] font-mono text-[#D84040] font-bold mt-0.5">
                                                         {log.barang_unit?.kode_unit || 'Unit'}
                                                     </div>
                                                 </td>
-                                                <td className="p-4 text-[#1E232A] font-medium">
+                                                <td className="p-4 text-[#1D1616] font-medium">
                                                     <div className="flex items-center gap-1.5">
-                                                        <Calendar size={13} className="text-[#F62440]" />
+                                                        <Calendar size={13} className="text-[#D84040]" />
                                                         {new Date(log.tanggal_pinjam).toLocaleString('id-ID', {
                                                             day: 'numeric',
                                                             month: 'short',
@@ -105,9 +105,9 @@ export default function LogbookIndex({ logs, filters }) {
                                                         })}
                                                     </div>
                                                 </td>
-                                                <td className="p-4 text-[#1E232A] font-medium">
+                                                <td className="p-4 text-[#1D1616] font-medium">
                                                     {log.tanggal_kembali ? (
-                                                        <div className="flex items-center gap-1.5 text-[#059669] font-bold">
+                                                        <div className="flex items-center gap-1.5 text-emerald-700 font-bold">
                                                             <CheckCircle2 size={13} />
                                                             {new Date(log.tanggal_kembali).toLocaleString('id-ID', {
                                                                 day: 'numeric',
@@ -126,8 +126,8 @@ export default function LogbookIndex({ logs, filters }) {
                                                         <span
                                                             className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold capitalize ${
                                                                 log.kondisi_kembali === 'baik'
-                                                                    ? 'bg-[#FFE5BF] text-[#059669]'
-                                                                    : 'bg-[#F62440]/10 text-[#F62440]'
+                                                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                                    : 'bg-[#D84040]/10 text-[#D84040] border border-[#D84040]/20'
                                                             }`}
                                                         >
                                                             {log.kondisi_kembali}
@@ -140,8 +140,8 @@ export default function LogbookIndex({ logs, filters }) {
                                                     <span
                                                         className={`inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-bold ${
                                                             isDipinjam
-                                                                ? 'bg-[#F62440] text-white'
-                                                                : 'bg-[#FFE5BF] text-[#1E232A]'
+                                                                ? 'bg-[#D84040] text-white'
+                                                                : 'bg-[#1D1616] text-white'
                                                         }`}
                                                     >
                                                         {isDipinjam ? <Clock size={12} /> : <CheckCircle2 size={12} />}

@@ -7,13 +7,28 @@
 @source '../**/*.jsx';
 
 @theme {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-    --color-cream-light: #FFFAF3;
-    --color-cream-base: #FFF2DB;
-    --color-cream-card: #FFE5BF;
-    --color-coral-accent: #F62440;
-    --color-coral-hover: #D91A33;
-    --color-dark-slate: #1E232A;
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-inter: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-helvetica: 'Helvetica Neue', Helvetica, Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --color-palette-dark: #1D1616;
+    --color-palette-deep-red: #8E1616;
+    --color-palette-coral: #D84040;
+    --color-palette-light: #EEEEEE;
+    --color-palette-card: #FFFFFF;
+    --color-palette-border: #E0E0E0;
+    
+    --color-cream-light: #EEEEEE;
+    --color-cream-base: #FFFFFF;
+    --color-cream-card: #F7F7F7;
+    --color-coral-accent: #D84040;
+    --color-coral-hover: #8E1616;
+    --color-dark-slate: #1D1616;
     --color-dark-muted: #6B7280;
-    --color-border-warm: #F0DFC4;
+    --color-border-warm: #E0E0E0;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: #EEEEEE;
+    color: #1D1616;
 }

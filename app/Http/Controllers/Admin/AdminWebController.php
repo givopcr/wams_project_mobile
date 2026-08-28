@@ -23,103 +23,130 @@ class AdminWebController extends Controller
      */
      public function dashboard(): Response
      {
+         $totalUnit = BarangUnit::count();
+         $unitBaik = BarangUnit::where('kondisi', 'baik')->count();
+         $persentaseBaik = $totalUnit > 0 ? round(($unitBaik / $totalUnit) * 100, 1) : 100;
+
          $stats = [
              'total_kategori' => KategoriBarang::count(),
              'total_barang' => Barang::count(),
-             'total_unit' => BarangUnit::count(),
+             'total_unit' => $totalUnit,
              'unit_tersedia' => BarangUnit::where('status', 'tersedia')->count(),
              'unit_dipinjam' => BarangUnit::where('status', 'dipinjam')->count(),
              'unit_maintenance' => BarangUnit::where('status', 'maintenance')->count(),
+             'unit_baik' => $unitBaik,
+             'persentase_baik' => $persentaseBaik,
              'total_user' => User::where('role', 'user')->count(),
              'transaksi_aktif' => Logbook::where('status_transaksi', 'dipinjam')->count(),
              'transaksi_selesai' => Logbook::where('status_transaksi', 'dikembalikan')->count(),
          ];
 
-         // Recent activities
-         $recentLogbooks = Logbook::with(['user', 'barangUnit.barang.kategori'])
-             ->latest('tanggal_pinjam')
-             ->take(5)
-             ->get();
-
-         // Ringkasan Kategori
-         $kategoriSummary = KategoriBarang::withCount('barang')
-             ->with('units')
-             ->take(6)
+         // 3 Transaksi / List User Terakhir (Meminjam atau Mengembalikan)
+         $recentUsersActivity = Logbook::with(['user', 'barangUnit.barang.kategori'])
+             ->latest('updated_at')
+             ->take(3)
              ->get()
-             ->map(fn ($k) => [
-                 'id' => $k->id,
-                 'nama_kategori' => $k->nama_kategori,
-                 'total_barang' => $k->barang_count,
-                 'total_unit' => $k->units->count(),
-                 'tersedia' => $k->units->where('status', 'tersedia')->count(),
-                 'dipinjam' => $k->units->where('status', 'dipinjam')->count(),
-                 'maintenance' => $k->units->where('status', 'maintenance')->count(),
-             ]);
+             ->map(function ($log) {
+                 return [
+                     'id' => $log->id,
+                     'user_name' => $log->user?->nama ?? 'Teknisi Workshop',
+                     'user_nip' => $log->user?->nip ?? '-',
+                     'user_email' => $log->user?->email ?? '-',
+                     'nama_barang' => $log->barangUnit?->barang?->nama_barang ?? 'Barang Workshop',
+                     'kode_unit' => $log->barangUnit?->kode_unit ?? '-',
+                     'kategori' => $log->barangUnit?->barang?->kategori?->nama_kategori ?? 'Umum',
+                     'status_transaksi' => $log->status_transaksi, // 'dipinjam' | 'dikembalikan'
+                     'tanggal' => $log->status_transaksi === 'dikembalikan' && $log->tanggal_kembali
+                         ? $log->tanggal_kembali
+                         : $log->tanggal_pinjam,
+                     'formatted_date' => date('d M Y, H:i', strtotime(
+                         $log->status_transaksi === 'dikembalikan' && $log->tanggal_kembali
+                             ? $log->tanggal_kembali
+                             : $log->tanggal_pinjam
+                     )),
+                 ];
+             });
 
-         // User teknisi teraktif / quick contacts
-         $quickUsers = User::where('role', 'user')
-             ->withCount('logbooks')
-             ->latest()
-             ->take(4)
-             ->get()
-             ->map(fn ($u) => [
-                 'id' => $u->id,
-                 'nama' => $u->nama,
-                 'nip' => $u->nip ?? '-',
-                 'email' => $u->email,
-                 'total_pinjam' => $u->logbooks_count,
-             ]);
+         // 3 Kategori Utama: Perkakas, Elektronik, Komponen
+         $targetCategories = ['Perkakas', 'Elektronik', 'Komponen'];
+         $days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+         
+         // Baseline patterns for demo/seed variety if activity is low
+         $baselineLoanPatterns = [
+             'Perkakas' => [12, 18, 15, 8, 22, 14, 6],   // Peak on Jumat & Selasa
+             'Elektronik' => [8, 11, 24, 19, 14, 9, 5],   // Peak on Rabu & Kamis
+             'Komponen' => [5, 9, 14, 12, 20, 26, 10],   // Peak on Sabtu & Jumat
+         ];
 
-         // Statistik Mingguan (Peminjaman vs Pengembalian dalam 7 hari terakhir)
-         $days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-         $weeklyActivity = [];
-         for ($i = 6; $i >= 0; $i--) {
-             $date = now()->subDays($i)->format('Y-m-d');
-             $dayIndex = (int) now()->subDays($i)->format('w');
-             $pinjamCount = Logbook::whereDate('tanggal_pinjam', $date)->count();
-             $kembaliCount = Logbook::whereDate('tanggal_kembali', $date)->count();
+         $categoriesData = [];
+         foreach ($targetCategories as $idx => $catName) {
+             $cat = KategoriBarang::where('nama_kategori', $catName)->first();
+             if (!$cat) {
+                 // Fallback to existing category or create virtual placeholder
+                 $cat = KategoriBarang::skip($idx)->first();
+             }
 
-             // Demo baseline data agar chart tampak hidup jika database baru di-seed
-             $weeklyActivity[] = [
-                 'day' => $days[$dayIndex],
-                 'date' => $date,
-                 'pinjam' => max($pinjamCount, ($i % 3 === 0 ? 8 : ($i % 2 === 0 ? 12 : 5))),
-                 'kembali' => max($kembaliCount, ($i % 3 === 0 ? 6 : ($i % 2 === 0 ? 9 : 4))),
+             $catId = $cat ? $cat->id : null;
+             $catTitle = $cat ? $cat->nama_kategori : $catName;
+
+             $totalBarangCat = $cat ? Barang::where('kategori_id', $catId)->count() : 0;
+             $totalUnitCat = $cat ? BarangUnit::whereHas('barang', fn($q) => $q->where('kategori_id', $catId))->count() : 0;
+             $dipinjamUnitCat = $cat ? BarangUnit::whereHas('barang', fn($q) => $q->where('kategori_id', $catId))->where('status', 'dipinjam')->count() : 0;
+             $tersediaUnitCat = $cat ? BarangUnit::whereHas('barang', fn($q) => $q->where('kategori_id', $catId))->where('status', 'tersedia')->count() : 0;
+
+             // Build 7-day trend
+             $dailyLoans = [];
+             $peakDay = 'Sen';
+             $maxLoans = 0;
+             $totalLoansWeek = 0;
+
+             for ($d = 6; $d >= 0; $d--) {
+                 $date = now()->subDays($d)->format('Y-m-d');
+                 $dayIndex = (int) now()->subDays($d)->format('N') - 1; // 0 = Sen, 6 = Min
+                 $dayName = $days[$dayIndex] ?? 'Sen';
+
+                 $realCount = 0;
+                 if ($catId) {
+                     $realCount = Logbook::whereHas('barangUnit.barang', function ($q) use ($catId) {
+                         $q->where('kategori_id', $catId);
+                     })->whereDate('tanggal_pinjam', $date)->count();
+                 }
+
+                 $baseline = $baselineLoanPatterns[$catTitle][$dayIndex] ?? ($baselineLoanPatterns['Perkakas'][$dayIndex] ?? 10);
+                 $count = max($realCount, $baseline);
+
+                 if ($count > $maxLoans) {
+                     $maxLoans = $count;
+                     $peakDay = $dayName;
+                 }
+                 $totalLoansWeek += $count;
+
+                 $dailyLoans[] = [
+                     'day' => $dayName,
+                     'date' => $date,
+                     'count' => $count,
+                     'real_count' => $realCount,
+                 ];
+             }
+
+             $categoriesData[] = [
+                 'id' => $catId ?? ($idx + 1),
+                 'name' => $catTitle,
+                 'total_barang' => $totalBarangCat,
+                 'total_unit' => $totalUnitCat,
+                 'unit_dipinjam' => $dipinjamUnitCat,
+                 'unit_tersedia' => $tersediaUnitCat,
+                 'daily_loans' => $dailyLoans,
+                 'peak_day' => $peakDay,
+                 'max_daily_loans' => $maxLoans,
+                 'total_loans_week' => $totalLoansWeek,
              ];
          }
 
-         // Distribusi Kategori (Expense / Asset Statistics style)
-         $totalUnits = max(1, $stats['total_unit']);
-         $categoryDistribution = $kategoriSummary->take(4)->values()->map(function ($k, $idx) use ($totalUnits) {
-             $colors = ['#1814F3', '#FEAA09', '#396AFF', '#FF4B64', '#10B981'];
-             $percentage = round(($k['total_unit'] / $totalUnits) * 100);
-             return [
-                 'name' => $k['nama_kategori'],
-                 'percentage' => $percentage,
-                 'units' => $k['total_unit'],
-                 'color' => $colors[$idx % count($colors)],
-             ];
-         });
-
-         // Data Riwayat Sirkulasi Bulanan (Balance / Activity History trend)
-         $monthlyHistory = [
-             ['month' => 'Jul', 'count' => 12],
-             ['month' => 'Agu', 'count' => 28],
-             ['month' => 'Sep', 'count' => 45],
-             ['month' => 'Okt', 'count' => 60],
-             ['month' => 'Nov', 'count' => 38],
-             ['month' => 'Des', 'count' => 52],
-             ['month' => 'Jan', 'count' => 74],
-         ];
-
          return Inertia::render('Dashboard', [
              'stats' => $stats,
-             'recentLogbooks' => $recentLogbooks,
-             'kategoriSummary' => $kategoriSummary,
-             'quickUsers' => $quickUsers,
-             'weeklyActivity' => $weeklyActivity,
-             'categoryDistribution' => $categoryDistribution,
-             'monthlyHistory' => $monthlyHistory,
+             'categoryCharts' => $categoriesData,
+             'recentUsersActivity' => $recentUsersActivity,
          ]);
      }
 
