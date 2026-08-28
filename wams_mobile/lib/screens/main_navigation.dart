@@ -16,26 +16,31 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   late int _currentIndex;
 
-  final List<Widget> _screens = const [
-    DashboardScreen(),
-    ScanScreen(),
-    RiwayatScreen(),
-    ProfileScreen(),
-  ];
-
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
   }
 
+  Widget _getCurrentScreen() {
+    switch (_currentIndex) {
+      case 0:
+        return const DashboardScreen();
+      case 1:
+        return const ScanScreen();
+      case 2:
+        return const RiwayatScreen();
+      case 3:
+        return const ProfileScreen();
+      default:
+        return const DashboardScreen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: _getCurrentScreen(),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: AppTheme.cardDark,

@@ -4,7 +4,7 @@ import 'core/theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/asset_provider.dart';
 import 'providers/transaction_provider.dart';
-import 'screens/splash_screen.dart';
+import 'screens/auth/login_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +26,7 @@ class WamsApp extends StatelessWidget {
         title: 'WAMS Mobile',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
-        home: const SplashScreen(),
+        home: const LoginScreen(),
       ),
     );
   }

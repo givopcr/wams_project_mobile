@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/theme.dart';
 import '../kategori/barang_kategori_screen.dart';
 
@@ -11,13 +10,11 @@ class ScanScreen extends StatefulWidget {
 }
 
 class _ScanScreenState extends State<ScanScreen> {
-  final MobileScannerController _cameraController = MobileScannerController();
   final TextEditingController _manualInputController = TextEditingController();
   bool _isProcessing = false;
 
   @override
   void dispose() {
-    _cameraController.dispose();
     _manualInputController.dispose();
     super.dispose();
   }
@@ -65,102 +62,145 @@ class _ScanScreenState extends State<ScanScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan QR Code Kategori'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.flash_on_outlined),
-            onPressed: () => _cameraController.toggleTorch(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.cameraswitch_outlined),
-            onPressed: () => _cameraController.switchCamera(),
-          ),
-        ],
       ),
-      body: Column(
-        children: [
-          // Scanner Camera Area
-          Expanded(
-            flex: 5,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                MobileScanner(
-                  controller: _cameraController,
-                  onDetect: (capture) {
-                    final List<Barcode> barcodes = capture.barcodes;
-                    for (final barcode in barcodes) {
-                      if (barcode.rawValue != null) {
-                        _handleBarcode(barcode.rawValue!);
-                        break;
-                      }
-                    }
-                  },
-                ),
-                // Scanning Box Overlay
-                Container(
-                  width: 250,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppTheme.primary, width: 2.5),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Manual Simulator Input & Info
-          Expanded(
-            flex: 3,
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              color: AppTheme.bgDark,
-              child: SingleChildScrollView(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Scanner Simulation UI
+            Container(
+              height: 260,
+              decoration: BoxDecoration(
+                color: AppTheme.cardDark,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppTheme.borderDark),
+              ),
+              child: Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'Posisikan QR Code di dalam kotak pemindai',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppTheme.primary, width: 2),
+                      ),
+                      child: const Icon(Icons.qr_code_scanner_rounded, size: 48, color: AppTheme.primary),
                     ),
                     const SizedBox(height: 16),
-                    const Divider(color: AppTheme.borderDark),
-                    const SizedBox(height: 12),
                     const Text(
-                      'Input Manual / Simulator ID Kategori:',
-                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                      'Pemindai QR Workshop',
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _manualInputController,
-                            keyboardType: TextInputType.text,
-                            decoration: const InputDecoration(
-                              hintText: 'Contoh: /scan/kategori/1 atau 1',
-                              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {
-                            if (_manualInputController.text.isNotEmpty) {
-                              _handleBarcode(_manualInputController.text);
-                            }
-                          },
-                          child: const Text('Buka'),
-                        ),
-                      ],
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Pindai label QR pada lemari / kotak perkakas',
+                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
                     ),
                   ],
                 ),
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Quick Category Shortcuts (Perkakas, Elektronik, Komponen)
+            const Text(
+              'Akses Cepat Kategori Workshop:',
+              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _buildQuickCategoryChip(1, 'Perkakas', Icons.build_rounded, const Color(0xFFEF4444)),
+                const SizedBox(width: 8),
+                _buildQuickCategoryChip(2, 'Elektronik', Icons.electrical_services_rounded, const Color(0xFFF59E0B)),
+                const SizedBox(width: 8),
+                _buildQuickCategoryChip(3, 'Komponen', Icons.memory_rounded, const Color(0xFF3B82F6)),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Manual Input QR
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.cardDark,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.borderDark),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Input Manual URL / ID QR Code:',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _manualInputController,
+                          decoration: const InputDecoration(
+                            hintText: 'Contoh: 1 atau /scan/kategori/1',
+                            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          if (_manualInputController.text.trim().isNotEmpty) {
+                            _handleBarcode(_manualInputController.text.trim());
+                          }
+                        },
+                        child: const Text('Buka'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickCategoryChip(int id, String label, IconData icon, Color color) {
+    return Expanded(
+      child: InkWell(
+        onTap: () => _handleBarcode(id.toString()),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.4)),
           ),
-        ],
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

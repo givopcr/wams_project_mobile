@@ -6,8 +6,7 @@ plugins {
 
 android {
     namespace = "com.wams.wams_mobile"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 36
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

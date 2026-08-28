@@ -10,10 +10,17 @@ import {
     X,
     MapPin,
     Layers,
-    Image as ImageIcon
+    Boxes,
+    Wrench,
+    Cpu,
+    Zap,
+    CheckCircle2,
+    Clock,
+    AlertTriangle,
+    Filter
 } from 'lucide-react';
 
-export default function BarangIndex({ barangList, categories, filters }) {
+export default function BarangIndex({ barangList, categories = [], categoryStats = [], filters }) {
     const [search, setSearch] = useState(filters.q || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.kategori_id || '');
     const [modalOpen, setModalOpen] = useState(false);
@@ -34,8 +41,10 @@ export default function BarangIndex({ barangList, categories, filters }) {
     };
 
     const handleCategoryFilter = (catId) => {
-        setSelectedCategory(catId);
-        router.get('/admin/barang', { q: search, kategori_id: catId }, { preserveState: true });
+        // Toggle filter jika diklik lagi
+        const newCatId = selectedCategory === String(catId) ? '' : String(catId);
+        setSelectedCategory(newCatId);
+        router.get('/admin/barang', { q: search, kategori_id: newCatId }, { preserveState: true });
     };
 
     const openCreateModal = () => {
@@ -87,134 +96,199 @@ export default function BarangIndex({ barangList, categories, filters }) {
         }
     };
 
+    const getCategoryIcon = (name = '') => {
+        const lower = name.toLowerCase();
+        if (lower.includes('perkakas')) return <Wrench size={22} className="text-[#F62440]" />;
+        if (lower.includes('elektronik')) return <Zap size={22} className="text-[#D97706]" />;
+        return <Cpu size={22} className="text-[#2563EB]" />;
+    };
+
     return (
-        <AuthenticatedLayout title="Master Barang Workshop">
-            <Head title="Master Barang - WAMS" />
+        <AuthenticatedLayout title="Daftar Barang & Kategori Workshop">
+            <Head title="Barang & Kategori - WAMS" />
 
-            <div className="space-y-6 max-w-7xl mx-auto">
-                {/* Filter & Action Bar */}
-                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                        <form onSubmit={handleSearch} className="relative w-full sm:w-64">
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Cari barang / kode / lokasi..."
-                                className="w-full pl-10 pr-4 py-2.5 bg-[#FFF2DB] border border-[#F0DFC4] rounded-xl text-xs text-[#1E232A] placeholder-[#8C93A0] focus:outline-none focus:border-[#F62440]"
-                            />
-                            <Search size={16} className="absolute left-3.5 top-3 text-[#6B7280]" />
-                        </form>
-
-                        <select
-                            value={selectedCategory}
-                            onChange={(e) => handleCategoryFilter(e.target.value)}
-                            className="py-2.5 px-3.5 bg-[#FFF2DB] border border-[#F0DFC4] rounded-xl text-xs text-[#1E232A] font-semibold focus:outline-none focus:border-[#F62440]"
-                        >
-                            <option value="">Semua Kategori</option>
-                            {categories.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                    {cat.nama_kategori}
-                                </option>
-                            ))}
-                        </select>
+            <div className="space-y-8 max-w-7xl mx-auto">
+                {/* 1. TOP CARDS: 3 KATEGORI (Perkakas, Elektronik, Komponen) */}
+                <div>
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 className="text-lg font-bold text-[#1E232A]">Ringkasan Kategori Workshop</h2>
+                            <p className="text-xs text-[#6B7280]">Klik kartu untuk memfilter daftar barang per kategori</p>
+                        </div>
+                        {selectedCategory && (
+                            <button
+                                onClick={() => handleCategoryFilter('')}
+                                className="text-xs font-bold text-[#F62440] hover:underline"
+                            >
+                                Reset Filter (Tampilkan Semua)
+                            </button>
+                        )}
                     </div>
 
-                    <button
-                        onClick={openCreateModal}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F62440] hover:bg-[#D91A33] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                    >
-                        <Plus size={16} />
-                        <span>Tambah Master Barang</span>
-                    </button>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        {categoryStats.map((cat) => {
+                            const isSelected = selectedCategory === String(cat.id);
+                            return (
+                                <div
+                                    key={cat.id}
+                                    onClick={() => handleCategoryFilter(cat.id)}
+                                    className={`p-6 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                                        isSelected
+                                            ? 'bg-[#FFE5BF] border-[#F62440] shadow-sm ring-2 ring-[#F62440]'
+                                            : 'bg-[#FFF2DB] border-[#F0DFC4] hover:border-[#F62440]/60'
+                                    }`}
+                                >
+                                    <div>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="w-11 h-11 rounded-xl bg-[#FFFAF3] border border-[#F0DFC4] flex items-center justify-center">
+                                                {getCategoryIcon(cat.nama_kategori)}
+                                            </div>
+                                            <span className="font-mono text-xs font-bold bg-[#FFFAF3] px-2.5 py-1 rounded-md text-[#1E232A] border border-[#F0DFC4]">
+                                                {cat.total_barang} Model
+                                            </span>
+                                        </div>
+
+                                        <h3 className="text-base font-extrabold text-[#1E232A]">
+                                            {cat.nama_kategori}
+                                        </h3>
+                                        <p className="text-xs text-[#6B7280] font-medium mt-0.5">
+                                            Total: <span className="font-bold text-[#1E232A]">{cat.total_unit} Unit Fisik</span>
+                                        </p>
+                                    </div>
+
+                                    {/* Breakdown Status Unit */}
+                                    <div className="pt-4 mt-4 border-t border-[#F0DFC4] grid grid-cols-3 gap-2 text-center">
+                                        <div className="bg-[#FFFAF3] p-2 rounded-lg border border-[#F0DFC4]">
+                                            <span className="text-[10px] uppercase font-bold text-[#059669] block">Tersedia</span>
+                                            <span className="text-sm font-extrabold text-[#059669]">{cat.tersedia}</span>
+                                        </div>
+                                        <div className="bg-[#FFFAF3] p-2 rounded-lg border border-[#F0DFC4]">
+                                            <span className="text-[10px] uppercase font-bold text-[#D97706] block">Dipinjam</span>
+                                            <span className="text-sm font-extrabold text-[#D97706]">{cat.dipinjam}</span>
+                                        </div>
+                                        <div className="bg-[#FFFAF3] p-2 rounded-lg border border-[#F0DFC4]">
+                                            <span className="text-[10px] uppercase font-bold text-[#F62440] block">Rusak</span>
+                                            <span className="text-sm font-extrabold text-[#F62440]">{cat.maintenance}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
 
-                {/* Flat Table */}
-                <div className="bg-[#FFF2DB] border border-[#F0DFC4] rounded-2xl overflow-hidden shadow-none">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs">
-                            <thead className="bg-[#FFE5BF] border-b border-[#F0DFC4] text-[#1E232A] uppercase tracking-wider font-bold">
-                                <tr>
-                                    <th className="p-4">Barang</th>
-                                    <th className="p-4">Kategori & Lokasi</th>
-                                    <th className="p-4 text-center">Total Unit</th>
-                                    <th className="p-4 text-center">Tersedia</th>
-                                    <th className="p-4 text-center">Dipinjam</th>
-                                    <th className="p-4 text-center">Maintenance</th>
-                                    <th className="p-4 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#F0DFC4]">
-                                {barangList.data.length === 0 ? (
+                {/* 2. FILTER & LIST MASTER BARANG */}
+                <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                        <div className="w-full sm:w-auto">
+                            <form onSubmit={handleSearch} className="relative w-full sm:w-80">
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Cari nama barang / kode / lokasi..."
+                                    className="w-full pl-10 pr-4 py-2.5 bg-[#FFF2DB] border border-[#F0DFC4] rounded-xl text-xs text-[#1E232A] placeholder-[#8C93A0] focus:outline-none focus:border-[#F62440]"
+                                />
+                                <Search size={16} className="absolute left-3.5 top-3 text-[#6B7280]" />
+                            </form>
+                        </div>
+
+                        <button
+                            onClick={openCreateModal}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F62440] hover:bg-[#D91A33] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                        >
+                            <Plus size={16} />
+                            <span>Tambah Barang Baru</span>
+                        </button>
+                    </div>
+
+                    {/* Flat Table */}
+                    <div className="bg-[#FFF2DB] border border-[#F0DFC4] rounded-2xl overflow-hidden shadow-none">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-[#FFE5BF] border-b border-[#F0DFC4] text-[#1E232A] uppercase tracking-wider font-bold">
                                     <tr>
-                                        <td colSpan={7} className="p-8 text-center text-[#6B7280] bg-[#FFFAF3]">
-                                            Tidak ada data master barang ditemukan.
-                                        </td>
+                                        <th className="p-4">Barang</th>
+                                        <th className="p-4">Kategori & Lokasi</th>
+                                        <th className="p-4 text-center">Total Unit</th>
+                                        <th className="p-4 text-center">Tersedia</th>
+                                        <th className="p-4 text-center">Dipinjam</th>
+                                        <th className="p-4 text-center">Maintenance</th>
+                                        <th className="p-4 text-right">Aksi</th>
                                     </tr>
-                                ) : (
-                                    barangList.data.map((item) => (
-                                        <tr key={item.id} className="hover:bg-[#FFE5BF]/40 bg-[#FFFAF3] transition-colors">
-                                            <td className="p-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-[#FFE5BF] border border-[#F0DFC4] overflow-hidden flex items-center justify-center shrink-0">
-                                                        {item.gambar_url ? (
-                                                            <img src={item.gambar_url} alt={item.nama_barang} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <Package size={18} className="text-[#F62440]" />
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-bold text-[#1E232A] text-sm">{item.nama_barang}</div>
-                                                        <div className="text-[11px] font-mono text-[#F62440] font-bold">{item.kode_barang}</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="font-bold text-[#1E232A]">{item.nama_kategori}</div>
-                                                <div className="text-[11px] text-[#6B7280] flex items-center gap-1 mt-0.5 font-medium">
-                                                    <MapPin size={12} className="text-[#F62440]" /> {item.lokasi || 'Lokasi belum diset'}
-                                                </div>
-                                            </td>
-                                            <td className="p-4 text-center font-bold text-[#1E232A]">
-                                                {item.total_unit}
-                                            </td>
-                                            <td className="p-4 text-center font-bold text-[#059669]">
-                                                {item.tersedia}
-                                            </td>
-                                            <td className="p-4 text-center font-bold text-[#D97706]">
-                                                {item.dipinjam}
-                                            </td>
-                                            <td className="p-4 text-center font-bold text-[#F62440]">
-                                                {item.maintenance}
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => openEditModal(item)}
-                                                        className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1E232A] hover:bg-[#FFE5BF] transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        <Edit2 size={15} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className="p-1.5 rounded-lg text-[#F62440] hover:bg-[#F62440]/10 transition-colors"
-                                                        title="Hapus"
-                                                    >
-                                                        <Trash2 size={15} />
-                                                    </button>
-                                                </div>
+                                </thead>
+                                <tbody className="divide-y divide-[#F0DFC4]">
+                                    {barangList.data.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={7} className="p-8 text-center text-[#6B7280] bg-[#FFFAF3]">
+                                                Tidak ada data barang ditemukan pada kategori ini.
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        barangList.data.map((item) => (
+                                            <tr key={item.id} className="hover:bg-[#FFE5BF]/40 bg-[#FFFAF3] transition-colors">
+                                                <td className="p-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-xl bg-[#FFE5BF] border border-[#F0DFC4] overflow-hidden flex items-center justify-center shrink-0">
+                                                            {item.gambar_url ? (
+                                                                <img src={item.gambar_url} alt={item.nama_barang} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <Package size={18} className="text-[#F62440]" />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-bold text-[#1E232A] text-sm">{item.nama_barang}</div>
+                                                            <div className="text-[11px] font-mono text-[#F62440] font-bold">{item.kode_barang}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="font-bold text-[#1E232A]">{item.nama_kategori}</div>
+                                                    <div className="text-[11px] text-[#6B7280] flex items-center gap-1 mt-0.5 font-medium">
+                                                        <MapPin size={12} className="text-[#F62440]" /> {item.lokasi || 'Lokasi belum diset'}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-center font-bold text-[#1E232A]">
+                                                    {item.total_unit}
+                                                </td>
+                                                <td className="p-4 text-center font-bold text-[#059669]">
+                                                    {item.tersedia}
+                                                </td>
+                                                <td className="p-4 text-center font-bold text-[#D97706]">
+                                                    {item.dipinjam}
+                                                </td>
+                                                <td className="p-4 text-center font-bold text-[#F62440]">
+                                                    {item.maintenance}
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => openEditModal(item)}
+                                                            className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1E232A] hover:bg-[#FFE5BF] transition-colors"
+                                                            title="Edit"
+                                                        >
+                                                            <Edit2 size={15} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(item.id)}
+                                                            className="p-1.5 rounded-lg text-[#F62440] hover:bg-[#F62440]/10 transition-colors"
+                                                            title="Hapus"
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Modal Form Barang */}
+            {/* Modal Form Tambah / Edit Barang */}
             {modalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1E232A]/50 overflow-y-auto">
                     <div className="bg-[#FFFAF3] border border-[#F0DFC4] rounded-2xl max-w-lg w-full p-6 shadow-xl my-8">

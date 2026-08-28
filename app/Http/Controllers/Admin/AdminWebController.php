@@ -229,11 +229,24 @@ class AdminWebController extends Controller
             ];
         });
 
-        $categories = KategoriBarang::select('id', 'nama_kategori')->get();
+        $categories = KategoriBarang::withCount('barang')->with('units')->get();
+
+        $categoryStats = $categories->map(function ($k) {
+            return [
+                'id' => $k->id,
+                'nama_kategori' => $k->nama_kategori,
+                'total_barang' => $k->barang_count,
+                'total_unit' => $k->units->count(),
+                'tersedia' => $k->units->where('status', 'tersedia')->count(),
+                'dipinjam' => $k->units->where('status', 'dipinjam')->count(),
+                'maintenance' => $k->units->where('status', 'maintenance')->count(),
+            ];
+        });
 
         return Inertia::render('Barang/Index', [
             'barangList' => $barangList,
             'categories' => $categories,
+            'categoryStats' => $categoryStats,
             'filters' => $request->only(['q', 'kategori_id']),
         ]);
     }

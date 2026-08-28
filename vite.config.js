@@ -23,6 +23,7 @@ export default defineConfig({
                 '**/storage/framework/views/**',
                 '**/storage/inertia-devtools/**',
                 '**/storage/**/*.tmp',
+                '**/wams_mobile/**',
             ],
         },
     },
