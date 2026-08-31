@@ -174,6 +174,21 @@ class ApiService {
     }
   }
 
+  Future<List<dynamic>> getBarangUnits(int barangId) async {
+    final token = await _getToken();
+    final response = await http.get(
+      Uri.parse('${ApiConstants.barang}/$barangId/units'),
+      headers: _headers(token),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data['data'] ?? [];
+    } else {
+      throw Exception(data['message'] ?? 'Gagal memuat daftar unit');
+    }
+  }
+
   // --- TRANSAKSI (PINJAM & PENGEMBALIAN) ---
   Future<Map<String, dynamic>> pinjamBarang(int barangId, {int? unitId}) async {
     final token = await _getToken();

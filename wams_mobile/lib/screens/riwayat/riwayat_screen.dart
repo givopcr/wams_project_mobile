@@ -4,6 +4,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../../core/theme.dart';
 import '../../models/riwayat_model.dart';
 import '../../providers/transaction_provider.dart';
+import 'detail_peminjaman_screen.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
@@ -13,7 +14,7 @@ class RiwayatScreen extends StatefulWidget {
 }
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
-  final TextEditingController _searchController = TextEditingController();
+  final List<String> _tabs = ['Semua', 'Aktif', 'Selesai', 'Terlambat'];
 
   @override
   void initState() {
@@ -25,152 +26,137 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _showReturnDialog(BuildContext context, RiwayatModel item) {
-    String selectedKondisi = 'baik';
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.cardLight,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Pengembalian Alat', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Unit: ${item.namaBarang} (${item.kodeUnit})',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 13),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Pilih kondisi fisik unit saat dikembalikan:',
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-              ),
-              const SizedBox(height: 10),
-              RadioGroup<String>(
-                groupValue: selectedKondisi,
-                onChanged: (val) => setDialogState(() => selectedKondisi = val ?? 'baik'),
-                child: Column(
-                  children: [
-                    RadioListTile<String>(
-                      value: 'baik',
-                      title: const Text('Baik (Siap digunakan kembali)', style: TextStyle(color: AppTheme.success, fontSize: 13, fontWeight: FontWeight.bold)),
-                      contentPadding: EdgeInsets.zero,
-                      activeColor: AppTheme.success,
-                    ),
-                    RadioListTile<String>(
-                      value: 'rusak',
-                      title: const Text('Rusak (Perlu Maintenance)', style: TextStyle(color: AppTheme.danger, fontSize: 13, fontWeight: FontWeight.bold)),
-                      contentPadding: EdgeInsets.zero,
-                      activeColor: AppTheme.danger,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(dialogCtx);
-                final txProvider = context.read<TransactionProvider>();
-                final messenger = ScaffoldMessenger.of(context);
-                final success = await txProvider.returnItem(
-                  logbookId: item.id,
-                  kondisi: selectedKondisi,
-                );
-
-                if (!mounted) return;
-                if (success) {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Unit berhasil dikembalikan (Kondisi: $selectedKondisi).'),
-                      backgroundColor: selectedKondisi == 'baik' ? AppTheme.success : AppTheme.warning,
-                    ),
-                  );
-                } else {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(txProvider.errorMessage ?? 'Gagal memproses pengembalian.'),
-                      backgroundColor: AppTheme.danger,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Konfirmasi Pengembalian'),
-            ),
-          ],
-        ),
-      ),
-    );
+  String _formatDate(String? raw) {
+    if (raw == null || raw.isEmpty) return '-';
+    try {
+      final dt = DateTime.parse(raw);
+      final months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+        'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      ];
+      return '${dt.day.toString().padLeft(2, '0')} ${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return raw;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final txProvider = Provider.of<TransactionProvider>(context);
+    final currentFilter = txProvider.selectedFilter;
+
+    // Filter local list based on tab
+    List<RiwayatModel> displayList = txProvider.riwayatList;
+    if (currentFilter == 'aktif') {
+      displayList = txProvider.riwayatList.where((i) => i.isDipinjam).toList();
+    } else if (currentFilter == 'selesai') {
+      displayList = txProvider.riwayatList.where((i) => !i.isDipinjam).toList();
+    } else if (currentFilter == 'terlambat') {
+      displayList = []; // Default 0 for current mock
+    }
 
     return Scaffold(
+      backgroundColor: AppTheme.bgLight,
       appBar: AppBar(
-        title: const Text('Riwayat Transaksi'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          'Riwayat Peminjaman',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
       ),
       body: Column(
         children: [
+          // Filter Tabs (Mockup 10 & 11)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            child: Row(
-              children: [
-                _buildFilterChip('Semua', '', txProvider),
-                const SizedBox(width: 8),
-                _buildFilterChip('Sedang Dipinjam', 'dipinjam', txProvider),
-                const SizedBox(width: 8),
-                _buildFilterChip('Dikembalikan', 'dikembalikan', txProvider),
-              ],
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _tabs.map((tab) {
+                  final key = tab.toLowerCase();
+                  final isSelected = currentFilter == key;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: InkWell(
+                      onTap: () {
+                        txProvider.setFilter(key);
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppTheme.primary : AppTheme.cardLight,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected ? AppTheme.primary : AppTheme.borderLight,
+                          ),
+                        ),
+                        child: Text(
+                          tab,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? Colors.white : AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
           ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => txProvider.fetchRiwayat(),
-              child: txProvider.isLoading
-                  ? const Center(
-                      child: SpinKitFadingCircle(color: AppTheme.primary, size: 36),
-                    )
-                  : txProvider.riwayatList.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Belum ada transaksi peminjaman.',
-                            style: TextStyle(color: Color(0xFF64748B)),
-                          ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          itemCount: txProvider.riwayatList.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final item = txProvider.riwayatList[index];
-                            final isDipinjam = item.isDipinjam;
+          const SizedBox(height: 6),
 
-                            return Container(
-                              padding: const EdgeInsets.all(16),
+          // Transaction list
+          Expanded(
+            child: txProvider.isLoading
+                ? const Center(
+                    child: SpinKitFadingCircle(color: AppTheme.primary, size: 36),
+                  )
+                : displayList.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.history, size: 48, color: Colors.grey.shade400),
+                            const SizedBox(height: 12),
+                            Text(
+                              currentFilter == 'terlambat'
+                                  ? 'Tidak ada peminjaman terlambat.'
+                                  : 'Belum ada data peminjaman.',
+                              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        itemCount: displayList.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final item = displayList[index];
+                          return InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => DetailPeminjamanScreen(item: item),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: AppTheme.cardLight,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: isDipinjam
-                                      ? AppTheme.warning.withValues(alpha: 0.5)
-                                      : AppTheme.borderLight,
-                                ),
+                                border: Border.all(color: AppTheme.borderLight),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.02),
@@ -179,123 +165,117 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                   ),
                                 ],
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Row(
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        item.kodeUnit,
-                                        style: const TextStyle(
-                                          fontFamily: 'monospace',
-                                          color: AppTheme.primaryDark,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: isDipinjam
-                                              ? AppTheme.warning.withValues(alpha: 0.15)
-                                              : AppTheme.success.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          isDipinjam ? 'Dipinjam' : 'Dikembalikan (${item.kondisiKembali ?? "-"})',
-                                          style: TextStyle(
-                                            color: isDipinjam ? AppTheme.warning : AppTheme.success,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    item.namaBarang,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: AppTheme.textPrimary,
+                                  // Thumbnail
+                                  Container(
+                                    width: 52,
+                                    height: 52,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: AppTheme.borderLight),
+                                    ),
+                                    child: const Center(
+                                      child: Icon(Icons.handyman, color: AppTheme.primary, size: 26),
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Kategori: ${item.namaKategori}',
-                                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                                  const SizedBox(width: 14),
+
+                                  // Name, Unit Code, Date
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.namaBarang,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: AppTheme.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          '${item.kodeUnit} • ${_formatDate(item.tanggalPinjam)}',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppTheme.textMuted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  const SizedBox(height: 12),
-                                  const Divider(color: AppTheme.borderLight, height: 1),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text('Waktu Pinjam', style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            item.tanggalPinjam?.substring(0, 10) ?? '-',
-                                            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+
+                                  // Status Pill (Aktif / Selesai)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: item.isDipinjam
+                                          ? const Color(0xFFFEF3C7) // soft amber
+                                          : const Color(0xFFD1FAE5), // soft green
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          item.isDipinjam ? 'Aktif' : 'Selesai',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: item.isDipinjam
+                                                ? const Color(0xFFD97706)
+                                                : AppTheme.success,
+                                          ),
+                                        ),
+                                        if (item.isDipinjam) ...[
+                                          const SizedBox(width: 2),
+                                          const Icon(
+                                            Icons.chevron_right,
+                                            size: 14,
+                                            color: Color(0xFFD97706),
                                           ),
                                         ],
-                                      ),
-                                      if (isDipinjam)
-                                        ElevatedButton(
-                                          onPressed: () => _showReturnDialog(context, item),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppTheme.primary,
-                                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                          ),
-                                          child: const Text('KEMBALIKAN', style: TextStyle(fontSize: 11)),
-                                        ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
-                            );
-                          },
-                        ),
-            ),
+                            ),
+                          );
+                        },
+                      ),
           ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildFilterChip(String label, String value, TransactionProvider provider) {
-    final isSelected = provider.selectedFilter == value;
-    return GestureDetector(
-      onTap: () => provider.setFilter(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary : AppTheme.cardLight,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppTheme.primary : AppTheme.borderLight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
+          // Bottom Reminder Banner on 'Aktif' tab (Mockup 11)
+          if (currentFilter == 'aktif' && displayList.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB), // light warm cream/yellow
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: const Row(
+                children: [
+                  Text('😊', style: TextStyle(fontSize: 18)),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Pastikan barang dikembalikan tepat waktu untuk kenyamanan bersama.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF92400E),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppTheme.textMuted,
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
+        ],
       ),
     );
   }

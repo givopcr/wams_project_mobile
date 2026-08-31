@@ -8,12 +8,16 @@ class TransactionProvider extends ChangeNotifier {
   List<RiwayatModel> _riwayatList = [];
   bool _isLoading = false;
   String? _errorMessage;
-  String _selectedFilter = ''; // '' | 'dipinjam' | 'dikembalikan'
+  String _selectedFilter = 'semua'; // 'semua' | 'aktif' | 'selesai' | 'terlambat'
 
   List<RiwayatModel> get riwayatList => _riwayatList;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String get selectedFilter => _selectedFilter;
+
+  // Active items helper for Dashboard & Screens
+  List<RiwayatModel> get activeBorrows =>
+      _riwayatList.where((item) => item.statusTransaksi == 'dipinjam').toList();
 
   void setFilter(String filter) {
     _selectedFilter = filter;
@@ -26,11 +30,19 @@ class TransactionProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      String? apiStatus;
+      if (_selectedFilter == 'aktif') {
+        apiStatus = 'dipinjam';
+      } else if (_selectedFilter == 'selesai') {
+        apiStatus = 'dikembalikan';
+      }
+
       final data = await _apiService.getRiwayat(
-        status: _selectedFilter.isEmpty ? null : _selectedFilter,
+        status: apiStatus,
         query: query,
       );
       _riwayatList = data.map((json) => RiwayatModel.fromJson(json)).toList();
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {

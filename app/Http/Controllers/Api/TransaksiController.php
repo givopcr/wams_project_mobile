@@ -179,6 +179,8 @@ class TransaksiController extends Controller
 
             return [
                 'id' => $log->id,
+                'barang_id' => $barang ? $barang->id : null,
+                'unit_id' => $unit ? $unit->id : null,
                 'nama_barang' => $barang ? $barang->nama_barang : 'N/A',
                 'kode_barang' => $barang ? $barang->kode_barang : 'N/A',
                 'nama_kategori' => $barang && $barang->kategori ? $barang->kategori->nama_kategori : 'N/A',
