@@ -21,9 +21,7 @@ class _FormPengembalianScreenState extends State<FormPengembalianScreen> {
 
   final List<String> _kondisiOptions = [
     'Baik',
-    'Rusak Ringan',
-    'Rusak Berat',
-    'Hilang',
+    'Rusak',
   ];
 
   @override
@@ -53,7 +51,7 @@ class _FormPengembalianScreenState extends State<FormPengembalianScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Pengembalian ${widget.item.namaBarang} ($_selectedKondisi) berhasil dikonfirmasi!'),
-          backgroundColor: AppTheme.success,
+          backgroundColor: _selectedKondisi == 'Baik' ? AppTheme.success : AppTheme.danger,
         ),
       );
       nav.pushAndRemoveUntil(
@@ -164,33 +162,37 @@ class _FormPengembalianScreenState extends State<FormPengembalianScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Radio options list
+            // Radio options list (2 options: Baik & Rusak)
             ..._kondisiOptions.map((opt) {
               final isSelected = _selectedKondisi == opt;
+              final isBaik = opt == 'Baik';
+              final activeColor = isBaik ? AppTheme.success : AppTheme.danger;
+              final activeBgColor = isBaik ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2);
+
               return Padding(
-                padding: const EdgeInsets.only(bottom: 10.0),
+                padding: const EdgeInsets.only(bottom: 12.0),
                 child: InkWell(
                   onTap: () => setState(() => _selectedKondisi = opt),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
-                      color: AppTheme.cardLight,
-                      borderRadius: BorderRadius.circular(12),
+                      color: isSelected ? activeBgColor : AppTheme.cardLight,
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: isSelected ? AppTheme.success : AppTheme.borderLight,
-                        width: isSelected ? 1.5 : 1,
+                        color: isSelected ? activeColor : AppTheme.borderLight,
+                        width: isSelected ? 1.8 : 1,
                       ),
                     ),
                     child: Row(
                       children: [
                         Container(
-                          width: 18,
-                          height: 18,
+                          width: 20,
+                          height: 20,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isSelected ? AppTheme.success : const Color(0xFF9CA3AF),
+                              color: isSelected ? activeColor : const Color(0xFF9CA3AF),
                               width: 2,
                             ),
                           ),
@@ -199,9 +201,9 @@ class _FormPengembalianScreenState extends State<FormPengembalianScreen> {
                                   child: Container(
                                     width: 10,
                                     height: 10,
-                                    decoration: const BoxDecoration(
+                                    decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: AppTheme.success,
+                                      color: activeColor,
                                     ),
                                   ),
                                 )
@@ -211,9 +213,9 @@ class _FormPengembalianScreenState extends State<FormPengembalianScreen> {
                         Text(
                           opt,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                            color: isSelected ? AppTheme.textPrimary : const Color(0xFF374151),
+                            color: isSelected ? activeColor : const Color(0xFF374151),
                           ),
                         ),
                       ],
@@ -222,6 +224,7 @@ class _FormPengembalianScreenState extends State<FormPengembalianScreen> {
                 ),
               );
             }),
+
 
             const SizedBox(height: 16),
             const Text(

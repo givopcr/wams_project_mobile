@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/transaction_provider.dart';
 import '../auth/login_screen.dart';
 import 'edit_profile_screen.dart';
 
@@ -12,13 +11,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final txProvider = Provider.of<TransactionProvider>(context);
     final user = authProvider.userProfile;
-
-    final int total = user?.totalHistory ?? txProvider.riwayatList.length;
-    final int aktif = user?.activeBorrows ?? txProvider.activeBorrows.length;
-    final int selesai = total >= aktif ? (total - aktif) : 0;
-    const int terlambat = 0;
 
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
@@ -26,31 +19,21 @@ class ProfileScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
-          'Profil',
+          'Profil Pengguna',
           style: TextStyle(
             color: AppTheme.textPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 16,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppTheme.textPrimary),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
         child: Column(
           children: [
-            // User Header Avatar & Info (Mockup 12)
+            const SizedBox(height: 10),
+
+            // Avatar & Name & Email (Image 3 Style)
             Center(
               child: Column(
                 children: [
@@ -66,14 +49,14 @@ class ProfileScreen extends StatelessWidget {
                       child: Text(
                         user?.nama.isNotEmpty == true ? user!.nama[0].toUpperCase() : 'T',
                         style: const TextStyle(
-                          fontSize: 30,
+                          fontSize: 32,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.primary,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Text(
                     user?.nama ?? 'Teknisi Workshop',
                     style: const TextStyle(
@@ -84,41 +67,18 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'NIP: ${user?.nip ?? "2457301063"}',
+                    user?.email ?? 'teknisi@wams.test',
                     style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textMuted,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Teknik Mesin',
-                    style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: AppTheme.textMuted,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
-            // 4 Stats Cards Horizontal (Total, Dipinjam, Selesai, Terlambat)
-            Row(
-              children: [
-                _buildStatCard('Total Peminjaman', '$total', AppTheme.textPrimary),
-                const SizedBox(width: 8),
-                _buildStatCard('Sedang Dipinjam', '$aktif', const Color(0xFFD97706)),
-                const SizedBox(width: 8),
-                _buildStatCard('Selesai', '$selesai', AppTheme.success),
-                const SizedBox(width: 8),
-                _buildStatCard('Terlambat', '$terlambat', AppTheme.danger),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Navigation Menu List (Mockup 12)
+            // Card Menu Profil (Image 3: NIP, Role Akun, Edit Profil & Password)
             Container(
               decoration: BoxDecoration(
                 color: AppTheme.cardLight,
@@ -127,79 +87,106 @@ class ProfileScreen extends StatelessWidget {
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 8,
+                    blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Column(
                 children: [
-                  _buildMenuItem(
-                    icon: Icons.person_outline,
-                    title: 'Informasi Profil',
+                  // NIP
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.badge_outlined, color: Color(0xFF2563EB), size: 20),
+                    ),
+                    title: const Text(
+                      'NIP',
+                      style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                    ),
+                    trailing: Text(
+                      user?.nip ?? '199503152020011002',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  ),
+                  const Divider(color: AppTheme.borderLight, height: 1),
+
+                  // Role Akun
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.security_outlined, color: Color(0xFF2563EB), size: 20),
+                    ),
+                    title: const Text(
+                      'Role Akun',
+                      style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                    ),
+                    trailing: Text(
+                      user?.role.toUpperCase() ?? 'USER',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  ),
+                  const Divider(color: AppTheme.borderLight, height: 1),
+
+                  // Edit Profil & Password
+                  ListTile(
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                       );
                     },
-                  ),
-                  const Divider(color: AppTheme.borderLight, height: 1),
-                  _buildMenuItem(
-                    icon: Icons.lock_outline,
-                    title: 'Ubah Password',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-                      );
-                    },
-                  ),
-                  const Divider(color: AppTheme.borderLight, height: 1),
-                  _buildMenuItem(
-                    icon: Icons.notifications_none_outlined,
-                    title: 'Notifikasi',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Pengaturan notifikasi dibuka.')),
-                      );
-                    },
-                  ),
-                  const Divider(color: AppTheme.borderLight, height: 1),
-                  _buildMenuItem(
-                    icon: Icons.help_outline,
-                    title: 'Bantuan',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Pusat bantuan workshop wams@politala.ac.id')),
-                      );
-                    },
-                  ),
-                  const Divider(color: AppTheme.borderLight, height: 1),
-                  _buildMenuItem(
-                    icon: Icons.info_outline,
-                    title: 'Tentang Aplikasi',
-                    onTap: () {
-                      showAboutDialog(
-                        context: context,
-                        applicationName: 'WAMS Mobile',
-                        applicationVersion: 'v1.0.0 (Build 2026)',
-                        applicationLegalese: '© 2026 Workshop Asset Management System',
-                      );
-                    },
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.edit_outlined, color: Color(0xFF2563EB), size: 20),
+                    ),
+                    title: const Text(
+                      'Edit Profil & Password',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF), size: 18),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
 
-            // Logout Button
+            // Logout Button (Image 3: Outline Red Button)
             OutlinedButton.icon(
               onPressed: () async {
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (dialogCtx) => AlertDialog(
                     backgroundColor: AppTheme.cardLight,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     title: const Text('Konfirmasi Keluar', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
                     content: const Text('Yakin ingin keluar dari akun WAMS?', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
                     actions: [
@@ -228,11 +215,11 @@ class ProfileScreen extends StatelessWidget {
               },
               icon: const Icon(Icons.logout, color: AppTheme.danger, size: 18),
               label: const Text(
-                'Keluar',
+                'LOGOUT / KELUAR',
                 style: TextStyle(
                   color: AppTheme.danger,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: 13,
                 ),
               ),
               style: OutlinedButton.styleFrom(
@@ -248,67 +235,5 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildStatCard(String label, String value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
-        decoration: BoxDecoration(
-          color: AppTheme.cardLight,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.borderLight),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 9.5,
-                color: AppTheme.textMuted,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      onTap: onTap,
-      leading: Icon(icon, color: AppTheme.textPrimary, size: 20),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: AppTheme.textPrimary,
-        ),
-      ),
-      trailing: const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF), size: 18),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-    );
-  }
 }
+

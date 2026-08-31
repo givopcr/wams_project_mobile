@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Palet Warna Utama (Sesuai Desain & Web Admin WAMS)
@@ -26,6 +27,7 @@ class AppTheme {
     useMaterial3: true,
     brightness: Brightness.light,
     scaffoldBackgroundColor: bgLight,
+    textTheme: GoogleFonts.interTextTheme(),
     colorScheme: const ColorScheme.light(
       primary: primary,
       secondary: primaryDark,
@@ -34,13 +36,13 @@ class AppTheme {
       onPrimary: Colors.white,
       onSurface: textPrimary,
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: cardLight,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: true,
-      iconTheme: IconThemeData(color: textPrimary),
-      titleTextStyle: TextStyle(
+      iconTheme: const IconThemeData(color: textPrimary),
+      titleTextStyle: GoogleFonts.inter(
         color: textPrimary,
         fontSize: 18,
         fontWeight: FontWeight.bold,
@@ -70,8 +72,8 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: primary, width: 1.5),
       ),
-      hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
-      labelStyle: const TextStyle(color: textMuted, fontSize: 14),
+      hintStyle: GoogleFonts.inter(color: const Color(0xFF9CA3AF), fontSize: 14),
+      labelStyle: GoogleFonts.inter(color: textMuted, fontSize: 14),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -82,7 +84,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+        textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
       ),
     ),
   );
@@ -90,3 +92,4 @@ class AppTheme {
   // Backward compatibility alias
   static ThemeData get darkTheme => lightTheme;
 }
+

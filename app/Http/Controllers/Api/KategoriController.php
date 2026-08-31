@@ -76,7 +76,14 @@ class KategoriController extends Controller
      */
     public function barang(Request $request, $id): JsonResponse
     {
-        $kategori = KategoriBarang::findOrFail($id);
+        // Mendukung pencarian kategori berdasarkan ID numerik atau string QR Code
+        if (is_numeric($id)) {
+            $kategori = KategoriBarang::findOrFail($id);
+        } else {
+            $kategori = KategoriBarang::where('qr_code', $id)
+                ->orWhere('qr_code', '/' . ltrim($id, '/'))
+                ->firstOrFail();
+        }
 
         $query = $kategori->barang()->with(['units']);
 
