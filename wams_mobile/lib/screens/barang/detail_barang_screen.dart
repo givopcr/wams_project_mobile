@@ -29,17 +29,17 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppTheme.cardDark,
+        backgroundColor: AppTheme.cardLight,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Konfirmasi Peminjaman', style: TextStyle(color: Colors.white, fontSize: 16)),
+        title: const Text('Konfirmasi Peminjaman', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
         content: const Text(
           'Sistem akan otomatis memilih dan mengunci 1 unit fisik yang berstatus tersedia untuk Anda.',
-          style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+          style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Batal', style: TextStyle(color: Color(0xFF64748B))),
+            child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -115,14 +115,14 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primary.withValues(alpha: 0.15),
+                                    color: AppTheme.primary.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     barang.kodeBarang,
                                     style: const TextStyle(
                                       fontFamily: 'monospace',
-                                      color: AppTheme.primary,
+                                      color: AppTheme.primaryDark,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 12,
                                     ),
@@ -130,7 +130,7 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                                 ),
                                 Text(
                                   barang.namaKategori ?? '',
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                                 ),
                               ],
                             ),
@@ -140,17 +140,17 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: AppTheme.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF94A3B8)),
+                                const Icon(Icons.location_on_outlined, size: 14, color: AppTheme.textMuted),
                                 const SizedBox(width: 4),
                                 Text(
                                   'Lokasi: ${barang.lokasi ?? "-"}',
-                                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                                  style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
                                 ),
                               ],
                             ),
@@ -161,40 +161,47 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppTheme.cardDark,
+                          color: AppTheme.cardLight,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppTheme.borderDark),
+                          border: Border.all(color: AppTheme.borderLight),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.02),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
                             Column(
                               children: [
-                                const Text('Total Unit', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
+                                const Text('Total Unit', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                                 const SizedBox(height: 4),
-                                Text('${barang.totalUnit}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text('${barang.totalUnit}', style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 16)),
                               ],
                             ),
-                            Container(width: 1, height: 30, color: AppTheme.borderDark),
+                            Container(width: 1, height: 30, color: AppTheme.borderLight),
                             Column(
                               children: [
-                                const Text('Tersedia', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
+                                const Text('Tersedia', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                                 const SizedBox(height: 4),
                                 Text('${barang.tersedia}', style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 16)),
                               ],
                             ),
-                            Container(width: 1, height: 30, color: AppTheme.borderDark),
+                            Container(width: 1, height: 30, color: AppTheme.borderLight),
                             Column(
                               children: [
-                                const Text('Dipinjam', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
+                                const Text('Dipinjam', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                                 const SizedBox(height: 4),
                                 Text('${barang.dipinjam}', style: const TextStyle(color: AppTheme.warning, fontWeight: FontWeight.bold, fontSize: 16)),
                               ],
                             ),
-                            Container(width: 1, height: 30, color: AppTheme.borderDark),
+                            Container(width: 1, height: 30, color: AppTheme.borderLight),
                             Column(
                               children: [
-                                const Text('Maintenance', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
+                                const Text('Maintenance', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                                 const SizedBox(height: 4),
                                 Text('${barang.maintenance}', style: const TextStyle(color: AppTheme.danger, fontWeight: FontWeight.bold, fontSize: 16)),
                               ],
@@ -205,19 +212,26 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                       const SizedBox(height: 20),
                       const Text(
                         'Spesifikasi Teknis',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
                       ),
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppTheme.cardDark,
+                          color: AppTheme.cardLight,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppTheme.borderDark),
+                          border: Border.all(color: AppTheme.borderLight),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.02),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Text(
                           barang.detailSpesifikasi ?? 'Tidak ada catatan spesifikasi tambahan.',
-                          style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13, height: 1.5),
+                          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, height: 1.5),
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -233,7 +247,7 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                           style: const TextStyle(fontSize: 13),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: barang.canBorrow ? AppTheme.primary : const Color(0xFF334155),
+                          backgroundColor: barang.canBorrow ? AppTheme.primary : const Color(0xFF9CA3AF),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
                       ),

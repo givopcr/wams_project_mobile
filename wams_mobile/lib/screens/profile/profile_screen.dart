@@ -49,13 +49,13 @@ class ProfileScreen extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     user?.email ?? '',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
                 ],
               ),
@@ -63,34 +63,41 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 28),
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.cardLight,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.borderDark),
+                border: Border.all(color: AppTheme.borderLight),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
                   ListTile(
                     leading: const Icon(Icons.badge_outlined, color: AppTheme.primary, size: 20),
-                    title: const Text('NIP', style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+                    title: const Text('NIP', style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
                     trailing: Text(
                       user?.nip ?? 'Belum diset',
-                      style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                      style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
                     ),
                   ),
-                  const Divider(color: AppTheme.borderDark, height: 1),
+                  const Divider(color: AppTheme.borderLight, height: 1),
                   ListTile(
                     leading: const Icon(Icons.security_outlined, color: AppTheme.primary, size: 20),
-                    title: const Text('Role Akun', style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+                    title: const Text('Role Akun', style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
                     trailing: Text(
                       user?.role.toUpperCase() ?? 'USER',
-                      style: const TextStyle(fontSize: 13, color: AppTheme.primary, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 13, color: AppTheme.primaryDark, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  const Divider(color: AppTheme.borderDark, height: 1),
+                  const Divider(color: AppTheme.borderLight, height: 1),
                   ListTile(
                     leading: const Icon(Icons.edit_outlined, color: AppTheme.primary, size: 20),
-                    title: const Text('Edit Profil & Password', style: TextStyle(fontSize: 13, color: Colors.white)),
-                    trailing: const Icon(Icons.chevron_right, color: Color(0xFF64748B), size: 18),
+                    title: const Text('Edit Profil & Password', style: TextStyle(fontSize: 13, color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_right, color: AppTheme.textMuted, size: 18),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -107,11 +114,11 @@ class ProfileScreen extends StatelessWidget {
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (dialogCtx) => AlertDialog(
-                    backgroundColor: AppTheme.cardDark,
-                    title: const Text('Konfirmasi Logout', style: TextStyle(color: Colors.white, fontSize: 16)),
-                    content: const Text('Yakin ingin keluar dari akun WAMS?', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                    backgroundColor: AppTheme.cardLight,
+                    title: const Text('Konfirmasi Logout', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
+                    content: const Text('Yakin ingin keluar dari akun WAMS?', style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Batal')),
+                      TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted))),
                       ElevatedButton(
                         onPressed: () => Navigator.pop(dialogCtx, true),
                         style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),

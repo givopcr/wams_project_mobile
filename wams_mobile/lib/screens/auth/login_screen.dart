@@ -72,9 +72,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 64,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [AppTheme.primary, AppTheme.accent],
+                          colors: [AppTheme.primary, AppTheme.primaryDark],
                         ),
                         borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
                       child: const Center(
                         child: Text(
@@ -95,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -104,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF94A3B8),
+                      color: AppTheme.textMuted,
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -170,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const Text(
                         'Belum memiliki akun? ',
-                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                        style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
                       ),
                       GestureDetector(
                         onTap: () {

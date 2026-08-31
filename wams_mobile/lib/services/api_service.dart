@@ -182,7 +182,7 @@ class ApiService {
       headers: _headers(token),
       body: jsonEncode({
         'barang_id': barangId,
-        if (unitId != null) 'barang_unit_id': unitId,
+        ...?unitId != null ? {'barang_unit_id': unitId} : null,
       }),
     );
 

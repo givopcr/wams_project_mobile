@@ -25,7 +25,7 @@ class WamsApp extends StatelessWidget {
       child: MaterialApp(
         title: 'WAMS Mobile',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
+        theme: AppTheme.lightTheme,
         home: const LoginScreen(),
       ),
     );

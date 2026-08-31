@@ -43,9 +43,9 @@ class _MainNavigationState extends State<MainNavigation> {
       body: _getCurrentScreen(),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          color: AppTheme.cardDark,
+          color: AppTheme.cardLight,
           border: Border(
-            top: BorderSide(color: AppTheme.borderDark, width: 0.8),
+            top: BorderSide(color: AppTheme.borderLight, width: 0.8),
           ),
         ),
         child: NavigationBar(
@@ -56,25 +56,25 @@ class _MainNavigationState extends State<MainNavigation> {
             });
           },
           backgroundColor: Colors.transparent,
-          indicatorColor: AppTheme.primary.withValues(alpha: 0.2),
+          indicatorColor: AppTheme.primary.withValues(alpha: 0.12),
           destinations: const [
             NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined, color: Color(0xFF94A3B8)),
+              icon: Icon(Icons.dashboard_outlined, color: AppTheme.textMuted),
               selectedIcon: Icon(Icons.dashboard, color: AppTheme.primary),
               label: 'Dashboard',
             ),
             NavigationDestination(
-              icon: Icon(Icons.qr_code_scanner_outlined, color: Color(0xFF94A3B8)),
+              icon: Icon(Icons.qr_code_scanner_outlined, color: AppTheme.textMuted),
               selectedIcon: Icon(Icons.qr_code_scanner, color: AppTheme.primary),
               label: 'Scan QR',
             ),
             NavigationDestination(
-              icon: Icon(Icons.history_outlined, color: Color(0xFF94A3B8)),
+              icon: Icon(Icons.history_outlined, color: AppTheme.textMuted),
               selectedIcon: Icon(Icons.history, color: AppTheme.primary),
               label: 'Riwayat',
             ),
             NavigationDestination(
-              icon: Icon(Icons.person_outline, color: Color(0xFF94A3B8)),
+              icon: Icon(Icons.person_outline, color: AppTheme.textMuted),
               selectedIcon: Icon(Icons.person, color: AppTheme.primary),
               label: 'Profil',
             ),

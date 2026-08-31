@@ -80,7 +80,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -88,7 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   'Lengkapi data di bawah ini untuk mulai meminjam aset workshop',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Color(0xFF94A3B8),
+                    color: AppTheme.textMuted,
                   ),
                 ),
                 const SizedBox(height: 24),

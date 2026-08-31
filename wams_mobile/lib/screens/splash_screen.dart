@@ -44,7 +44,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.bgDark,
+      backgroundColor: AppTheme.bgLight,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -54,14 +54,14 @@ class _SplashScreenState extends State<SplashScreen> {
               height: 80,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [AppTheme.primary, AppTheme.accent],
+                  colors: [AppTheme.primary, AppTheme.primaryDark],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.3),
+                    color: AppTheme.primary.withValues(alpha: 0.35),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -84,7 +84,7 @@ class _SplashScreenState extends State<SplashScreen> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppTheme.textPrimary,
                 letterSpacing: -0.5,
               ),
             ),
@@ -93,7 +93,7 @@ class _SplashScreenState extends State<SplashScreen> {
               'Workshop Asset Management System',
               style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF94A3B8),
+                color: AppTheme.textMuted,
               ),
             ),
             const SizedBox(height: 48),

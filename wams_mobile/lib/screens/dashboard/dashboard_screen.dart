@@ -70,12 +70,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF1E3A8A), Color(0xFF1E293B)],
+                    colors: [AppTheme.darkSlate, AppTheme.primaryDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.darkSlate.withValues(alpha: 0.15),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               'NIP: ${user?.nip ?? "-"}',
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF93C5FD),
+                                color: Color(0xFFE0E0E0),
                               ),
                             ),
                           ],
@@ -125,7 +131,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    const Divider(color: Color(0xFF334155), height: 1),
+                    Divider(color: Colors.white.withValues(alpha: 0.2), height: 1),
                     const SizedBox(height: 14),
                     Row(
                       children: [
@@ -133,11 +139,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Sedang Dipinjam', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                              const Text('Sedang Dipinjam', style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 11)),
                               const SizedBox(height: 2),
                               Text(
                                 '${user?.activeBorrows ?? 0} Unit',
-                                style: const TextStyle(color: AppTheme.warning, fontSize: 16, fontWeight: FontWeight.bold),
+                                style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
@@ -146,7 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Total Riwayat', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                              const Text('Total Riwayat', style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 11)),
                               const SizedBox(height: 2),
                               Text(
                                 '${user?.totalHistory ?? 0} Transaksi',
@@ -171,16 +177,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.cardDark,
+                    color: AppTheme.cardLight,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.borderDark),
+                    border: Border.all(color: AppTheme.borderLight),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.15),
+                          color: AppTheme.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(Icons.qr_code_scanner, color: AppTheme.primary, size: 28),
@@ -192,17 +205,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             Text(
                               'Pindai QR Code Rak / Kategori',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
                             ),
                             SizedBox(height: 2),
                             Text(
                               'Arahkan kamera ke stiker QR untuk melihat daftar alat',
-                              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                              style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
                             ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.chevron_right, color: Color(0xFF64748B)),
+                      const Icon(Icons.chevron_right, color: AppTheme.textMuted),
                     ],
                   ),
                 ),
@@ -210,7 +223,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 28),
               const Text(
                 'Kategori Peralatan Workshop',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
               ),
               const SizedBox(height: 14),
               if (assetProvider.isLoading)
@@ -224,7 +237,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(40.0),
-                    child: Text('Belum ada kategori terdaftar.', style: TextStyle(color: Color(0xFF64748B))),
+                    child: Text('Belum ada kategori terdaftar.', style: TextStyle(color: AppTheme.textMuted)),
                   ),
                 )
               else
@@ -250,16 +263,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppTheme.cardDark,
+                          color: AppTheme.cardLight,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppTheme.borderDark),
+                          border: Border.all(color: AppTheme.borderLight),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.02),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF0B1120),
+                                color: AppTheme.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(Icons.category_outlined, color: AppTheme.primary, size: 20),
@@ -271,17 +291,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 children: [
                                   Text(
                                     kat.namaKategori,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     '${kat.totalBarang} Master Barang • ${kat.tersedia}/${kat.totalUnit} Unit Tersedia',
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                                   ),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF64748B)),
+                            const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.textMuted),
                           ],
                         ),
                       ),

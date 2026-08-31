@@ -38,45 +38,49 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.cardDark,
+          backgroundColor: AppTheme.cardLight,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Pengembalian Alat', style: TextStyle(color: Colors.white, fontSize: 16)),
+          title: const Text('Pengembalian Alat', style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Unit: ${item.namaBarang} (${item.kodeUnit})',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 13),
               ),
               const SizedBox(height: 14),
               const Text(
                 'Pilih kondisi fisik unit saat dikembalikan:',
-                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
               ),
               const SizedBox(height: 10),
-              RadioListTile<String>(
-                value: 'baik',
+              RadioGroup<String>(
                 groupValue: selectedKondisi,
                 onChanged: (val) => setDialogState(() => selectedKondisi = val ?? 'baik'),
-                title: const Text('Baik (Siap digunakan kembali)', style: TextStyle(color: AppTheme.success, fontSize: 13, fontWeight: FontWeight.bold)),
-                contentPadding: EdgeInsets.zero,
-                activeColor: AppTheme.success,
-              ),
-              RadioListTile<String>(
-                value: 'rusak',
-                groupValue: selectedKondisi,
-                onChanged: (val) => setDialogState(() => selectedKondisi = val ?? 'rusak'),
-                title: const Text('Rusak (Perlu Maintenance)', style: TextStyle(color: AppTheme.danger, fontSize: 13, fontWeight: FontWeight.bold)),
-                contentPadding: EdgeInsets.zero,
-                activeColor: AppTheme.danger,
+                child: Column(
+                  children: [
+                    RadioListTile<String>(
+                      value: 'baik',
+                      title: const Text('Baik (Siap digunakan kembali)', style: TextStyle(color: AppTheme.success, fontSize: 13, fontWeight: FontWeight.bold)),
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppTheme.success,
+                    ),
+                    RadioListTile<String>(
+                      value: 'rusak',
+                      title: const Text('Rusak (Perlu Maintenance)', style: TextStyle(color: AppTheme.danger, fontSize: 13, fontWeight: FontWeight.bold)),
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppTheme.danger,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('Batal', style: TextStyle(color: Color(0xFF64748B))),
+              child: const Text('Batal', style: TextStyle(color: AppTheme.textMuted)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -160,13 +164,20 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                             return Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: AppTheme.cardDark,
+                                color: AppTheme.cardLight,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: isDipinjam
-                                      ? AppTheme.warning.withValues(alpha: 0.4)
-                                      : AppTheme.borderDark,
+                                      ? AppTheme.warning.withValues(alpha: 0.5)
+                                      : AppTheme.borderLight,
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,7 +189,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                         item.kodeUnit,
                                         style: const TextStyle(
                                           fontFamily: 'monospace',
-                                          color: AppTheme.primary,
+                                          color: AppTheme.primaryDark,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12,
                                         ),
@@ -208,16 +219,16 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15,
-                                      color: Colors.white,
+                                      color: AppTheme.textPrimary,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     'Kategori: ${item.namaKategori}',
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                                   ),
                                   const SizedBox(height: 12),
-                                  const Divider(color: AppTheme.borderDark, height: 1),
+                                  const Divider(color: AppTheme.borderLight, height: 1),
                                   const SizedBox(height: 12),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -225,11 +236,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                       Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          const Text('Waktu Pinjam', style: TextStyle(color: Color(0xFF64748B), fontSize: 10)),
+                                          const Text('Waktu Pinjam', style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
                                           const SizedBox(height: 2),
                                           Text(
                                             item.tanggalPinjam?.substring(0, 10) ?? '-',
-                                            style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 12),
+                                            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
                                           ),
                                         ],
                                       ),
@@ -264,16 +275,23 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary : AppTheme.cardDark,
+          color: isSelected ? AppTheme.primary : AppTheme.cardLight,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppTheme.primary : AppTheme.borderDark,
+            color: isSelected ? AppTheme.primary : AppTheme.borderLight,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+            color: isSelected ? Colors.white : AppTheme.textMuted,
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),

@@ -82,7 +82,7 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                     ? const Center(
                         child: Text(
                           'Tidak ada barang ditemukan dalam kategori ini.',
-                          style: TextStyle(color: Color(0xFF64748B)),
+                          style: TextStyle(color: AppTheme.textMuted),
                         ),
                       )
                     : ListView.separated(
@@ -103,9 +103,16 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: AppTheme.cardDark,
+                                color: AppTheme.cardLight,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppTheme.borderDark),
+                                border: Border.all(color: AppTheme.borderLight),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,7 +121,7 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                                     width: 50,
                                     height: 50,
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF0B1120),
+                                      color: AppTheme.primary.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: const Icon(Icons.build_outlined, color: AppTheme.primary, size: 24),
@@ -128,7 +135,7 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                                           item.kodeBarang,
                                           style: const TextStyle(
                                             fontFamily: 'monospace',
-                                            color: AppTheme.primary,
+                                            color: AppTheme.primaryDark,
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -139,13 +146,13 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                                           style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
-                                            color: Colors.white,
+                                            color: AppTheme.textPrimary,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
                                           'Lokasi: ${item.lokasi ?? "-"}',
-                                          style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                          style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                                         ),
                                         const SizedBox(height: 8),
                                         Row(
@@ -170,14 +177,14 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                                             const SizedBox(width: 8),
                                             Text(
                                               'Total ${item.totalUnit} unit',
-                                              style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                                              style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
                                             ),
                                           ],
                                         ),
                                       ],
                                     ),
                                   ),
-                                  const Icon(Icons.chevron_right, color: Color(0xFF64748B)),
+                                  const Icon(Icons.chevron_right, color: AppTheme.textMuted),
                                 ],
                               ),
                             ),

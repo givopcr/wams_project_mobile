@@ -92,7 +92,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Informasi Akun', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14)),
+              const Text('Informasi Akun', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 14)),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _namaController,
@@ -105,11 +105,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 decoration: const InputDecoration(labelText: 'NIP'),
               ),
               const SizedBox(height: 24),
-              const Divider(color: AppTheme.borderDark),
+              const Divider(color: AppTheme.borderLight),
               const SizedBox(height: 16),
-              const Text('Ubah Password (Opsional)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14)),
+              const Text('Ubah Password (Opsional)', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 14)),
               const SizedBox(height: 4),
-              const Text('Kosongkan jika tidak ingin mengubah password akun.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+              const Text('Kosongkan jika tidak ingin mengubah password akun.', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _currentPasswordController,

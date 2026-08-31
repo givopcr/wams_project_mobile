@@ -72,9 +72,16 @@ class _ScanScreenState extends State<ScanScreen> {
             Container(
               height: 260,
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.cardLight,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppTheme.borderDark),
+                border: Border.all(color: AppTheme.borderLight),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Center(
                 child: Column(
@@ -84,7 +91,7 @@ class _ScanScreenState extends State<ScanScreen> {
                       width: 90,
                       height: 90,
                       decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.15),
+                        color: AppTheme.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                         border: Border.all(color: AppTheme.primary, width: 2),
                       ),
@@ -93,12 +100,12 @@ class _ScanScreenState extends State<ScanScreen> {
                     const SizedBox(height: 16),
                     const Text(
                       'Pemindai QR Workshop',
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppTheme.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 6),
                     const Text(
                       'Pindai label QR pada lemari / kotak perkakas',
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -109,16 +116,16 @@ class _ScanScreenState extends State<ScanScreen> {
             // Quick Category Shortcuts (Perkakas, Elektronik, Komponen)
             const Text(
               'Akses Cepat Kategori Workshop:',
-              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _buildQuickCategoryChip(1, 'Perkakas', Icons.build_rounded, const Color(0xFFEF4444)),
+                _buildQuickCategoryChip(1, 'Perkakas', Icons.build_rounded, AppTheme.primary),
                 const SizedBox(width: 8),
-                _buildQuickCategoryChip(2, 'Elektronik', Icons.electrical_services_rounded, const Color(0xFFF59E0B)),
+                _buildQuickCategoryChip(2, 'Elektronik', Icons.electrical_services_rounded, const Color(0xFF2563EB)),
                 const SizedBox(width: 8),
-                _buildQuickCategoryChip(3, 'Komponen', Icons.memory_rounded, const Color(0xFF3B82F6)),
+                _buildQuickCategoryChip(3, 'Komponen', Icons.memory_rounded, const Color(0xFF059669)),
               ],
             ),
             const SizedBox(height: 24),
@@ -127,16 +134,23 @@ class _ScanScreenState extends State<ScanScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.cardLight,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.borderDark),
+                border: Border.all(color: AppTheme.borderLight),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Input Manual URL / ID QR Code:',
-                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
                   Row(
