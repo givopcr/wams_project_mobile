@@ -124,11 +124,10 @@ export default function LogbookIndex({ logs, filters }) {
                                                 <td className="p-4">
                                                     {log.kondisi_kembali ? (
                                                         <span
-                                                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold capitalize ${
-                                                                log.kondisi_kembali === 'baik'
+                                                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold capitalize ${log.kondisi_kembali === 'baik'
                                                                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                                                     : 'bg-[#D84040]/10 text-[#D84040] border border-[#D84040]/20'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {log.kondisi_kembali}
                                                         </span>
@@ -138,11 +137,10 @@ export default function LogbookIndex({ logs, filters }) {
                                                 </td>
                                                 <td className="p-4 text-center">
                                                     <span
-                                                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-bold ${
-                                                            isDipinjam
+                                                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-md text-xs font-bold ${isDipinjam
                                                                 ? 'bg-[#D84040] text-white'
                                                                 : 'bg-[#1D1616] text-white'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {isDipinjam ? <Clock size={12} /> : <CheckCircle2 size={12} />}
                                                         {isDipinjam ? 'Dipinjam' : 'Dikembalikan'}

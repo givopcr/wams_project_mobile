@@ -234,6 +234,7 @@ export default function KategoriIndex({ categories, filters }) {
                         </div>
                         <div className="bg-white p-5 rounded-2xl inline-block border-2 border-[#E0E0E0] mb-4">
                             <QRCodeSVG
+                                id={`qr-modal-svg-${qrModal.id}`}
                                 value={qrModal.qr_code}
                                 size={180}
                                 level="H"
@@ -242,9 +243,61 @@ export default function KategoriIndex({ categories, filters }) {
                         </div>
                         <div className="font-bold text-[#1D1616] text-base mb-1">{qrModal.nama_kategori}</div>
                         <p className="text-xs font-mono text-[#D84040] font-bold mb-3">{qrModal.qr_code}</p>
-                        <p className="text-[11px] text-[#6B7280]">
+                        <p className="text-[11px] text-[#6B7280] mb-4">
                             Scan QR Code ini pada aplikasi Flutter Mobile untuk mengakses daftar peralatan dalam kategori ini.
                         </p>
+                        <button
+                            onClick={() => {
+                                const svg = document.getElementById(`qr-modal-svg-${qrModal.id}`);
+                                if (!svg) return;
+                                const svgData = new XMLSerializer().serializeToString(svg);
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                const img = new Image();
+                                const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                                const url = URL.createObjectURL(svgBlob);
+                                img.onload = () => {
+                                    const width = 600;
+                                    const height = 750;
+                                    canvas.width = width;
+                                    canvas.height = height;
+                                    ctx.fillStyle = '#FFFFFF';
+                                    ctx.fillRect(0, 0, width, height);
+                                    ctx.strokeStyle = '#E0E0E0';
+                                    ctx.lineWidth = 4;
+                                    ctx.strokeRect(20, 20, width - 40, height - 40);
+                                    ctx.fillStyle = '#D84040';
+                                    ctx.fillRect(20, 20, width - 40, 60);
+                                    ctx.fillStyle = '#FFFFFF';
+                                    ctx.font = 'bold 24px sans-serif';
+                                    ctx.textAlign = 'center';
+                                    ctx.fillText('WAMS WORKSHOP QR', width / 2, 58);
+                                    const qrSize = 360;
+                                    ctx.drawImage(img, (width - qrSize) / 2, 110, qrSize, qrSize);
+                                    ctx.fillStyle = '#1D1616';
+                                    ctx.font = 'bold 30px sans-serif';
+                                    ctx.fillText(qrModal.nama_kategori, width / 2, 530);
+                                    ctx.fillStyle = '#D84040';
+                                    ctx.font = 'bold 20px monospace';
+                                    ctx.fillText(qrModal.qr_code, width / 2, 570);
+                                    ctx.fillStyle = '#9CA3AF';
+                                    ctx.font = '14px sans-serif';
+                                    ctx.fillText('Pindai dengan Aplikasi WAMS Mobile', width / 2, 670);
+
+                                    const pngFile = canvas.toDataURL('image/png');
+                                    const downloadLink = document.createElement('a');
+                                    downloadLink.download = `WAMS_QR_${qrModal.nama_kategori.replace(/[^a-zA-Z0-9]/g, '_')}_ID${qrModal.id}.png`;
+                                    downloadLink.href = pngFile;
+                                    downloadLink.click();
+                                    URL.revokeObjectURL(url);
+                                };
+                                img.src = url;
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
+                        >
+                            <Download size={15} />
+                            <span>Unduh QR Label (PNG)</span>
+                        </button>
                     </div>
                 </div>
             )}

@@ -20,7 +20,7 @@ export default function Login() {
         <>
             <Head title="Masuk - WAMS" />
             <div className="min-h-screen w-full flex flex-col lg:flex-row font-['Helvetica_Neue',Helvetica,Arial,sans-serif] bg-white text-neutral-900 antialiased selection:bg-[#8E1616] selection:text-white">
-                
+
                 {/* Left Section - Hero Visual */}
                 <div className="hidden lg:flex lg:w-1/2 relative bg-neutral-950 overflow-hidden min-h-screen">
                     {/* Background Image */}
@@ -34,11 +34,11 @@ export default function Login() {
                 {/* Right Section - Login Form */}
                 <div className="w-full lg:w-1/2 flex items-center justify-center min-h-screen px-6 py-12 sm:px-12 xl:px-20 bg-white">
                     <div className="w-full max-w-[390px] mx-auto">
-                        
+
                         {/* Heading */}
                         <div className="mb-8">
                             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-neutral-950 mb-2">
-                                Selamat Datang
+                                Selamat Datang Kembali
                             </h2>
                             <p className="text-xs sm:text-sm text-neutral-500 font-normal">
                                 Masukkan email dan kata sandi Anda untuk mengakses akun

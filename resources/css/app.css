@@ -1,4 +1,10 @@
 @import 'tailwindcss';
+@import '@flaticon/flaticon-uicons/css/all/all.css';
+
+/* Fallback / mapping for fi-br-task-checklist if not loaded in specific subset */
+.fi-br-task-checklist:before {
+    content: "\f43c";
+}
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -16,7 +22,7 @@
     --color-palette-light: #EEEEEE;
     --color-palette-card: #FFFFFF;
     --color-palette-border: #E0E0E0;
-    
+
     --color-cream-light: #EEEEEE;
     --color-cream-base: #FFFFFF;
     --color-cream-card: #F7F7F7;

@@ -16,142 +16,124 @@ import {
     ShieldCheck,
     Calendar,
     ChevronRight,
-    Sparkles
+    Sparkles,
+    MoreHorizontal
 } from 'lucide-react';
+import {
+    TotalBarangIcon,
+    UnitTersediaIcon,
+    BarangDipinjamIcon,
+    BarangBaikIcon
+} from '@/components/DashboardCardIcons';
 
-// Category Area Wave Chart Component
-function CategoryAreaChart({ data = [], color = '#2563EB', gradientId = 'grad', height = 110 }) {
+// Category Rounded Bar Chart Component
+function CategoryBarChart({ data = [], color = '#2563EB' }) {
     const [hoveredIndex, setHoveredIndex] = useState(null);
 
     if (!data || data.length === 0) return null;
 
-    const width = 360;
-    const paddingX = 24;
-    const paddingTop = 20;
-    const paddingBottom = 20;
-    const chartWidth = width - paddingX * 2;
-    const chartHeight = height - paddingTop - paddingBottom;
-
     const values = data.map((d) => d.count);
     const maxVal = Math.max(...values, 5);
-    const minVal = 0;
+    const midVal = Math.round(maxVal / 2);
 
-    // Calculate coordinates
-    const points = data.map((d, i) => {
-        const x = paddingX + (i * chartWidth) / (data.length - 1);
-        const y = height - paddingBottom - ((d.count - minVal) / (maxVal - minVal)) * chartHeight;
-        return { x, y, day: d.day, date: d.date, count: d.count };
-    });
+    // Default to peak day if no bar is hovered
+    const peakIndex = values.indexOf(Math.max(...values));
+    const activeIndex = hoveredIndex !== null ? hoveredIndex : peakIndex;
+    const activeItem = data[activeIndex] || data[0];
 
-    // Smooth Bezier Curve Path
-    let pathD = `M ${points[0].x},${points[0].y}`;
-    for (let i = 0; i < points.length - 1; i++) {
-        const p0 = points[i === 0 ? 0 : i - 1];
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        const p3 = points[i + 2] || p2;
-
-        const cp1x = p1.x + (p2.x - p0.x) / 6;
-        const cp1y = p1.y + (p2.y - p0.y) / 6;
-        const cp2x = p2.x - (p3.x - p1.x) / 6;
-        const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-        pathD += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
-    }
-
-    const areaD = `${pathD} L ${points[points.length - 1].x},${height - 4} L ${points[0].x},${height - 4} Z`;
+    const formatDate = (dateStr, dayStr) => {
+        if (!dateStr) return `Hari ${dayStr}`;
+        try {
+            const d = new Date(dateStr);
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const fullDays = {
+                'Sen': 'Senin',
+                'Sel': 'Selasa',
+                'Rab': 'Rabu',
+                'Kam': 'Kamis',
+                'Jum': 'Jumat',
+                'Sab': 'Sabtu',
+                'Min': 'Minggu'
+            };
+            const dayFull = fullDays[dayStr] || dayStr;
+            return `${dayFull}, ${d.getDate()} ${months[d.getMonth()]}`;
+        } catch {
+            return `Hari ${dayStr}`;
+        }
+    };
 
     return (
-        <div className="relative w-full">
-            <svg
-                viewBox={`0 0 ${width} ${height}`}
-                className="w-full h-28 overflow-visible"
-                preserveAspectRatio="none"
-            >
-                <defs>
-                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-                        <stop offset="100%" stopColor={color} stopOpacity="0.0" />
-                    </linearGradient>
-                </defs>
-
-                {/* Subtle horizontal baseline grid */}
-                <line
-                    x1={paddingX}
-                    y1={height - paddingBottom}
-                    x2={width - paddingX}
-                    y2={height - paddingBottom}
-                    stroke="#E5E7EB"
-                    strokeWidth="1"
-                    strokeDasharray="3 3"
-                />
-
-                {/* Filled Area with Gradient */}
-                <path d={areaD} fill={`url(#${gradientId})`} />
-
-                {/* Smooth Curved Line */}
-                <path
-                    d={pathD}
-                    fill="none"
-                    stroke={color}
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                />
-
-                {/* Interactive Points on curve */}
-                {points.map((p, idx) => {
-                    const isHovered = hoveredIndex === idx;
-                    const isPeak = p.count === maxVal && maxVal > 0;
-                    return (
-                        <g key={idx}>
-                            {/* Hover hit area */}
-                            <circle
-                                cx={p.x}
-                                cy={p.y}
-                                r={12}
-                                fill="transparent"
-                                className="cursor-pointer"
-                                onMouseEnter={() => setHoveredIndex(idx)}
-                                onMouseLeave={() => setHoveredIndex(null)}
-                            />
-
-                            {/* Point circle */}
-                            <circle
-                                cx={p.x}
-                                cy={p.y}
-                                r={isHovered ? 5.5 : isPeak ? 4.5 : 3.5}
-                                fill={isHovered || isPeak ? color : '#FFFFFF'}
-                                stroke={color}
-                                strokeWidth={isHovered || isPeak ? 2.5 : 2}
-                                className="transition-all duration-150 pointer-events-none"
-                            />
-                        </g>
-                    );
-                })}
-            </svg>
-
-            {/* Hover Tooltip Floating Banner */}
-            {hoveredIndex !== null && points[hoveredIndex] && (
+        <div className="relative w-full pt-14 pb-1 select-none">
+            {/* Floating Tooltip matching reference design */}
+            {activeItem && (
                 <div
-                    className="absolute -top-3 transform -translate-x-1/2 bg-[#1D1616] text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-lg pointer-events-none transition-all z-20 whitespace-nowrap"
+                    className="absolute top-0 transform -translate-x-1/2 bg-white border border-[#E0E0E0] shadow-sm rounded-xl px-3 py-1.5 z-20 pointer-events-none transition-all duration-150 whitespace-nowrap text-left"
                     style={{
-                        left: `${(points[hoveredIndex].x / width) * 100}%`,
+                        left: `${((activeIndex + 0.5) / data.length) * 82 + 12}%`,
                     }}
                 >
-                    <span>
-                        {points[hoveredIndex].day}: {points[hoveredIndex].count} unit dipinjam
-                    </span>
+                    <div className="text-xs font-black text-[#1D1616] leading-tight">
+                        {activeItem.count} Peminjaman
+                    </div>
+                    <div className="text-[10px] font-medium text-[#6B7280] leading-tight mt-0.5">
+                        {formatDate(activeItem.date, activeItem.day)}
+                    </div>
                 </div>
             )}
 
+            {/* Chart Grid & Bars Area */}
+            <div className="relative h-28 flex">
+                {/* Y-Axis Labels */}
+                <div className="w-7 shrink-0 flex flex-col justify-between text-[10px] font-semibold text-[#8C93A0] pr-1.5 pb-0.5 select-none text-right">
+                    <span>{maxVal}</span>
+                    <span>{midVal}</span>
+                    <span>0</span>
+                </div>
+
+                {/* Bars & Grid Lines Area */}
+                <div className="relative flex-1 h-full">
+                    {/* 3 Horizontal Grid Lines */}
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                        <div className="w-full border-b border-[#E5E7EB]" />
+                        <div className="w-full border-b border-[#E5E7EB]" />
+                        <div className="w-full border-b border-[#E5E7EB]" />
+                    </div>
+
+                    {/* Bars Container */}
+                    <div className="relative z-10 flex items-end justify-between h-full px-1.5">
+                        {data.map((d, idx) => {
+                            const isSelected = activeIndex === idx;
+                            const heightPercent = Math.max((d.count / maxVal) * 92, 8);
+
+                            return (
+                                <div
+                                    key={idx}
+                                    className="flex flex-col items-center flex-1 h-full justify-end cursor-pointer group px-0.5 sm:px-1"
+                                    onMouseEnter={() => setHoveredIndex(idx)}
+                                    onMouseLeave={() => setHoveredIndex(null)}
+                                >
+                                    <div
+                                        className="w-full max-w-[26px] rounded-t-md transition-all duration-200"
+                                        style={{
+                                            height: `${heightPercent}%`,
+                                            backgroundColor: isSelected ? color : '#E9EEF5',
+                                        }}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
             {/* X-Axis Day Labels */}
-            <div className="flex items-center justify-between px-2 pt-1 text-[11px] font-semibold text-[#6B7280]">
+            <div className="flex items-center justify-between pl-7 pr-1.5 pt-2 text-[11px] font-semibold text-[#6B7280]">
                 {data.map((d, i) => (
                     <span
                         key={i}
-                        className={`transition-colors ${hoveredIndex === i ? 'text-[#1D1616] font-bold' : ''
-                            }`}
+                        className={`flex-1 text-center transition-colors ${
+                            activeIndex === i ? 'text-[#1D1616] font-bold' : ''
+                        }`}
                     >
                         {d.day}
                     </span>
@@ -223,100 +205,104 @@ export default function Dashboard({
                 {/* 1. TOP ROW: 4 KPI CARDS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     {/* Card 1: Barang yang sedang dipinjam */}
-                    <div className="bg-white rounded-2xl border border-[#E0E0E0] p-5 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between h-[135px]">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-[#6B7280] tracking-wide">
-                                Barang Sedang Dipinjam
-                            </span>
-                            <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
-                                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                            </div>
+                    <div className="bg-white rounded-2xl border border-[#E0E0E0] p-5 shadow-2xs hover:shadow-sm transition-all relative flex items-center gap-4">
+                        <div className="w-13 h-13 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+                            <BarangDipinjamIcon size={24} />
                         </div>
-                        <div>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-black text-[#1D1616] tracking-tight">
+                        <div className="flex-1 min-w-0 pr-4">
+                            <div className="flex items-baseline gap-1.5">
+                                <h3 className="text-2xl font-black text-[#1D1616] tracking-tight">
                                     {s.unit_dipinjam}
                                 </h3>
-                                <span className="text-xs font-semibold text-[#6B7280]">Unit Aktif</span>
+                                <span className="text-[11px] font-semibold text-[#6B7280]">Unit Aktif</span>
                             </div>
-                            <p className="text-[11px] font-medium text-amber-600 mt-1 flex items-center gap-1">
-                                <Clock size={12} />
-                                Terdata dalam logbook aktif
+                            <p className="text-xs font-semibold text-[#6B7280] truncate mt-0.5">
+                                Barang Sedang Dipinjam
                             </p>
+                            <p className="text-[11px] font-medium text-amber-600 mt-1 flex items-center gap-1">
+                                <Clock size={11} />
+                                Terdata dalam logbook
+                            </p>
+                        </div>
+                        <div className="absolute top-3.5 right-3.5 text-gray-300">
+                            <MoreHorizontal size={16} />
                         </div>
                     </div>
 
                     {/* Card 2: Total jumlah unit yang tersedia */}
-                    <div className="bg-white rounded-2xl border border-[#E0E0E0] p-5 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between h-[135px]">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-[#6B7280] tracking-wide">
-                                Total Unit Tersedia
-                            </span>
-                            <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                                <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                            </div>
+                    <div className="bg-white rounded-2xl border border-[#E0E0E0] p-5 shadow-2xs hover:shadow-sm transition-all relative flex items-center gap-4">
+                        <div className="w-13 h-13 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-600 shrink-0">
+                            <UnitTersediaIcon size={24} />
                         </div>
-                        <div>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-black text-[#1D1616] tracking-tight">
+                        <div className="flex-1 min-w-0 pr-4">
+                            <div className="flex items-baseline gap-1.5">
+                                <h3 className="text-2xl font-black text-[#1D1616] tracking-tight">
                                     {s.unit_tersedia}
                                 </h3>
-                                <span className="text-xs font-semibold text-[#6B7280]">/ {s.total_unit} Unit</span>
+                                <span className="text-[11px] font-semibold text-[#6B7280]">/ {s.total_unit} Unit</span>
                             </div>
-                            <p className="text-[11px] font-medium text-blue-600 mt-1 flex items-center gap-1">
-                                <Boxes size={12} />
-                                Siap dipinjam di workshop
+                            <p className="text-xs font-semibold text-[#6B7280] truncate mt-0.5">
+                                Total Unit Tersedia
                             </p>
+                            <p className="text-[11px] font-medium text-blue-600 mt-1 flex items-center gap-1">
+                                <Boxes size={11} />
+                                Siap di workshop
+                            </p>
+                        </div>
+                        <div className="absolute top-3.5 right-3.5 text-gray-300">
+                            <MoreHorizontal size={16} />
                         </div>
                     </div>
 
                     {/* Card 3: Jumlah total barang */}
-                    <div className="bg-white rounded-2xl border border-[#E0E0E0] p-5 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between h-[135px]">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-[#6B7280] tracking-wide">
-                                Jumlah Total Barang
-                            </span>
-                            <div className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#D84040]" />
-                            </div>
+                    <div className="bg-white rounded-2xl border border-[#E0E0E0] p-5 shadow-2xs hover:shadow-sm transition-all relative flex items-center gap-4">
+                        <div className="w-13 h-13 rounded-full bg-rose-500/10 flex items-center justify-center text-[#D84040] shrink-0">
+                            <TotalBarangIcon size={24} />
                         </div>
-                        <div>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-black text-[#1D1616] tracking-tight">
+                        <div className="flex-1 min-w-0 pr-4">
+                            <div className="flex items-baseline gap-1.5">
+                                <h3 className="text-2xl font-black text-[#1D1616] tracking-tight">
                                     {s.total_barang}
                                 </h3>
-                                <span className="text-xs font-semibold text-[#6B7280]">Model Master</span>
+                                <span className="text-[11px] font-semibold text-[#6B7280]">Model Master</span>
                             </div>
-                            <p className="text-[11px] font-medium text-[#D84040] mt-1 flex items-center gap-1">
-                                <Package size={12} />
-                                Terbagi dalam {s.total_kategori} kategori
+                            <p className="text-xs font-semibold text-[#6B7280] truncate mt-0.5">
+                                Jumlah Total Barang
                             </p>
+                            <p className="text-[11px] font-medium text-[#D84040] mt-1 flex items-center gap-1">
+                                <Package size={11} />
+                                {s.total_kategori} kategori
+                            </p>
+                        </div>
+                        <div className="absolute top-3.5 right-3.5 text-gray-300">
+                            <MoreHorizontal size={16} />
                         </div>
                     </div>
 
                     {/* Card 4: Persentase barang yang masih baik */}
-                    <div className="bg-white rounded-2xl border border-[#E0E0E0] p-5 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between h-[135px]">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-[#6B7280] tracking-wide">
-                                Persentase Barang Baik
-                            </span>
-                            <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                            </div>
+                    <div className="bg-white rounded-2xl border border-[#E0E0E0] p-5 shadow-2xs hover:shadow-sm transition-all relative flex items-center gap-4">
+                        <div className="w-13 h-13 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
+                            <i className="fi fi-br-task-checklist text-[22px] leading-none flex items-center justify-center"></i>
                         </div>
-                        <div>
-                            <div className="flex items-baseline gap-2">
-                                <h3 className="text-3xl font-black text-[#1D1616] tracking-tight">
+                        <div className="flex-1 min-w-0 pr-4">
+                            <div className="flex items-baseline gap-1.5">
+                                <h3 className="text-2xl font-black text-[#1D1616] tracking-tight">
                                     {s.persentase_baik}%
                                 </h3>
-                                <span className="text-xs font-semibold text-emerald-600 font-mono">
+                                <span className="text-[11px] font-semibold text-emerald-600 font-mono">
                                     ({s.unit_baik}/{s.total_unit})
                                 </span>
                             </div>
+                            <p className="text-xs font-semibold text-[#6B7280] truncate mt-0.5">
+                                Persentase Barang Baik
+                            </p>
                             <p className="text-[11px] font-medium text-emerald-600 mt-1 flex items-center gap-1">
-                                <ShieldCheck size={12} />
+                                <ShieldCheck size={11} />
                                 Kondisi layak pakai
                             </p>
+                        </div>
+                        <div className="absolute top-3.5 right-3.5 text-gray-300">
+                            <MoreHorizontal size={16} />
                         </div>
                     </div>
                 </div>
@@ -394,7 +380,7 @@ export default function Dashboard({
                                         </div>
                                     </div>
 
-                                    {/* Area Wave Chart (Day by day loans) */}
+                                    {/* Bar Chart (Day by day loans) */}
                                     <div className="mt-4 pt-2">
                                         <div className="flex items-center justify-between text-[11px] font-semibold text-[#6B7280] mb-2 px-1">
                                             <span>Grafik Peminjaman Harian</span>
@@ -404,11 +390,9 @@ export default function Dashboard({
                                             </span>
                                         </div>
 
-                                        <CategoryAreaChart
+                                        <CategoryBarChart
                                             data={cat.daily_loans}
                                             color={config.color}
-                                            gradientId={config.gradientId}
-                                            height={110}
                                         />
                                     </div>
                                 </div>
