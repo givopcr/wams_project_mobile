@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
     BookOpen,
@@ -7,10 +7,12 @@ import {
     Clock,
     CheckCircle2,
     Calendar,
-    Filter
+    Filter,
+    ArrowLeft,
+    ArrowRight
 } from 'lucide-react';
 
-export default function LogbookIndex({ logs, filters }) {
+export default function LogbookIndex({ logs, filters = {} }) {
     const [search, setSearch] = useState(filters.q || '');
     const [selectedStatus, setSelectedStatus] = useState(filters.status || '');
 
@@ -22,11 +24,31 @@ export default function LogbookIndex({ logs, filters }) {
         }, { preserveState: true });
     };
 
+    // Helper for pagination range with ellipsis
+    const getPaginationRange = (currentPage, lastPage) => {
+        if (!lastPage || lastPage <= 1) return [1];
+        if (lastPage <= 7) {
+            return Array.from({ length: lastPage }, (_, i) => i + 1);
+        }
+
+        if (currentPage <= 4) {
+            return [1, 2, 3, 4, 5, '...', lastPage];
+        }
+
+        if (currentPage >= lastPage - 3) {
+            return [1, '...', lastPage - 4, lastPage - 3, lastPage - 2, lastPage - 1, lastPage];
+        }
+
+        return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', lastPage];
+    };
+
+    const paginationRange = getPaginationRange(logs?.current_page || 1, logs?.last_page || 1);
+
     return (
         <AuthenticatedLayout title="Logbook Transaksi Peminjaman & Pengembalian">
             <Head title="Logbook Transaksi - WAMS" />
 
-            <div className="space-y-6 max-w-7xl mx-auto">
+            <div className="space-y-6 max-w-7xl mx-auto pb-8">
                 {/* Filter Bar */}
                 <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
                     <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -54,9 +76,19 @@ export default function LogbookIndex({ logs, filters }) {
                             <option value="dikembalikan">Sudah Dikembalikan</option>
                         </select>
                     </div>
+
+                    <div className="text-xs text-[#6B7280] font-medium self-end sm:self-auto">
+                        <span>Menampilkan </span>
+                        <span className="font-bold text-[#1D1616]">
+                            {logs?.from ?? 0} - {logs?.to ?? 0}
+                        </span>
+                        <span> dari </span>
+                        <span className="font-bold text-[#1D1616]">{logs?.total ?? 0}</span>
+                        <span> transaksi</span>
+                    </div>
                 </div>
 
-                {/* Table */}
+                {/* Table Card */}
                 <div className="bg-white border border-[#E0E0E0] rounded-2xl overflow-hidden shadow-2xs">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs">
@@ -71,7 +103,7 @@ export default function LogbookIndex({ logs, filters }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#E0E0E0]">
-                                {logs.data.length === 0 ? (
+                                {logs?.data?.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="p-8 text-center text-[#6B7280] bg-white">
                                             Tidak ada catatan logbook transaksi ditemukan.
@@ -154,7 +186,84 @@ export default function LogbookIndex({ logs, filters }) {
                         </table>
                     </div>
                 </div>
+
+                {/* 3. PAGINATION BAR (Matching Reference Image) */}
+                {logs && logs.last_page > 1 && (
+                    <div className="flex items-center justify-between pt-2 px-1 select-none">
+                        {/* Previous Button */}
+                        {logs.prev_page_url ? (
+                            <Link
+                                href={logs.prev_page_url}
+                                preserveState
+                                preserveScroll
+                                className="flex items-center gap-2 text-sm font-medium text-[#6B7280] hover:text-[#1D1616] transition-colors cursor-pointer"
+                            >
+                                <ArrowLeft size={16} />
+                                <span>Previous</span>
+                            </Link>
+                        ) : (
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-300 pointer-events-none">
+                                <ArrowLeft size={16} />
+                                <span>Previous</span>
+                            </div>
+                        )}
+
+                        {/* Page Numbers */}
+                        <div className="flex items-center gap-1">
+                            {paginationRange.map((page, index) => {
+                                if (page === '...') {
+                                    return (
+                                        <span
+                                            key={`ellipsis-${index}`}
+                                            className="w-9 h-9 flex items-center justify-center text-sm text-[#6B7280] select-none"
+                                        >
+                                            ...
+                                        </span>
+                                    );
+                                }
+
+                                const isCurrent = page === logs.current_page;
+                                const pageUrl = `/admin/logbook?page=${page}${filters.q ? `&q=${encodeURIComponent(filters.q)}` : ''}${filters.status ? `&status=${encodeURIComponent(filters.status)}` : ''}`;
+
+                                return (
+                                    <Link
+                                        key={page}
+                                        href={pageUrl}
+                                        preserveState
+                                        preserveScroll
+                                        className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-all ${
+                                            isCurrent
+                                                ? 'bg-[#F5F5F5] text-[#1D1616] font-bold shadow-2xs border border-[#E0E0E0]/60'
+                                                : 'text-[#6B7280] hover:text-[#1D1616] hover:bg-gray-100'
+                                        }`}
+                                    >
+                                        {page}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+
+                        {/* Next Button */}
+                        {logs.next_page_url ? (
+                            <Link
+                                href={logs.next_page_url}
+                                preserveState
+                                preserveScroll
+                                className="flex items-center gap-2 text-sm font-medium text-[#6B7280] hover:text-[#1D1616] transition-colors cursor-pointer"
+                            >
+                                <span>Next</span>
+                                <ArrowRight size={16} />
+                            </Link>
+                        ) : (
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-300 pointer-events-none">
+                                <span>Next</span>
+                                <ArrowRight size={16} />
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </AuthenticatedLayout>
     );
 }
+

@@ -8,6 +8,7 @@ use App\Models\BarangUnit;
 use App\Models\KategoriBarang;
 use App\Models\Logbook;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminWebController extends Controller
 {
@@ -444,7 +446,7 @@ class AdminWebController extends Controller
             });
         }
 
-        $logs = $query->latest('tanggal_pinjam')->paginate(15)->withQueryString();
+        $logs = $query->latest('tanggal_pinjam')->paginate(10)->withQueryString();
 
         return Inertia::render('Logbook/Index', [
             'logs' => $logs,
@@ -555,10 +557,382 @@ class AdminWebController extends Controller
     }
 
     /**
-     * Laporan & Analytics Placeholder
+     * Laporan & Statistik
      */
-    public function reports(): Response
+    public function reports(Request $request): Response
     {
-        return Inertia::render('Reports/Index');
+        $data = $this->getReportsData($request);
+        return Inertia::render('Reports/Index', $data);
+    }
+
+    /**
+     * Ekspor Laporan ke Excel / CSV dengan UTF-8 BOM
+     */
+    public function exportExcelReports(Request $request): StreamedResponse
+    {
+        $data = $this->getReportsData($request);
+        $periodSlug = $data['filters']['period'] ?? 'all';
+        $filename = 'Laporan-WAMS-' . strtoupper($periodSlug) . '-' . date('Ymd-His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        return response()->stream(function () use ($data) {
+            $file = fopen('php://output', 'w');
+            // UTF-8 BOM for automatic Excel delimiter & character encoding support
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            // Header Dokumen
+            fputcsv($file, ['WORKSHOP ASSET MANAGEMENT SYSTEM (WAMS) - REKAP LAPORAN & STATISTIK']);
+            fputcsv($file, ['Periode Filter:', $data['filters']['period_label']]);
+            fputcsv($file, ['Tanggal Unduh:', date('d F Y, H:i:s') . ' WIB']);
+            fputcsv($file, []);
+
+            // 1. Ringkasan
+            fputcsv($file, ['=== 1. RINGKASAN STATISTIK UTAMA ===']);
+            fputcsv($file, ['Indikator Metrik', 'Jumlah', 'Keterangan']);
+            fputcsv($file, ['Total Peminjaman', $data['summary']['total_peminjaman'], 'Jumlah transaksi sirkulasi dalam periode']);
+            fputcsv($file, ['Total Pengembalian', $data['summary']['total_pengembalian'], 'Unit telah dikembalikan ke workshop']);
+            fputcsv($file, ['Total Keterlambatan', $data['summary']['total_keterlambatan'], 'Unit sedang dipinjam melebihi 24 jam']);
+            fputcsv($file, ['Total Unit Fisik', $data['summary']['total_unit'], 'Seluruh unit workshop terdaftar']);
+            fputcsv($file, ['Unit Tersedia', $data['summary']['unit_tersedia'], 'Siap dipinjam']);
+            fputcsv($file, ['Unit Sedang Dipinjam', $data['summary']['unit_dipinjam'], 'Sedang digunakan teknisi']);
+            fputcsv($file, ['Unit Maintenance', $data['summary']['unit_maintenance'], 'Sedang dalam pemeliharaan / rusak']);
+            fputcsv($file, []);
+
+            // 2. Kondisi Aset
+            fputcsv($file, ['=== 2. KONDISI ASET WORKSHOP ===']);
+            fputcsv($file, ['Status / Kondisi', 'Jumlah Unit', 'Persentase']);
+            fputcsv($file, ['Layak Pakai / Baik', $data['asset_conditions']['baik']['count'], $data['asset_conditions']['baik']['percentage'] . '%']);
+            fputcsv($file, ['Kondisi Rusak', $data['asset_conditions']['rusak']['count'], $data['asset_conditions']['rusak']['percentage'] . '%']);
+            fputcsv($file, ['Status Maintenance', $data['asset_conditions']['maintenance']['count'], $data['asset_conditions']['maintenance']['percentage'] . '%']);
+            fputcsv($file, []);
+
+            // 3. Statistik Kategori
+            fputcsv($file, ['=== 3. STATISTIK PER KATEGORI BARANG ===']);
+            fputcsv($file, ['Kategori', 'Total Model Barang', 'Total Unit Fisik', 'Tersedia', 'Dipinjam', 'Maintenance', 'Frekuensi Dipinjam', 'Pangsa Utilisasi']);
+            foreach ($data['category_stats'] as $cat) {
+                fputcsv($file, [
+                    $cat['nama_kategori'],
+                    $cat['total_barang'],
+                    $cat['total_unit'],
+                    $cat['unit_tersedia'],
+                    $cat['unit_dipinjam'],
+                    $cat['unit_maintenance'],
+                    $cat['frekuensi_pinjam'] . ' kali',
+                    $cat['persentase_utilisasi'] . '%',
+                ]);
+            }
+            fputcsv($file, []);
+
+            // 4. Utilisasi Aset
+            fputcsv($file, ['=== 4. UTILISASI ASET (BARANG PALING SERING DIPINJAM) ===']);
+            fputcsv($file, ['Nama Barang', 'Kode Barang', 'Kategori', 'Lokasi Simpan', 'Total Unit', 'Unit Dipinjam', 'Frekuensi Dipinjam', 'Pangsa Peminjaman']);
+            foreach ($data['asset_utilization'] as $asset) {
+                fputcsv($file, [
+                    $asset['nama_barang'],
+                    $asset['kode_barang'],
+                    $asset['kategori'],
+                    $asset['lokasi'],
+                    $asset['total_unit'],
+                    $asset['active_borrowed'],
+                    $asset['frekuensi_pinjam'] . ' kali',
+                    $asset['persentase_utilisasi'] . '%',
+                ]);
+            }
+            fputcsv($file, []);
+
+            // 5. Rekap Logbook Transaksi
+            fputcsv($file, ['=== 5. REKAP LOGBOOK TRANSAKSI LENGKAP ===']);
+            fputcsv($file, ['No', 'User / Teknisi', 'NIP', 'Nama Barang', 'Kode Barang', 'Kode Unit', 'Kategori', 'Waktu Pinjam', 'Waktu Kembali', 'Durasi', 'Status Transaksi', 'Kondisi Kembali', 'Keterangan']);
+            foreach ($data['logbooks'] as $idx => $log) {
+                fputcsv($file, [
+                    $idx + 1,
+                    $log['user_nama'],
+                    $log['user_nip'],
+                    $log['nama_barang'],
+                    $log['kode_barang'],
+                    $log['kode_unit'],
+                    $log['kategori'],
+                    $log['tanggal_pinjam_formatted'],
+                    $log['tanggal_kembali_formatted'],
+                    $log['durasi'],
+                    ucfirst($log['status_transaksi']),
+                    ucfirst($log['kondisi_kembali']),
+                    $log['is_terlambat'] ? 'Terlambat (>24 Jam)' : 'Tepat Waktu / Normal',
+                ]);
+            }
+            fputcsv($file, []);
+
+            // 6. Laporan Maintenance
+            fputcsv($file, ['=== 6. LAPORAN PEMELIHARAAN & UNIT RUSAK ===']);
+            fputcsv($file, ['No', 'Kode Unit', 'Nama Barang', 'Kategori', 'Status', 'Kondisi', 'Terakhir Update', 'Pelapor / Pengguna Terakhir', 'Catatan']);
+            foreach ($data['maintenance_reports'] as $idx => $m) {
+                fputcsv($file, [
+                    $idx + 1,
+                    $m['kode_unit'],
+                    $m['nama_barang'],
+                    $m['kategori'],
+                    ucfirst($m['status']),
+                    ucfirst($m['kondisi']),
+                    $m['tanggal_update'],
+                    $m['pelapor_terakhir'],
+                    $m['catatan'],
+                ]);
+            }
+
+            fclose($file);
+        }, 200, $headers);
+    }
+
+    /**
+     * Ekspor Laporan ke Tampilan PDF Cetak
+     */
+    public function exportPdfReports(Request $request)
+    {
+        $data = $this->getReportsData($request);
+        return view('reports.pdf', $data);
+    }
+
+    /**
+     * Helper Ekstraksi & Agregasi Data Laporan
+     */
+    private function getReportsData(Request $request): array
+    {
+        $period = $request->input('period', 'all');
+        $startDate = null;
+        $endDate = null;
+
+        switch ($period) {
+            case 'today':
+                $startDate = Carbon::today()->startOfDay();
+                $endDate = Carbon::today()->endOfDay();
+                $periodLabel = 'Hari Ini (' . $startDate->format('d M Y') . ')';
+                break;
+            case 'week':
+                $startDate = Carbon::now()->startOfWeek()->startOfDay();
+                $endDate = Carbon::now()->endOfWeek()->endOfDay();
+                $periodLabel = 'Minggu Ini (' . $startDate->format('d M') . ' - ' . $endDate->format('d M Y') . ')';
+                break;
+            case 'month':
+                $startDate = Carbon::now()->startOfMonth()->startOfDay();
+                $endDate = Carbon::now()->endOfMonth()->endOfDay();
+                $periodLabel = 'Bulan Ini (' . $startDate->format('F Y') . ')';
+                break;
+            case 'year':
+                $startDate = Carbon::now()->startOfYear()->startOfDay();
+                $endDate = Carbon::now()->endOfYear()->endOfDay();
+                $periodLabel = 'Tahun Ini (' . $startDate->format('Y') . ')';
+                break;
+            case 'custom':
+                if ($request->filled('start_date') && $request->filled('end_date')) {
+                    $startDate = Carbon::parse($request->input('start_date'))->startOfDay();
+                    $endDate = Carbon::parse($request->input('end_date'))->endOfDay();
+                    $periodLabel = $startDate->format('d M Y') . ' s/d ' . $endDate->format('d M Y');
+                } else {
+                    $period = 'all';
+                    $periodLabel = 'Semua Periode';
+                }
+                break;
+            default:
+                $period = 'all';
+                $periodLabel = 'Semua Periode';
+                break;
+        }
+
+        // 1. Ringkasan Statistik
+        $logbookQuery = Logbook::with(['user', 'barangUnit.barang.kategori']);
+        if ($startDate && $endDate) {
+            $logbookQuery->whereBetween('tanggal_pinjam', [$startDate, $endDate]);
+        }
+
+        $allLogbooks = (clone $logbookQuery)->orderBy('tanggal_pinjam', 'desc')->get();
+
+        $totalPeminjaman = $allLogbooks->count();
+        $totalPengembalian = $allLogbooks->where('status_transaksi', 'dikembalikan')->count();
+
+        // Keterlambatan: transaksi 'dipinjam' yang sudah lebih dari 24 jam sejak tanggal_pinjam
+        $thresholdTime = Carbon::now()->subHours(24);
+        $totalKeterlambatan = $allLogbooks->where('status_transaksi', 'dipinjam')
+            ->filter(fn($l) => Carbon::parse($l->tanggal_pinjam)->lte($thresholdTime))
+            ->count();
+
+        $totalUnit = BarangUnit::count();
+        $unitDipinjam = BarangUnit::where('status', 'dipinjam')->count();
+        $unitMaintenance = BarangUnit::where('status', 'maintenance')->count();
+        $unitTersedia = BarangUnit::where('status', 'tersedia')->count();
+
+        $statsSummary = [
+            'total_peminjaman' => $totalPeminjaman,
+            'total_pengembalian' => $totalPengembalian,
+            'total_keterlambatan' => $totalKeterlambatan,
+            'total_unit' => $totalUnit,
+            'unit_dipinjam' => $unitDipinjam,
+            'unit_maintenance' => $unitMaintenance,
+            'unit_tersedia' => $unitTersedia,
+        ];
+
+        // 2. Rekap Logbook Formatted
+        $logbookList = $allLogbooks->map(function ($log) use ($thresholdTime) {
+            $tglPinjam = Carbon::parse($log->tanggal_pinjam);
+            $tglKembali = $log->tanggal_kembali ? Carbon::parse($log->tanggal_kembali) : null;
+
+            $isLate = ($log->status_transaksi === 'dipinjam' && $tglPinjam->lte($thresholdTime));
+
+            $durasi = '-';
+            if ($tglKembali) {
+                $diffHours = $tglPinjam->diffInHours($tglKembali);
+                if ($diffHours < 24) {
+                    $durasi = max(1, $diffHours) . ' Jam';
+                } else {
+                    $durasi = $tglPinjam->diffInDays($tglKembali) . ' Hari';
+                }
+            } elseif ($log->status_transaksi === 'dipinjam') {
+                $diffHours = $tglPinjam->diffInHours(now());
+                if ($diffHours < 24) {
+                    $durasi = max(1, $diffHours) . ' Jam (Aktif)';
+                } else {
+                    $durasi = $tglPinjam->diffInDays(now()) . ' Hari (Aktif)';
+                }
+            }
+
+            return [
+                'id' => $log->id,
+                'user_nama' => $log->user?->nama ?? 'Unknown User',
+                'user_nip' => $log->user?->nip ?? '-',
+                'user_role' => $log->user?->role ?? 'user',
+                'nama_barang' => $log->barangUnit?->barang?->nama_barang ?? 'Barang Dihapus',
+                'kode_barang' => $log->barangUnit?->barang?->kode_barang ?? '-',
+                'kategori' => $log->barangUnit?->barang?->kategori?->nama_kategori ?? 'Umum',
+                'kode_unit' => $log->barangUnit?->kode_unit ?? '-',
+                'tanggal_pinjam' => $tglPinjam->format('Y-m-d H:i'),
+                'tanggal_pinjam_formatted' => $tglPinjam->format('d M Y, H:i'),
+                'tanggal_kembali' => $tglKembali ? $tglKembali->format('Y-m-d H:i') : null,
+                'tanggal_kembali_formatted' => $tglKembali ? $tglKembali->format('d M Y, H:i') : '-',
+                'durasi' => $durasi,
+                'status_transaksi' => $log->status_transaksi,
+                'kondisi_kembali' => $log->kondisi_kembali ?: '-',
+                'is_terlambat' => $isLate,
+            ];
+        });
+
+        // 3. Statistik Kategori
+        $categories = KategoriBarang::with(['barang.units'])->get();
+        $categoryStats = $categories->map(function ($cat) use ($allLogbooks, $totalPeminjaman) {
+            $allUnits = $cat->barang->flatMap->units;
+
+            $totalBarang = $cat->barang->count();
+            $totalUnits = $allUnits->count();
+            $tersedia = $allUnits->where('status', 'tersedia')->count();
+            $dipinjam = $allUnits->where('status', 'dipinjam')->count();
+            $maintenance = $allUnits->where('status', 'maintenance')->count();
+
+            // Frekuensi peminjaman dalam logbook periode
+            $frekuensiPinjam = $allLogbooks->filter(function ($l) use ($cat) {
+                return $l->barangUnit?->barang?->kategori_id === $cat->id;
+            })->count();
+
+            $persentasePinjam = $totalPeminjaman > 0 ? round(($frekuensiPinjam / $totalPeminjaman) * 100, 1) : 0;
+
+            return [
+                'id' => $cat->id,
+                'nama_kategori' => $cat->nama_kategori,
+                'total_barang' => $totalBarang,
+                'total_unit' => $totalUnits,
+                'unit_tersedia' => $tersedia,
+                'unit_dipinjam' => $dipinjam,
+                'unit_maintenance' => $maintenance,
+                'frekuensi_pinjam' => $frekuensiPinjam,
+                'persentase_utilisasi' => $persentasePinjam,
+            ];
+        });
+
+        // 4. Utilisasi Aset (Barang Paling Sering Dipinjam)
+        $allBarang = Barang::with(['kategori', 'units'])->get();
+        $assetUtilization = $allBarang->map(function ($b) use ($allLogbooks, $totalPeminjaman) {
+            $frekuensi = $allLogbooks->filter(function ($l) use ($b) {
+                return $l->barangUnit?->barang_id === $b->id;
+            })->count();
+
+            $totalUnits = $b->units->count();
+            $activeBorrowed = $b->units->where('status', 'dipinjam')->count();
+            $persentase = $totalPeminjaman > 0 ? round(($frekuensi / $totalPeminjaman) * 100, 1) : 0;
+
+            return [
+                'id' => $b->id,
+                'nama_barang' => $b->nama_barang,
+                'kode_barang' => $b->kode_barang,
+                'kategori' => $b->kategori?->nama_kategori ?? 'Umum',
+                'lokasi' => $b->lokasi ?? '-',
+                'total_unit' => $totalUnits,
+                'active_borrowed' => $activeBorrowed,
+                'frekuensi_pinjam' => $frekuensi,
+                'persentase_utilisasi' => $persentase,
+            ];
+        })->sortByDesc('frekuensi_pinjam')->values();
+
+        // 5. Laporan Maintenance
+        $maintenanceUnits = BarangUnit::with(['barang.kategori'])
+            ->where(function ($q) {
+                $q->where('status', 'maintenance')
+                  ->orWhere('kondisi', 'rusak');
+            })
+            ->get()
+            ->map(function ($u) {
+                $lastLog = Logbook::with('user')->where('barang_unit_id', $u->id)->latest('tanggal_pinjam')->first();
+                return [
+                    'id' => $u->id,
+                    'kode_unit' => $u->kode_unit,
+                    'nama_barang' => $u->barang?->nama_barang ?? '-',
+                    'kode_barang' => $u->barang?->kode_barang ?? '-',
+                    'kategori' => $u->barang?->kategori?->nama_kategori ?? 'Umum',
+                    'status' => $u->status,
+                    'kondisi' => $u->kondisi,
+                    'tanggal_update' => $u->updated_at->format('d M Y, H:i'),
+                    'pelapor_terakhir' => $lastLog?->user?->nama ?? 'Staff Workshop',
+                    'catatan' => $u->kondisi === 'rusak' ? 'Unit mengalami kerusakan fisik / perlu perbaikan' : 'Pemeliharaan rutin berkala unit workshop',
+                ];
+            });
+
+        // 6. Kondisi Aset Breakdown (Sesuai kondisi aktual di DB)
+        $unitBaik = BarangUnit::where('kondisi', 'baik')->where('status', '!=', 'maintenance')->count();
+        $unitRusak = BarangUnit::where('kondisi', 'rusak')->count();
+        $unitInMaintenance = BarangUnit::where('status', 'maintenance')->count();
+
+        $kondisiBreakdown = [
+            'total' => $totalUnit,
+            'baik' => [
+                'count' => $unitBaik,
+                'percentage' => $totalUnit > 0 ? round(($unitBaik / $totalUnit) * 100, 1) : 0,
+            ],
+            'rusak' => [
+                'count' => $unitRusak,
+                'percentage' => $totalUnit > 0 ? round(($unitRusak / $totalUnit) * 100, 1) : 0,
+            ],
+            'maintenance' => [
+                'count' => $unitInMaintenance,
+                'percentage' => $totalUnit > 0 ? round(($unitInMaintenance / $totalUnit) * 100, 1) : 0,
+            ],
+        ];
+
+        return [
+            'filters' => [
+                'period' => $period,
+                'period_label' => $periodLabel,
+                'start_date' => $startDate ? $startDate->format('Y-m-d') : '',
+                'end_date' => $endDate ? $endDate->format('Y-m-d') : '',
+            ],
+            'summary' => $statsSummary,
+            'logbooks' => $logbookList,
+            'category_stats' => $categoryStats,
+            'asset_utilization' => $assetUtilization,
+            'maintenance_reports' => $maintenanceUnits,
+            'asset_conditions' => $kondisiBreakdown,
+        ];
     }
 }

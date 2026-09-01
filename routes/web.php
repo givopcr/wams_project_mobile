@@ -64,6 +64,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // QR Code
     Route::get('/qrcode', [AdminWebController::class, 'qrCode'])->name('admin.qrcode');
 
-    // Laporan & Analytics (Placeholder)
+    // Laporan & Statistik
     Route::get('/reports', [AdminWebController::class, 'reports'])->name('admin.reports');
+    Route::get('/reports/export-excel', [AdminWebController::class, 'exportExcelReports'])->name('admin.reports.excel');
+    Route::get('/reports/print-pdf', [AdminWebController::class, 'exportPdfReports'])->name('admin.reports.pdf');
 });
