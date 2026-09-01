@@ -18,6 +18,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _newPasswordConfirmController = TextEditingController();
+
+  bool _obscureCurrent = true;
+  bool _obscureNew = true;
+  bool _obscureConfirm = true;
   bool _isLoading = false;
 
   @override
@@ -60,9 +64,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await authProvider.fetchProfile();
 
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Profil berhasil diperbarui.'),
+        SnackBar(
+          content: const Text('Profil berhasil diperbarui.'),
           backgroundColor: AppTheme.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       nav.pop();
@@ -72,6 +78,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         SnackBar(
           content: Text(e.toString().replaceAll('Exception: ', '')),
           backgroundColor: AppTheme.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     } finally {
@@ -79,72 +87,276 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Widget _buildInputField({
+    required String label,
+    required TextEditingController controller,
+    String? hintText,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF374151),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          validator: validator,
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppTheme.textPrimary,
+          ),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            hintText: hintText,
+            hintStyle: const TextStyle(
+              color: Color(0xFF9CA3AF),
+              fontSize: 14,
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+            ),
+            suffixIcon: suffixIcon,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.bgLight,
       appBar: AppBar(
-        title: const Text('Edit Profil'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          'Edit Profil',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Informasi Akun', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 14)),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _namaController,
-                decoration: const InputDecoration(labelText: 'Nama Lengkap'),
-                validator: (v) => v == null || v.isEmpty ? 'Nama wajib diisi' : null,
+              // Section 1: Informasi Akun
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppTheme.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Informasi Akun',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInputField(
+                      label: 'Nama Lengkap',
+                      controller: _namaController,
+                      hintText: 'Nama lengkap anda',
+                      validator: (v) => v == null || v.isEmpty ? 'Nama wajib diisi' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInputField(
+                      label: 'NIP (Nomor Induk Pegawai)',
+                      controller: _nipController,
+                      hintText: 'NIP teknisi (opsional)',
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _nipController,
-                decoration: const InputDecoration(labelText: 'NIP'),
+
+              const SizedBox(height: 20),
+
+              // Section 2: Ubah Password
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppTheme.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ubah Password (Opsional)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Kosongkan kolom di bawah jika tidak ingin mengganti password.',
+                      style: TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInputField(
+                      label: 'Password Saat Ini',
+                      controller: _currentPasswordController,
+                      hintText: 'Password lama anda',
+                      obscureText: _obscureCurrent,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureCurrent ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: const Color(0xFF9CA3AF),
+                          size: 20,
+                        ),
+                        onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInputField(
+                      label: 'Password Baru',
+                      controller: _newPasswordController,
+                      hintText: 'Minimal 6 karakter',
+                      obscureText: _obscureNew,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: const Color(0xFF9CA3AF),
+                          size: 20,
+                        ),
+                        onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInputField(
+                      label: 'Konfirmasi Password Baru',
+                      controller: _newPasswordConfirmController,
+                      hintText: 'Ulangi password baru',
+                      obscureText: _obscureConfirm,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: const Color(0xFF9CA3AF),
+                          size: 20,
+                        ),
+                        onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                      ),
+                      validator: (v) {
+                        if (_newPasswordController.text.isNotEmpty && v != _newPasswordController.text) {
+                          return 'Konfirmasi password baru tidak cocok';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // Action Button
+              Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFFD84040),
+                        Color(0xFF8E1616),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFD84040).withValues(alpha: 0.3),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleSave,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Simpan Perubahan',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
-              const Divider(color: AppTheme.borderLight),
-              const SizedBox(height: 16),
-              const Text('Ubah Password (Opsional)', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary, fontSize: 14)),
-              const SizedBox(height: 4),
-              const Text('Kosongkan jika tidak ingin mengubah password akun.', style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _currentPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password Saat Ini'),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password Baru'),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _newPasswordConfirmController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Konfirmasi Password Baru'),
-                validator: (v) {
-                  if (_newPasswordController.text.isNotEmpty && v != _newPasswordController.text) {
-                    return 'Konfirmasi password baru tidak cocok';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _handleSave,
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Text('SIMPAN PERUBAHAN'),
-              ),
             ],
           ),
         ),

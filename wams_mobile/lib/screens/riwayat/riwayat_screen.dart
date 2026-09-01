@@ -52,7 +52,16 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     } else if (currentFilter == 'selesai') {
       displayList = txProvider.riwayatList.where((i) => !i.isDipinjam).toList();
     } else if (currentFilter == 'terlambat') {
-      displayList = []; // Default 0 for current mock
+      final now = DateTime.now();
+      displayList = txProvider.riwayatList.where((i) {
+        if (!i.isDipinjam || i.tanggalPinjam == null) return false;
+        try {
+          final dt = DateTime.parse(i.tanggalPinjam!);
+          return now.difference(dt).inHours >= 24;
+        } catch (_) {
+          return false;
+        }
+      }).toList();
     }
 
     return Scaffold(
@@ -60,48 +69,61 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         title: const Text(
           'Riwayat Peminjaman',
           style: TextStyle(
             color: AppTheme.textPrimary,
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: 18,
           ),
         ),
       ),
       body: Column(
         children: [
-          // Filter Tabs (Mockup 10 & 11)
+          // Segmented Control Pill Bar matching the UI style
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F2F6),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Row(
                 children: _tabs.map((tab) {
                   final key = tab.toLowerCase();
                   final isSelected = currentFilter == key;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: InkWell(
+                  return Expanded(
+                    child: GestureDetector(
                       onTap: () {
                         txProvider.setFilter(key);
                       },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeInOut,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppTheme.primary : AppTheme.cardLight,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isSelected ? AppTheme.primary : AppTheme.borderLight,
-                          ),
+                          color: isSelected ? Colors.white : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.06),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
                         ),
-                        child: Text(
-                          tab,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected ? Colors.white : AppTheme.textPrimary,
+                        child: Center(
+                          child: Text(
+                            tab,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected ? AppTheme.textPrimary : const Color(0xFF4B5563),
+                            ),
                           ),
                         ),
                       ),
@@ -124,12 +146,14 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.history, size: 48, color: Colors.grey.shade400),
+                            Icon(Icons.history_rounded, size: 52, color: Colors.grey.shade400),
                             const SizedBox(height: 12),
                             Text(
                               currentFilter == 'terlambat'
                                   ? 'Tidak ada peminjaman terlambat.'
-                                  : 'Belum ada data peminjaman.',
+                                  : currentFilter == 'aktif'
+                                      ? 'Tidak ada peminjaman aktif.'
+                                      : 'Belum ada data peminjaman.',
                               style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
                             ),
                           ],
@@ -167,7 +191,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  // Thumbnail
+                                  // Thumbnail Icon
                                   Container(
                                     width: 52,
                                     height: 52,
@@ -177,7 +201,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                       border: Border.all(color: AppTheme.borderLight),
                                     ),
                                     child: const Center(
-                                      child: Icon(Icons.handyman, color: AppTheme.primary, size: 26),
+                                      child: Icon(Icons.handyman_rounded, color: AppTheme.primary, size: 26),
                                     ),
                                   ),
                                   const SizedBox(width: 14),
@@ -225,8 +249,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
                                             color: item.isDipinjam
-                                                ? const Color(0xFFD97706)
-                                                : AppTheme.success,
+                                              ? const Color(0xFFD97706)
+                                              : AppTheme.success,
                                           ),
                                         ),
                                         if (item.isDipinjam) ...[
@@ -248,13 +272,13 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       ),
           ),
 
-          // Bottom Reminder Banner on 'Aktif' tab (Mockup 11)
+          // Bottom Reminder Banner on 'Aktif' tab
           if (currentFilter == 'aktif' && displayList.isNotEmpty)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB), // light warm cream/yellow
+                color: const Color(0xFFFFFBEB),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFFDE68A)),
               ),

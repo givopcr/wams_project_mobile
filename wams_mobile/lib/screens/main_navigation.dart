@@ -57,25 +57,65 @@ class _MainNavigationState extends State<MainNavigation> {
           },
           backgroundColor: Colors.transparent,
           indicatorColor: AppTheme.primary.withValues(alpha: 0.12),
-          destinations: const [
+          destinations: [
             NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined, color: AppTheme.textMuted),
-              selectedIcon: Icon(Icons.dashboard, color: AppTheme.primary),
+              icon: Image.asset(
+                'assets/icons/nav_home.png',
+                width: 24,
+                height: 24,
+                color: AppTheme.textMuted,
+              ),
+              selectedIcon: Image.asset(
+                'assets/icons/nav_home.png',
+                width: 24,
+                height: 24,
+                color: AppTheme.primary,
+              ),
               label: 'Dashboard',
             ),
             NavigationDestination(
-              icon: Icon(Icons.qr_code_scanner_outlined, color: AppTheme.textMuted),
-              selectedIcon: Icon(Icons.qr_code_scanner, color: AppTheme.primary),
+              icon: Image.asset(
+                'assets/icons/nav_scan.png',
+                width: 24,
+                height: 24,
+                color: AppTheme.textMuted,
+              ),
+              selectedIcon: Image.asset(
+                'assets/icons/nav_scan.png',
+                width: 24,
+                height: 24,
+                color: AppTheme.primary,
+              ),
               label: 'Scan QR',
             ),
             NavigationDestination(
-              icon: Icon(Icons.history_outlined, color: AppTheme.textMuted),
-              selectedIcon: Icon(Icons.history, color: AppTheme.primary),
+              icon: Image.asset(
+                'assets/icons/nav_history.png',
+                width: 24,
+                height: 24,
+                color: AppTheme.textMuted,
+              ),
+              selectedIcon: Image.asset(
+                'assets/icons/nav_history.png',
+                width: 24,
+                height: 24,
+                color: AppTheme.primary,
+              ),
               label: 'Riwayat',
             ),
             NavigationDestination(
-              icon: Icon(Icons.person_outline, color: AppTheme.textMuted),
-              selectedIcon: Icon(Icons.person, color: AppTheme.primary),
+              icon: Image.asset(
+                'assets/icons/nav_profile.png',
+                width: 24,
+                height: 24,
+                color: AppTheme.textMuted,
+              ),
+              selectedIcon: Image.asset(
+                'assets/icons/nav_profile.png',
+                width: 24,
+                height: 24,
+                color: AppTheme.primary,
+              ),
               label: 'Profil',
             ),
           ],
