@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 import {
     LayoutDashboard,
+    Calendar,
     Boxes,
     Package,
     Layers,
@@ -29,7 +30,9 @@ export default function AuthenticatedLayout({ title, children }) {
 
     const navItems = [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-        { name: 'Barang', href: '/admin/barang', icon: Package },
+        { name: 'Kalender', href: '/admin/calendar', icon: Calendar },
+        { name: 'Master Barang', href: '/admin/barang', icon: Package },
+        { name: 'Unit Fisik', href: '/admin/unit', icon: Layers },
         { name: 'Logbook', href: '/admin/logbook', icon: BookOpen },
         { name: 'Generate QR', href: '/admin/qrcode', icon: QrCode },
         { name: 'Manajemen User', href: '/admin/users', icon: Users },

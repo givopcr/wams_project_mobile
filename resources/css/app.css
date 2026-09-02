@@ -38,3 +38,15 @@ body {
     background-color: #EEEEEE;
     color: #1D1616;
 }
+
+/* Calendar striped diagonal hatching for outside-month days (matching reference image) */
+.calendar-striped-cell {
+    background-color: #F8FAFC;
+    background-image: repeating-linear-gradient(
+        135deg,
+        rgba(219, 234, 254, 0.5),
+        rgba(219, 234, 254, 0.5) 6px,
+        rgba(248, 250, 252, 0.9) 6px,
+        rgba(248, 250, 252, 0.9) 12px
+    );
+}

@@ -55,6 +55,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/logbook', [AdminWebController::class, 'logbook'])->name('admin.logbook');
     Route::get('/scanner', [AdminWebController::class, 'scanner'])->name('admin.scanner');
 
+    // Kalender Peminjaman & Jadwal Batas Kembali
+    Route::get('/calendar', [AdminWebController::class, 'calendar'])->name('admin.calendar');
+    Route::post('/calendar/peminjaman', [AdminWebController::class, 'storeCalendarPeminjaman'])->name('admin.calendar.store');
+
     // Manajemen User
     Route::get('/users', [AdminWebController::class, 'users'])->name('admin.users');
     Route::post('/users', [AdminWebController::class, 'storeUser'])->name('admin.users.store');

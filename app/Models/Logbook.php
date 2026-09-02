@@ -16,6 +16,7 @@ class Logbook extends Model
         'user_id',
         'barang_unit_id',
         'tanggal_pinjam',
+        'batas_kembali',
         'tanggal_kembali',
         'kondisi_kembali',
         'status_transaksi',
@@ -25,6 +26,7 @@ class Logbook extends Model
     {
         return [
             'tanggal_pinjam' => 'datetime',
+            'batas_kembali' => 'datetime',
             'tanggal_kembali' => 'datetime',
         ];
     }

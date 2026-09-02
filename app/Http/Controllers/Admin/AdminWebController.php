@@ -235,7 +235,8 @@ class AdminWebController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('nama_barang', 'like', "%{$search}%")
                   ->orWhere('kode_barang', 'like', "%{$search}%")
-                  ->orWhere('lokasi', 'like', "%{$search}%");
+                  ->orWhere('lokasi', 'like', "%{$search}%")
+                  ->orWhereHas('units', fn ($qu) => $qu->where('kode_unit', 'like', "%{$search}%"));
             });
         }
 
@@ -255,6 +256,14 @@ class AdminWebController extends Controller
                 'tersedia' => $b->units->where('status', 'tersedia')->count(),
                 'dipinjam' => $b->units->where('status', 'dipinjam')->count(),
                 'maintenance' => $b->units->where('status', 'maintenance')->count(),
+                'units' => $b->units->map(function ($u) {
+                    return [
+                        'id' => $u->id,
+                        'kode_unit' => $u->kode_unit,
+                        'status' => $u->status,
+                        'kondisi' => $u->kondisi,
+                    ];
+                })->values(),
             ];
         });
 
@@ -934,5 +943,157 @@ class AdminWebController extends Controller
             'maintenance_reports' => $maintenanceUnits,
             'asset_conditions' => $kondisiBreakdown,
         ];
+    }
+
+    /**
+     * Kalender Peminjaman & Jadwal Batas Pengembalian
+     */
+    public function calendar(Request $request): Response
+    {
+        $year = (int) ($request->year ?? now()->year);
+        $month = (int) ($request->month ?? 10); // Default to October as in reference screenshot or current month
+
+        $loans = Logbook::with(['user', 'barangUnit.barang.kategori'])
+            ->latest('tanggal_pinjam')
+            ->get()
+            ->map(function ($log) {
+                $batas = $log->batas_kembali ?? ($log->tanggal_kembali ?? $log->tanggal_pinjam->copy()->addDays(3));
+                $isOverdue = $log->status_transaksi === 'dipinjam' && now()->greaterThan($batas);
+
+                $categoryName = $log->barangUnit?->barang?->kategori?->nama_kategori ?? 'Umum';
+
+                // Color themes matching reference screenshot (purple, pink, orange, blue)
+                $colorThemes = [
+                    'Perkakas' => [
+                        'bg' => '#EDE9FE',
+                        'border' => '#7C3AED',
+                        'text' => '#5B21B6',
+                        'badge' => 'bg-purple-100 text-purple-800 border-purple-200',
+                    ],
+                    'Elektronik' => [
+                        'bg' => '#DBEAFE',
+                        'border' => '#2563EB',
+                        'text' => '#1E40AF',
+                        'badge' => 'bg-blue-100 text-blue-800 border-blue-200',
+                    ],
+                    'Komponen' => [
+                        'bg' => '#FFEDD5',
+                        'border' => '#F97316',
+                        'text' => '#9A3412',
+                        'badge' => 'bg-orange-100 text-orange-800 border-orange-200',
+                    ],
+                    'Festival' => [
+                        'bg' => '#FCE7F3',
+                        'border' => '#DB2777',
+                        'text' => '#9D174D',
+                        'badge' => 'bg-pink-100 text-pink-800 border-pink-200',
+                    ],
+                ];
+
+                $themeKey = match ($log->id % 4) {
+                    0 => 'Perkakas',
+                    1 => 'Festival',
+                    2 => 'Komponen',
+                    3 => 'Elektronik',
+                };
+                $theme = $colorThemes[$categoryName] ?? $colorThemes[$themeKey];
+
+                return [
+                    'id' => $log->id,
+                    'user_id' => $log->user_id,
+                    'user_name' => $log->user?->nama ?? 'Teknisi Workshop',
+                    'user_nip' => $log->user?->nip ?? '-',
+                    'user_email' => $log->user?->email ?? '-',
+                    'barang_unit_id' => $log->barang_unit_id,
+                    'nama_barang' => $log->barangUnit?->barang?->nama_barang ?? 'Barang Workshop',
+                    'kode_barang' => $log->barangUnit?->barang?->kode_barang ?? '-',
+                    'kode_unit' => $log->barangUnit?->kode_unit ?? '-',
+                    'nama_kategori' => $categoryName,
+                    'lokasi' => $log->barangUnit?->barang?->lokasi ?? 'Workshop Utama',
+                    'gambar_url' => $log->barangUnit?->barang?->gambar ? asset('storage/'.$log->barangUnit->barang->gambar) : null,
+                    'tanggal_pinjam' => $log->tanggal_pinjam ? $log->tanggal_pinjam->format('Y-m-d H:i') : null,
+                    'tanggal_pinjam_formatted' => $log->tanggal_pinjam ? $log->tanggal_pinjam->translatedFormat('d M Y, H:i') : '-',
+                    'tanggal_pinjam_date' => $log->tanggal_pinjam ? $log->tanggal_pinjam->format('Y-m-d') : null,
+                    'batas_kembali' => $batas ? $batas->format('Y-m-d H:i') : null,
+                    'batas_kembali_formatted' => $batas ? $batas->translatedFormat('d M Y, H:i') : '-',
+                    'batas_kembali_date' => $batas ? $batas->format('Y-m-d') : null,
+                    'tanggal_kembali' => $log->tanggal_kembali ? $log->tanggal_kembali->format('Y-m-d H:i') : null,
+                    'tanggal_kembali_formatted' => $log->tanggal_kembali ? $log->tanggal_kembali->translatedFormat('d M Y, H:i') : null,
+                    'status_transaksi' => $log->status_transaksi, // 'dipinjam' | 'dikembalikan'
+                    'kondisi_kembali' => $log->kondisi_kembali,
+                    'is_overdue' => $isOverdue,
+                    'theme' => $theme,
+                ];
+            });
+
+        // Upcoming and active loans for sidebar
+        $upcomingLoans = Logbook::with(['user', 'barangUnit.barang.kategori'])
+            ->where('status_transaksi', 'dipinjam')
+            ->orderBy('batas_kembali')
+            ->take(30)
+            ->get()
+            ->map(function ($log) {
+                $batas = $log->batas_kembali ?? ($log->tanggal_kembali ?? $log->tanggal_pinjam->copy()->addDays(3));
+                $categoryName = $log->barangUnit?->barang?->kategori?->nama_kategori ?? 'Umum';
+                return [
+                    'id' => $log->id,
+                    'user_name' => $log->user?->nama ?? 'Pengguna',
+                    'user_nip' => $log->user?->nip ?? '-',
+                    'nama_barang' => $log->barangUnit?->barang?->nama_barang ?? 'Barang Workshop',
+                    'kode_unit' => $log->barangUnit?->kode_unit ?? '-',
+                    'kategori' => $categoryName,
+                    'lokasi' => $log->barangUnit?->barang?->lokasi ?? 'Workshop Utama',
+                    'tanggal_pinjam' => $log->tanggal_pinjam ? $log->tanggal_pinjam->translatedFormat('d M Y, H:i') : '-',
+                    'batas_kembali' => $batas ? $batas->translatedFormat('d M Y, H:i') : '-',
+                    'is_overdue' => now()->greaterThan($batas),
+                ];
+            });
+
+        $users = User::where('role', 'user')->select('id', 'nama', 'nip')->get();
+        $availableUnits = BarangUnit::with('barang')
+            ->where('status', 'tersedia')
+            ->get()
+            ->map(function ($u) {
+                return [
+                    'id' => $u->id,
+                    'kode_unit' => $u->kode_unit,
+                    'nama_barang' => $u->barang?->nama_barang,
+                ];
+            });
+
+        return Inertia::render('Calendar/Index', [
+            'initialYear' => $year,
+            'initialMonth' => $month,
+            'loans' => $loans,
+            'upcomingLoans' => $upcomingLoans,
+            'users' => $users,
+            'availableUnits' => $availableUnits,
+        ]);
+    }
+
+    /**
+     * Simpan jadwal peminjaman baru dari kalender
+     */
+    public function storeCalendarPeminjaman(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'user_id' => ['required', 'exists:users,id'],
+            'barang_unit_id' => ['required', 'exists:barang_unit,id'],
+            'tanggal_pinjam' => ['required', 'date'],
+            'batas_kembali' => ['required', 'date', 'after_or_equal:tanggal_pinjam'],
+        ]);
+
+        $unit = BarangUnit::findOrFail($validated['barang_unit_id']);
+        $unit->update(['status' => 'dipinjam']);
+
+        Logbook::create([
+            'user_id' => $validated['user_id'],
+            'barang_unit_id' => $unit->id,
+            'tanggal_pinjam' => $validated['tanggal_pinjam'],
+            'batas_kembali' => $validated['batas_kembali'],
+            'status_transaksi' => 'dipinjam',
+        ]);
+
+        return back()->with('success', 'Peminjaman berhasil dijadwalkan ke kalender.');
     }
 }
