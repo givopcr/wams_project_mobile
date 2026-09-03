@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 import {
     LayoutDashboard,
@@ -19,14 +19,24 @@ import {
     CheckCircle2,
     AlertCircle,
     Scan,
-    Shield
+    Shield,
+    Sparkles,
+    ArrowUpRight,
+    RefreshCw
 } from 'lucide-react';
+import NotificationToastContainer from '@/Components/NotificationToast';
 
 export default function AuthenticatedLayout({ title, children }) {
     const { auth, flash, url } = usePage().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [toasts, setToasts] = useState([]);
+    const [notificationHistory, setNotificationHistory] = useState([]);
+    const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+    const [isTesting, setIsTesting] = useState(false);
 
     const user = auth?.user;
+    const lastCheckedTimeRef = useRef(new Date().toISOString());
+    const dropdownRef = useRef(null);
 
     const navItems = [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -38,6 +48,148 @@ export default function AuthenticatedLayout({ title, children }) {
         { name: 'Manajemen User', href: '/admin/users', icon: Users },
         { name: 'Laporan', href: '/admin/reports', icon: BarChart3 },
     ];
+
+    // Chime sound on new transaction
+    const playNotificationSound = () => {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
+
+            gain.gain.setValueAtTime(0.12, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.38);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.38);
+        } catch (e) {
+            // Browser autoplay policy might restrict audio before interaction
+        }
+    };
+
+    const handleDismissToast = (id) => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+    };
+
+    // Live Polling for transactions (Peminjaman & Pengembalian)
+    useEffect(() => {
+        let isMounted = true;
+
+        const pollTransactions = async () => {
+            try {
+                const res = await fetch(
+                    `/admin/notifications/check?since=${encodeURIComponent(lastCheckedTimeRef.current)}`,
+                    {
+                        headers: {
+                            Accept: 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    }
+                );
+
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (!isMounted) return;
+
+                if (data.server_time) {
+                    lastCheckedTimeRef.current = data.server_time;
+                }
+
+                if (data.notifications && data.notifications.length > 0) {
+                    playNotificationSound();
+                    setToasts((prev) => [...data.notifications, ...prev].slice(0, 5));
+                    setNotificationHistory((prev) => [...data.notifications, ...prev].slice(0, 15));
+                }
+            } catch (err) {
+                // Ignore transient network errors
+            }
+        };
+
+        // Initial setup poll
+        pollTransactions();
+
+        // Interval poll every 4.5 seconds
+        const intervalId = setInterval(pollTransactions, 4500);
+
+        return () => {
+            isMounted = false;
+            clearInterval(intervalId);
+        };
+    }, []);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setShowNotifDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Trigger test simulated notification
+    const handleTriggerTest = async (type = 'borrow', kondisi = 'baik') => {
+        setIsTesting(true);
+        try {
+            const res = await fetch(`/admin/notifications/test?type=${type}&kondisi=${kondisi}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.notification) {
+                    playNotificationSound();
+                    setToasts((prev) => [data.notification, ...prev.filter((t) => t.id !== data.notification.id)].slice(0, 5));
+                    setNotificationHistory((prev) => [data.notification, ...prev].slice(0, 15));
+                    setIsTesting(false);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error('Test notification fetch error:', err);
+        }
+
+        // Guaranteed instant fallback
+        const isReturn = type === 'return';
+        const fallbackNotif = {
+            id: 'sim_' + Date.now(),
+            logbook_id: 999,
+            type,
+            title: isReturn ? 'Pengembalian Barang Selesai' : 'Peminjaman Barang Baru',
+            user_name: user?.nama || 'Ahmad Syarifudin',
+            user_nip: '199503152020011002',
+            barang_name: 'Mesin Bor Cordless 18V',
+            kode_unit: 'BOR-101-01',
+            kondisi: kondisi,
+            status_transaksi: isReturn ? 'dikembalikan' : 'dipinjam',
+            message: isReturn
+                ? `${user?.nama || 'Ahmad Syarifudin'} telah mengembalikan Mesin Bor Cordless 18V (BOR-101-01). Kondisi unit: ${kondisi === 'rusak' ? 'Rusak' : 'Baik'}.`
+                : `${user?.nama || 'Ahmad Syarifudin'} (NIP: 199503152020011002) baru saja meminjam Mesin Bor Cordless 18V (BOR-101-01).`,
+            time: 'Baru saja',
+            timestamp: new Date().toISOString(),
+        };
+
+        playNotificationSound();
+        setToasts((prev) => [fallbackNotif, ...prev].slice(0, 5));
+        setNotificationHistory((prev) => [fallbackNotif, ...prev].slice(0, 15));
+        setIsTesting(false);
+    };
 
     const handleLogout = () => {
         router.post('/admin/logout');
@@ -83,7 +235,9 @@ export default function AuthenticatedLayout({ title, children }) {
                 <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1.5 custom-scrollbar">
                     {navItems.map((item) => {
                         const currentUrl = url || window.location.pathname;
-                        const active = currentUrl === item.href || (item.href !== '/admin/dashboard' && currentUrl.startsWith(item.href));
+                        const active =
+                            currentUrl === item.href ||
+                            (item.href !== '/admin/dashboard' && currentUrl.startsWith(item.href));
                         const Icon = item.icon;
                         return (
                             <Link
@@ -147,7 +301,7 @@ export default function AuthenticatedLayout({ title, children }) {
                         </h1>
                     </div>
 
-                    <div className="flex items-center gap-4 lg:gap-5">
+                    <div className="flex items-center gap-3 sm:gap-4 lg:gap-5" ref={dropdownRef}>
                         {/* Setting Icon Button */}
                         <Link
                             href="/admin/users"
@@ -157,15 +311,130 @@ export default function AuthenticatedLayout({ title, children }) {
                             <Settings size={18} />
                         </Link>
 
-                        {/* Notification Icon Button */}
-                        <Link
-                            href="/admin/logbook"
-                            title="Aktivitas Transaksi"
-                            className="w-10 h-10 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] hover:bg-[#E5E5E5] text-[#D84040] flex items-center justify-center transition-colors relative"
-                        >
-                            <Bell size={18} />
-                            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#D84040]"></span>
-                        </Link>
+                        {/* Notification Bell Icon & Popover */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                                title="Notifikasi Transaksi Realtime"
+                                className="w-10 h-10 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] hover:bg-[#E5E5E5] text-[#1D1616] flex items-center justify-center transition-colors relative cursor-pointer"
+                            >
+                                <Bell size={18} className={toasts.length > 0 ? 'text-[#D84040] animate-bounce' : 'text-[#525866]'} />
+                                {toasts.length > 0 ? (
+                                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#D84040] text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-xs">
+                                        {toasts.length}
+                                    </span>
+                                ) : (
+                                    <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-emerald-500"></span>
+                                )}
+                            </button>
+
+                            {/* Notification Dropdown Menu */}
+                            {showNotifDropdown && (
+                                <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl border border-[#E0E0E0] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.12)] p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                            <h4 className="font-bold text-sm text-[#1D1616]">
+                                                Notifikasi Transaksi Live
+                                            </h4>
+                                        </div>
+                                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                            Aktif Polling
+                                        </span>
+                                    </div>
+
+                                    {/* Quick Simulation Buttons inside dropdown */}
+                                    <div className="mt-3 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+                                        <div className="text-[11px] font-semibold text-gray-500 mb-2">
+                                            Uji Coba Tampilan Toast:
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    handleTriggerTest('borrow', 'baik');
+                                                    setShowNotifDropdown(false);
+                                                }}
+                                                className="py-1.5 px-1.5 bg-white hover:bg-gray-100 text-[#1D1616] border border-gray-300 rounded-lg text-[10.5px] font-bold transition-colors shadow-2xs text-center"
+                                                title="Peminjaman (Ikon Hitam)"
+                                            >
+                                                • Pinjam (Hitam)
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    handleTriggerTest('return', 'baik');
+                                                    setShowNotifDropdown(false);
+                                                }}
+                                                className="py-1.5 px-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-lg text-[10.5px] font-bold transition-colors shadow-2xs text-center"
+                                                title="Pengembalian Baik (Ikon Hijau)"
+                                            >
+                                                ✓ Kembali (Baik)
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    handleTriggerTest('return', 'rusak');
+                                                    setShowNotifDropdown(false);
+                                                }}
+                                                className="py-1.5 px-1.5 bg-white hover:bg-red-50 text-[#D84040] border border-red-300 rounded-lg text-[10.5px] font-bold transition-colors shadow-2xs text-center"
+                                                title="Pengembalian Rusak (Ikon Merah)"
+                                            >
+                                                ✕ Kembali (Rusak)
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Recent Log History */}
+                                    <div className="mt-3 max-h-56 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                        {notificationHistory.length === 0 ? (
+                                            <div className="py-6 text-center text-xs text-gray-400">
+                                                Menunggu transaksi peminjaman atau pengembalian barang dari pengguna...
+                                            </div>
+                                        ) : (
+                                            notificationHistory.map((item, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="p-2.5 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors text-left text-xs"
+                                                >
+                                                    <div className="flex items-center justify-between font-bold text-[#1D1616]">
+                                                        <span>{item.title}</span>
+                                                        <span className="text-[10px] font-normal text-gray-400">
+                                                            {item.time || 'Baru saja'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-gray-600 mt-0.5 text-[11px] leading-tight">
+                                                        {item.message}
+                                                    </p>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+
+                                    {/* Footer */}
+                                    <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between">
+                                        <Link
+                                            href="/admin/logbook"
+                                            onClick={() => setShowNotifDropdown(false)}
+                                            className="text-xs font-bold text-[#D84040] hover:text-[#8E1616] inline-flex items-center gap-1"
+                                        >
+                                            Buka Halaman Logbook
+                                            <ArrowUpRight size={13} />
+                                        </Link>
+                                        {toasts.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setToasts([])}
+                                                className="text-[11px] text-gray-400 hover:text-gray-600"
+                                            >
+                                                Bersihkan Toast
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {/* User Avatar Badge */}
                         <div className="w-10 h-10 rounded-xl bg-[#D84040] hover:bg-[#8E1616] text-white flex items-center justify-center font-bold text-sm cursor-pointer transition-colors shadow-xs">
@@ -190,6 +459,9 @@ export default function AuthenticatedLayout({ title, children }) {
 
                 {/* Page Content */}
                 <main className="flex-1 p-6 lg:p-10">{children}</main>
+
+                {/* Live Floating Notification Toast Container */}
+                <NotificationToastContainer toasts={toasts} onDismiss={handleDismissToast} />
             </div>
         </div>
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../core/theme.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'scan/scan_screen.dart';

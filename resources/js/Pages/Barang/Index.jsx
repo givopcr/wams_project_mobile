@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
@@ -21,7 +21,10 @@ import {
     ChevronDown,
     ChevronRight,
     QrCode,
-    Tag
+    Tag,
+    UploadCloud,
+    Image as ImageIcon,
+    Eye
 } from 'lucide-react';
 
 export default function BarangIndex({ barangList, categories = [], categoryStats = [], filters }) {
@@ -29,6 +32,9 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
     const [selectedCategory, setSelectedCategory] = useState(filters.kategori_id || '');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingBarang, setEditingBarang] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [previewModalImage, setPreviewModalImage] = useState(null);
+    const fileInputRef = useRef(null);
 
     // View Mode: 'master' (group by master item with unit badges & expandable rows) | 'unit' (flat list of every individual unit)
     const [viewMode, setViewMode] = useState('master');
@@ -40,13 +46,14 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
     const [selectedBarangForUnit, setSelectedBarangForUnit] = useState(null);
 
     // Form Master Barang
-    const { data, setData, post, processing, reset, errors } = useForm({
+    const { data, setData, post, processing, reset, errors, clearErrors } = useForm({
         kategori_id: '',
         nama_barang: '',
         kode_barang: '',
         detail_spesifikasi: '',
         lokasi: '',
         gambar: null,
+        hapus_gambar: false,
     });
 
     // Form Unit Fisik
@@ -99,7 +106,10 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
 
     const openCreateModal = () => {
         setEditingBarang(null);
+        clearErrors();
         reset();
+        setImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
         setData({
             kategori_id: categories.length > 0 ? categories[0].id : '',
             nama_barang: '',
@@ -107,12 +117,16 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             detail_spesifikasi: '',
             lokasi: '',
             gambar: null,
+            hapus_gambar: false,
         });
         setModalOpen(true);
     };
 
     const openEditModal = (b) => {
         setEditingBarang(b);
+        clearErrors();
+        setImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
         setData({
             kategori_id: b.kategori_id,
             nama_barang: b.nama_barang,
@@ -120,21 +134,58 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             detail_spesifikasi: b.detail_spesifikasi || '',
             lokasi: b.lokasi || '',
             gambar: null,
+            hapus_gambar: false,
         });
         setModalOpen(true);
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+            setData((prev) => ({
+                ...prev,
+                gambar: file,
+                hapus_gambar: false,
+            }));
+            const previewUrl = URL.createObjectURL(file);
+            setImagePreview(previewUrl);
+        }
+    };
+
+    const handleRemoveSelectedFile = () => {
+        setData((prev) => ({
+            ...prev,
+            gambar: null,
+        }));
+        setImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleRemoveExistingImage = () => {
+        setData((prev) => ({
+            ...prev,
+            gambar: null,
+            hapus_gambar: true,
+        }));
+        setImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (editingBarang) {
             post(`/admin/barang/${editingBarang.id}`, {
-                onSuccess: () => setModalOpen(false),
+                onSuccess: () => {
+                    setModalOpen(false);
+                    setImagePreview(null);
+                },
             });
         } else {
             post('/admin/barang', {
                 onSuccess: () => {
                     setModalOpen(false);
                     reset();
+                    setImagePreview(null);
                 },
             });
         }
@@ -396,11 +447,20 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                             {/* Kolom Barang & List Unit Fisik */}
                                                             <td className="p-4 max-w-md">
                                                                 <div className="flex items-start gap-3">
-                                                                    <div className="w-11 h-11 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] overflow-hidden flex items-center justify-center shrink-0 mt-0.5">
+                                                                    <div
+                                                                        onClick={() => item.gambar_url && setPreviewModalImage({ url: item.gambar_url, nama: item.nama_barang, kode: item.kode_barang, kategori: item.nama_kategori })}
+                                                                        className={`w-12 h-12 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] overflow-hidden flex items-center justify-center shrink-0 mt-0.5 group relative ${item.gambar_url ? 'cursor-pointer hover:ring-2 hover:ring-[#D84040]/50' : ''}`}
+                                                                        title={item.gambar_url ? 'Klik untuk melihat foto ukuran penuh' : 'Tidak ada gambar'}
+                                                                    >
                                                                         {item.gambar_url ? (
-                                                                            <img src={item.gambar_url} alt={item.nama_barang} className="w-full h-full object-cover" />
+                                                                            <>
+                                                                                <img src={item.gambar_url} alt={item.nama_barang} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                                                                    <Eye size={16} />
+                                                                                </div>
+                                                                            </>
                                                                         ) : (
-                                                                            <Package size={20} className="text-[#D84040]" />
+                                                                            <Package size={22} className="text-[#D84040]" />
                                                                         )}
                                                                     </div>
                                                                     <div className="min-w-0 flex-1">
@@ -683,11 +743,31 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
 
                                                     {/* Nama Barang Master */}
                                                     <td className="p-4">
-                                                        <div className="font-extrabold text-[#1D1616] text-xs">
-                                                            {unit.nama_barang}
-                                                        </div>
-                                                        <div className="text-[11px] font-mono text-[#6B7280] font-semibold">
-                                                            Master: {unit.kode_barang}
+                                                        <div className="flex items-center gap-3">
+                                                            <div
+                                                                onClick={() => unit.gambar_url && setPreviewModalImage({ url: unit.gambar_url, nama: unit.nama_barang, kode: unit.kode_barang, kategori: unit.nama_kategori })}
+                                                                className={`w-10 h-10 rounded-lg bg-[#EEEEEE] border border-[#E0E0E0] overflow-hidden flex items-center justify-center shrink-0 relative group ${unit.gambar_url ? 'cursor-pointer hover:ring-2 hover:ring-[#D84040]/50' : ''}`}
+                                                                title={unit.gambar_url ? 'Klik untuk melihat foto' : ''}
+                                                            >
+                                                                {unit.gambar_url ? (
+                                                                    <>
+                                                                        <img src={unit.gambar_url} alt={unit.nama_barang} className="w-full h-full object-cover" />
+                                                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                                                            <Eye size={12} />
+                                                                        </div>
+                                                                    </>
+                                                                ) : (
+                                                                    <Package size={16} className="text-[#D84040]" />
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-extrabold text-[#1D1616] text-xs">
+                                                                    {unit.nama_barang}
+                                                                </div>
+                                                                <div className="text-[11px] font-mono text-[#6B7280] font-semibold">
+                                                                    Master: {unit.kode_barang}
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </td>
 
@@ -834,6 +914,138 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                 />
                             </div>
 
+                            {/* Upload / Ganti / Hapus Gambar Master Barang */}
+                            <div>
+                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5 flex items-center justify-between">
+                                    <span>Foto / Gambar Barang</span>
+                                    <span className="text-[11px] font-normal text-[#6B7280]">Opsional (Maks. 2MB)</span>
+                                </label>
+
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                                    className="hidden"
+                                />
+
+                                {/* Kondisi 1: Preview file baru yang dipilih */}
+                                {imagePreview ? (
+                                    <div className="p-3.5 bg-rose-50/20 border border-rose-200 rounded-xl flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <img
+                                                src={imagePreview}
+                                                alt="Preview Baru"
+                                                className="w-14 h-14 rounded-lg object-cover border border-rose-300 shrink-0 bg-white"
+                                            />
+                                            <div className="min-w-0">
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 mb-1">
+                                                    <CheckCircle2 size={10} /> Gambar Baru Terpilih
+                                                </span>
+                                                <p className="text-xs font-bold text-[#1D1616] truncate">
+                                                    {data.gambar?.name || 'File dipilih'}
+                                                </p>
+                                                <p className="text-[11px] text-[#6B7280]">
+                                                    {data.gambar?.size ? `${(data.gambar.size / 1024).toFixed(1)} KB` : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="px-2.5 py-1.5 text-xs font-bold text-[#1D1616] bg-white border border-[#E0E0E0] rounded-lg hover:bg-gray-50 cursor-pointer transition-colors shadow-2xs"
+                                            >
+                                                Ganti
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveSelectedFile}
+                                                className="p-1.5 text-[#D84040] hover:bg-rose-100 rounded-lg cursor-pointer transition-colors"
+                                                title="Batal pilih gambar"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : editingBarang?.gambar_url && !data.hapus_gambar ? (
+                                    /* Kondisi 2: Sedang Edit dan memiliki gambar yang sudah ada */
+                                    <div className="p-3.5 bg-[#EEEEEE]/50 border border-[#E0E0E0] rounded-xl flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <img
+                                                src={editingBarang.gambar_url}
+                                                alt={editingBarang.nama_barang}
+                                                className="w-14 h-14 rounded-lg object-cover border border-[#E0E0E0] shrink-0 bg-white"
+                                            />
+                                            <div className="min-w-0">
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 mb-1">
+                                                    <ImageIcon size={10} /> Gambar Saat Ini
+                                                </span>
+                                                <p className="text-xs font-bold text-[#1D1616] truncate">
+                                                    {editingBarang.nama_barang}
+                                                </p>
+                                                <p className="text-[11px] text-[#6B7280]">
+                                                    Klik tombol untuk mengganti atau menghapus
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="px-2.5 py-1.5 text-xs font-bold text-[#1D1616] bg-white border border-[#E0E0E0] rounded-lg hover:bg-gray-50 cursor-pointer transition-colors shadow-2xs flex items-center gap-1"
+                                            >
+                                                <UploadCloud size={13} /> Ganti
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveExistingImage}
+                                                className="p-1.5 text-[#D84040] hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+                                                title="Hapus foto dari barang ini"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* Kondisi 3: Belum ada gambar / gambar dihapus */
+                                    <div>
+                                        <div
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="border-2 border-dashed border-[#E0E0E0] hover:border-[#D84040] rounded-xl p-4 text-center cursor-pointer transition-colors bg-gray-50/50 hover:bg-rose-50/10 group"
+                                        >
+                                            <div className="w-10 h-10 mx-auto rounded-full bg-[#EEEEEE] group-hover:bg-rose-50 flex items-center justify-center text-[#6B7280] group-hover:text-[#D84040] transition-colors mb-2">
+                                                <UploadCloud size={20} />
+                                            </div>
+                                            <p className="text-xs font-bold text-[#1D1616]">
+                                                Klik untuk memilih atau unggah foto barang
+                                            </p>
+                                            <p className="text-[11px] text-[#6B7280] mt-0.5">
+                                                Format file: PNG, JPG, JPEG, WEBP (Maks. 2 MB)
+                                            </p>
+                                        </div>
+                                        {data.hapus_gambar && (
+                                            <div className="mt-2 flex items-center justify-between text-xs text-[#D84040] bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200">
+                                                <span>Foto saat ini akan dihapus saat disimpan.</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setData('hapus_gambar', false)}
+                                                    className="text-xs font-bold underline cursor-pointer text-[#D84040] hover:text-[#8E1616]"
+                                                >
+                                                    Batalkan Hapus
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {errors.gambar && (
+                                    <p className="text-[#D84040] text-xs font-bold mt-1.5 flex items-center gap-1">
+                                        <AlertTriangle size={12} /> {errors.gambar}
+                                    </p>
+                                )}
+                            </div>
+
                             <div className="flex justify-end gap-2 pt-2">
                                 <button
                                     type="button"
@@ -940,6 +1152,58 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Lightbox / Preview Foto Master Barang */}
+            {previewModalImage && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/80 backdrop-blur-xs animate-in fade-in duration-150"
+                    onClick={() => setPreviewModalImage(null)}
+                >
+                    <div
+                        className="bg-white border border-[#E0E0E0] rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl relative"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-4 border-b border-[#E0E0E0] flex items-center justify-between bg-white">
+                            <div>
+                                <h3 className="font-extrabold text-sm text-[#1D1616]">
+                                    {previewModalImage.nama}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[11px] font-mono font-bold text-[#D84040]">
+                                        {previewModalImage.kode}
+                                    </span>
+                                    {previewModalImage.kategori && (
+                                        <span className="text-[11px] text-[#6B7280]">
+                                            • {previewModalImage.kategori}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setPreviewModalImage(null)}
+                                className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1D1616] hover:bg-[#EEEEEE] transition-colors cursor-pointer"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-4 bg-gray-50 flex items-center justify-center max-h-[70vh]">
+                            <img
+                                src={previewModalImage.url}
+                                alt={previewModalImage.nama}
+                                className="max-h-[60vh] max-w-full object-contain rounded-xl shadow-xs border border-[#E0E0E0]"
+                            />
+                        </div>
+                        <div className="p-3 bg-white border-t border-[#E0E0E0] text-right">
+                            <button
+                                onClick={() => setPreviewModalImage(null)}
+                                className="px-4 py-1.5 bg-[#EEEEEE] hover:bg-gray-200 text-[#1D1616] text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            >
+                                Tutup
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

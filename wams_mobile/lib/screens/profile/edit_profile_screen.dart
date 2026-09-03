@@ -104,7 +104,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           style: const TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF374151),
+            color: AppTheme.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
@@ -119,7 +119,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppTheme.cardLight,
             hintText: hintText,
             hintStyle: const TextStyle(
               color: Color(0xFF9CA3AF),
@@ -128,11 +128,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+              borderSide: const BorderSide(color: AppTheme.borderLight),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              borderSide: const BorderSide(color: AppTheme.borderLight),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -163,7 +163,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
         child: Form(
           key: _formKey,
           child: Column(
@@ -173,7 +173,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppTheme.cardLight,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppTheme.borderLight),
                   boxShadow: [
@@ -187,15 +187,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Informasi Akun',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                        fontSize: 15,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.person_outline, color: AppTheme.primary, size: 18),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Informasi Akun',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     _buildInputField(
                       label: 'Nama Lengkap',
                       controller: _namaController,
@@ -213,13 +226,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // Section 2: Ubah Password
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppTheme.cardLight,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: AppTheme.borderLight),
                   boxShadow: [
@@ -233,15 +246,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Ubah Password (Opsional)',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                        fontSize: 15,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.lock_outline, color: AppTheme.primary, size: 18),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Ubah Password (Opsional)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     const Text(
                       'Kosongkan kolom di bawah jika tidak ingin mengganti password.',
                       style: TextStyle(
@@ -249,7 +275,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     _buildInputField(
                       label: 'Password Saat Ini',
                       controller: _currentPasswordController,
@@ -258,7 +284,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureCurrent ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: const Color(0xFF9CA3AF),
+                          color: AppTheme.textMuted,
                           size: 20,
                         ),
                         onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
@@ -273,7 +299,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: const Color(0xFF9CA3AF),
+                          color: AppTheme.textMuted,
                           size: 20,
                         ),
                         onPressed: () => setState(() => _obscureNew = !_obscureNew),
@@ -288,7 +314,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: const Color(0xFF9CA3AF),
+                          color: AppTheme.textMuted,
                           size: 20,
                         ),
                         onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
@@ -304,56 +330,55 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
               // Action Button
-              Center(
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFFD84040),
-                        Color(0xFF8E1616),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFD84040).withValues(alpha: 0.3),
-                        blurRadius: 14,
-                        offset: const Offset(0, 5),
-                      ),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      AppTheme.primary,
+                      AppTheme.primaryDark,
                     ],
                   ),
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleSave,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            'Simpan Perubahan',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleSave,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Simpan Perubahan',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 24),

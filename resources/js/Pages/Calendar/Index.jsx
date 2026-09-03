@@ -251,33 +251,30 @@ export default function CalendarIndex({
                                 <button
                                     type="button"
                                     onClick={() => setViewMode('day')}
-                                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                                        viewMode === 'day'
+                                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${viewMode === 'day'
                                             ? 'bg-[#3B82F6] text-white shadow-xs font-bold'
                                             : 'text-[#64748B] hover:text-[#0F172A]'
-                                    }`}
+                                        }`}
                                 >
                                     Day
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setViewMode('week')}
-                                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                                        viewMode === 'week'
+                                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${viewMode === 'week'
                                             ? 'bg-[#3B82F6] text-white shadow-xs font-bold'
                                             : 'text-[#64748B] hover:text-[#0F172A]'
-                                    }`}
+                                        }`}
                                 >
                                     Week
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setViewMode('month')}
-                                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                                        viewMode === 'month'
+                                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${viewMode === 'month'
                                             ? 'bg-[#3B82F6] text-white shadow-xs font-bold'
                                             : 'text-[#64748B] hover:text-[#0F172A]'
-                                    }`}
+                                        }`}
                                 >
                                     Month
                                 </button>
@@ -309,11 +306,10 @@ export default function CalendarIndex({
                                         return (
                                             <div
                                                 key={idx}
-                                                className={`min-h-[105px] sm:min-h-[120px] p-2 flex flex-col justify-between transition-colors relative ${
-                                                    cell.isCurrentMonth
+                                                className={`min-h-[105px] sm:min-h-[120px] p-2 flex flex-col justify-between transition-colors relative ${cell.isCurrentMonth
                                                         ? 'bg-white hover:bg-slate-50/70'
                                                         : 'calendar-striped-cell text-gray-400'
-                                                }`}
+                                                    }`}
                                             >
                                                 {/* Cell Top Header: Day Number */}
                                                 <div className="flex items-center justify-end">
@@ -323,9 +319,8 @@ export default function CalendarIndex({
                                                         </span>
                                                     ) : (
                                                         <span
-                                                            className={`text-xs font-bold select-none ${
-                                                                cell.isCurrentMonth ? 'text-[#1E293B]' : 'text-[#94A3B8]'
-                                                            }`}
+                                                            className={`text-xs font-bold select-none ${cell.isCurrentMonth ? 'text-[#1E293B]' : 'text-[#94A3B8]'
+                                                                }`}
                                                         >
                                                             {cell.day}
                                                         </span>
@@ -503,11 +498,10 @@ export default function CalendarIndex({
                                                     <div className="text-xs font-extrabold text-[#1E293B]">
                                                         Batas: {loan.batas_kembali_formatted}
                                                     </div>
-                                                    <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${
-                                                        loan.status_transaksi === 'dipinjam'
+                                                    <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${loan.status_transaksi === 'dipinjam'
                                                             ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                                             : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                                    }`}>
+                                                        }`}>
                                                         {loan.status_transaksi === 'dipinjam' ? 'Sedang Dipinjam' : 'Selesai'}
                                                     </span>
                                                 </div>
@@ -534,15 +528,6 @@ export default function CalendarIndex({
                             <span>+ Add New Event</span>
                         </button>
 
-                        {/* Title: You are going to / Tenggat Peminjaman */}
-                        <div className="pt-2">
-                            <h3 className="text-sm font-extrabold text-[#1E293B] tracking-tight">
-                                You are going to
-                            </h3>
-                            <p className="text-[11px] text-[#64748B] mt-0.5">
-                                Jadwal sirkulasi dan batas pengembalian terdekat
-                            </p>
-                        </div>
 
                         {/* List of upcoming items with avatars matching reference */}
                         <div className="space-y-4">
@@ -616,11 +601,10 @@ export default function CalendarIndex({
                                             key={pageNum}
                                             type="button"
                                             onClick={() => setSidebarPage(pageNum)}
-                                            className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-all cursor-pointer ${
-                                                isActive
+                                            className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-all cursor-pointer ${isActive
                                                     ? 'bg-[#F4F4F5] border border-[#E4E4E7] text-[#18181B] shadow-2xs'
                                                     : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F4F4F5]'
-                                            }`}
+                                                }`}
                                         >
                                             {pageNum}
                                         </button>
@@ -653,13 +637,12 @@ export default function CalendarIndex({
                         <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                             <div className="flex items-center gap-2.5">
                                 <span
-                                    className={`w-3 h-3 rounded-full ${
-                                        selectedLoan.status_transaksi === 'dipinjam'
+                                    className={`w-3 h-3 rounded-full ${selectedLoan.status_transaksi === 'dipinjam'
                                             ? selectedLoan.is_overdue
                                                 ? 'bg-rose-500'
                                                 : 'bg-amber-500'
                                             : 'bg-emerald-500'
-                                    }`}
+                                        }`}
                                 />
                                 <h3 className="text-base font-extrabold text-[#1E293B]">
                                     Rincian Jadwal Peminjaman
@@ -733,11 +716,10 @@ export default function CalendarIndex({
                                     </span>
                                 </div>
 
-                                <div className={`border rounded-xl p-3 ${
-                                    selectedLoan.is_overdue
+                                <div className={`border rounded-xl p-3 ${selectedLoan.is_overdue
                                         ? 'bg-rose-50 border-rose-200 text-rose-900'
                                         : 'bg-amber-50 border-amber-200 text-amber-900'
-                                }`}>
+                                    }`}>
                                     <span className="text-[10px] font-bold uppercase tracking-wider block opacity-80">
                                         Batas Pengembalian
                                     </span>
@@ -750,13 +732,12 @@ export default function CalendarIndex({
                             {/* Status Transaksi */}
                             <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200 text-xs">
                                 <span className="font-semibold text-gray-600">Status Sirkulasi:</span>
-                                <span className={`inline-flex items-center gap-1 font-bold px-3 py-1 rounded-full ${
-                                    selectedLoan.status_transaksi === 'dipinjam'
+                                <span className={`inline-flex items-center gap-1 font-bold px-3 py-1 rounded-full ${selectedLoan.status_transaksi === 'dipinjam'
                                         ? selectedLoan.is_overdue
                                             ? 'bg-rose-100 text-rose-800'
                                             : 'bg-amber-100 text-amber-800'
                                         : 'bg-emerald-100 text-emerald-800'
-                                }`}>
+                                    }`}>
                                     {selectedLoan.status_transaksi === 'dipinjam' ? (
                                         selectedLoan.is_overdue ? (
                                             <>

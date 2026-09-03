@@ -25,6 +25,11 @@ import {
     BarangDipinjamIcon,
     BarangBaikIcon
 } from '@/components/DashboardCardIcons';
+import {
+    TopBarangHorizontalChart,
+    TopUnitMaintenanceChart,
+    OverdueTrendLineChart
+} from '@/Components/DashboardCharts';
 
 // Category Rounded Bar Chart Component
 function CategoryBarChart({ data = [], color = '#2563EB' }) {
@@ -146,7 +151,10 @@ function CategoryBarChart({ data = [], color = '#2563EB' }) {
 export default function Dashboard({
     stats = {},
     categoryCharts = [],
-    recentUsersActivity = []
+    recentUsersActivity = [],
+    topBarangDipinjam = [],
+    topUnitMaintenance = [],
+    overdueStats = {},
 }) {
     const { auth } = usePage().props;
     const userName = auth?.user?.nama || 'Admin';
@@ -401,7 +409,16 @@ export default function Dashboard({
                     </div>
                 </div>
 
-                {/* 3. BOTTOM ROW: CARD WITH 3 LIST USER RECENT BORROW / RETURN */}
+                {/* 3. ANALISIS SIRKULASI & MAINTENANCE (HORIZONTAL BAR CHARTS) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <TopBarangHorizontalChart data={topBarangDipinjam} />
+                    <TopUnitMaintenanceChart data={topUnitMaintenance} />
+                </div>
+
+                {/* 4. STATISTIK TREN KETERLAMBATAN (LINE CHART) */}
+                <OverdueTrendLineChart overdueStats={overdueStats} />
+
+                {/* 5. BOTTOM ROW: CARD WITH 3 LIST USER RECENT BORROW / RETURN */}
                 <div className="bg-white rounded-2xl border border-[#E0E0E0] p-6 shadow-2xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-5 border-b border-[#E0E0E0]">
                         <div>

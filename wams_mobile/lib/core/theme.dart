@@ -6,7 +6,9 @@ class AppTheme {
   static const Color darkSlate = Color(0xFF1D1616); // #1D1616
   static const Color primaryDark = Color(0xFF8E1616); // #8E1616
   static const Color primary = Color(0xFFD84040); // #D84040 (Coral)
-  static const Color bgLight = Color(0xFFEEEEEE); // #EEEEEE (Light Warm Background)
+  static const Color bgLight = Color(
+    0xFFEEEEEE,
+  ); // #EEEEEE (Light Warm Background)
   static const Color cardLight = Color(0xFFFFFFFF); // #FFFFFF (Card Surface)
   static const Color borderLight = Color(0xFFE0E0E0); // #E0E0E0 (Border Subtil)
   static const Color textPrimary = Color(0xFF1D1616); // #1D1616 (Main Text)
@@ -72,7 +74,10 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: primary, width: 1.5),
       ),
-      hintStyle: GoogleFonts.inter(color: const Color(0xFF9CA3AF), fontSize: 14),
+      hintStyle: GoogleFonts.inter(
+        color: const Color(0xFF9CA3AF),
+        fontSize: 14,
+      ),
       labelStyle: GoogleFonts.inter(color: textMuted, fontSize: 14),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -81,9 +86,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
       ),
     ),
@@ -92,4 +95,3 @@ class AppTheme {
   // Backward compatibility alias
   static ThemeData get darkTheme => lightTheme;
 }
-
