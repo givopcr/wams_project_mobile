@@ -64,17 +64,16 @@ export function TopBarangHorizontalChart({ data = [] }) {
                                 idx === 0
                                     ? 'bg-[#D84040] text-white shadow-xs'
                                     : idx === 1
-                                    ? 'bg-[#1D1616] text-white'
-                                    : 'bg-[#EEEEEE] text-[#1D1616] font-bold';
+                                        ? 'bg-[#1D1616] text-white'
+                                        : 'bg-[#EEEEEE] text-[#1D1616] font-bold';
 
                             return (
                                 <div
                                     key={item.id || idx}
                                     onMouseEnter={() => setHoveredIdx(idx)}
                                     onMouseLeave={() => setHoveredIdx(null)}
-                                    className={`p-2.5 rounded-xl transition-all ${
-                                        isHovered ? 'bg-[#EEEEEE]/50 shadow-2xs' : 'hover:bg-[#EEEEEE]/30'
-                                    }`}
+                                    className={`p-2.5 rounded-xl transition-all ${isHovered ? 'bg-[#EEEEEE]/50 shadow-2xs' : 'hover:bg-[#EEEEEE]/30'
+                                        }`}
                                 >
                                     {/* Item Info Line */}
                                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -181,9 +180,8 @@ export function TopUnitMaintenanceChart({ data = [] }) {
                                     key={item.id || idx}
                                     onMouseEnter={() => setHoveredIdx(idx)}
                                     onMouseLeave={() => setHoveredIdx(null)}
-                                    className={`p-2.5 rounded-xl transition-all ${
-                                        isHovered ? 'bg-[#EEEEEE]/50 shadow-2xs' : 'hover:bg-[#EEEEEE]/30'
-                                    }`}
+                                    className={`p-2.5 rounded-xl transition-all ${isHovered ? 'bg-[#EEEEEE]/50 shadow-2xs' : 'hover:bg-[#EEEEEE]/30'
+                                        }`}
                                 >
                                     {/* Item Info Line */}
                                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -204,11 +202,10 @@ export function TopUnitMaintenanceChart({ data = [] }) {
                                                 {item.total_maintenance}x
                                             </span>
                                             <span
-                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                                    isMaintenanceNow
+                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${isMaintenanceNow
                                                         ? 'bg-rose-50 text-[#D84040] border-rose-200'
                                                         : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                }`}
+                                                    }`}
                                             >
                                                 {isMaintenanceNow ? 'Sedang Servis' : 'Aktif'}
                                             </span>
@@ -298,9 +295,8 @@ export function OverdueTrendLineChart({ overdueStats = {} }) {
     // Area path closing at the bottom
     const areaPath =
         points.length > 0
-            ? `${linePath} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${points[0].x} ${
-                  paddingTop + chartHeight
-              } Z`
+            ? `${linePath} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${points[0].x} ${paddingTop + chartHeight
+            } Z`
             : '';
 
     const activePoint = hoveredIndex !== null ? points[hoveredIndex] : points[peakIndex];
@@ -333,33 +329,30 @@ export function OverdueTrendLineChart({ overdueStats = {} }) {
                     <button
                         type="button"
                         onClick={() => setPeriod('daily')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            period === 'daily'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === 'daily'
                                 ? 'bg-white text-[#D84040] shadow-2xs'
                                 : 'text-[#6B7280] hover:text-[#1D1616]'
-                        }`}
+                            }`}
                     >
                         Harian (7 Hari)
                     </button>
                     <button
                         type="button"
                         onClick={() => setPeriod('weekly')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            period === 'weekly'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === 'weekly'
                                 ? 'bg-white text-[#D84040] shadow-2xs'
                                 : 'text-[#6B7280] hover:text-[#1D1616]'
-                        }`}
+                            }`}
                     >
                         Mingguan (4 Minggu)
                     </button>
                     <button
                         type="button"
                         onClick={() => setPeriod('monthly')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            period === 'monthly'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === 'monthly'
                                 ? 'bg-white text-[#D84040] shadow-2xs'
                                 : 'text-[#6B7280] hover:text-[#1D1616]'
-                        }`}
+                            }`}
                     >
                         Bulanan (6 Bulan)
                     </button>

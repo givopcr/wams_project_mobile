@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants.dart';
@@ -19,20 +21,31 @@ class ApiService {
 
   // --- AUTH SERVICES ---
   Future<Map<String, dynamic>> login(String login, String password) async {
-    final response = await http.post(
-      Uri.parse(ApiConstants.login),
-      headers: _headers(null),
-      body: jsonEncode({'login': login, 'password': password}),
-    );
+    try {
+      final response = await http
+          .post(
+            Uri.parse(ApiConstants.login),
+            headers: _headers(null),
+            body: jsonEncode({'login': login, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 10));
 
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 200 && data['success'] == true) {
-      final token = data['data']['token'];
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auth_token', token);
-      return data;
-    } else {
-      throw Exception(data['message'] ?? 'Login gagal. Periksa data Anda.');
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final token = data['data']['token'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+        return data;
+      } else {
+        throw Exception(data['message'] ?? 'Login gagal. Periksa data Anda.');
+      }
+    } on TimeoutException {
+      throw Exception('Koneksi timeout ke ${ApiConstants.baseUrl}. Pastikan server aktif.');
+    } on SocketException {
+      throw Exception('Gagal menghubungi ${ApiConstants.baseUrl}. Periksa jaringan Anda.');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Terjadi kesalahan: $e');
     }
   }
 
@@ -43,26 +56,37 @@ class ApiService {
     required String password,
     required String passwordConfirmation,
   }) async {
-    final response = await http.post(
-      Uri.parse(ApiConstants.register),
-      headers: _headers(null),
-      body: jsonEncode({
-        'nama': nama,
-        'email': email,
-        'nip': nip,
-        'password': password,
-        'password_confirmation': passwordConfirmation,
-      }),
-    );
+    try {
+      final response = await http
+          .post(
+            Uri.parse(ApiConstants.register),
+            headers: _headers(null),
+            body: jsonEncode({
+              'nama': nama,
+              'email': email,
+              'nip': nip,
+              'password': password,
+              'password_confirmation': passwordConfirmation,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
 
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 201 && data['success'] == true) {
-      final token = data['data']['token'];
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auth_token', token);
-      return data;
-    } else {
-      throw Exception(data['message'] ?? 'Registrasi gagal.');
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201 && data['success'] == true) {
+        final token = data['data']['token'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+        return data;
+      } else {
+        throw Exception(data['message'] ?? 'Registrasi gagal.');
+      }
+    } on TimeoutException {
+      throw Exception('Koneksi timeout ke ${ApiConstants.baseUrl}. Pastikan server aktif.');
+    } on SocketException {
+      throw Exception('Gagal menghubungi ${ApiConstants.baseUrl}. Periksa jaringan Anda.');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Terjadi kesalahan: $e');
     }
   }
 
@@ -190,15 +214,25 @@ class ApiService {
   }
 
   // --- TRANSAKSI (PINJAM & PENGEMBALIAN) ---
-  Future<Map<String, dynamic>> pinjamBarang(int barangId, {int? unitId}) async {
+  Future<Map<String, dynamic>> pinjamBarang(
+    int barangId, {
+    int? unitId,
+    List<int>? unitIds,
+  }) async {
     final token = await _getToken();
+    final Map<String, dynamic> body = {
+      'barang_id': barangId,
+    };
+    if (unitIds != null && unitIds.isNotEmpty) {
+      body['barang_unit_ids'] = unitIds;
+    } else if (unitId != null) {
+      body['barang_unit_id'] = unitId;
+    }
+
     final response = await http.post(
       Uri.parse(ApiConstants.peminjaman),
       headers: _headers(token),
-      body: jsonEncode({
-        'barang_id': barangId,
-        ...?unitId != null ? {'barang_unit_id': unitId} : null,
-      }),
+      body: jsonEncode(body),
     );
 
     final data = jsonDecode(response.body);

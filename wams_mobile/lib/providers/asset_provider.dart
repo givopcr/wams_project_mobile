@@ -96,12 +96,12 @@ class AssetProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> pinjamBarang(int barangId, {int? unitId}) async {
+  Future<bool> pinjamBarang(int barangId, {int? unitId, List<int>? unitIds}) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      await _apiService.pinjamBarang(barangId, unitId: unitId);
+      await _apiService.pinjamBarang(barangId, unitId: unitId, unitIds: unitIds);
       // Refresh detail barang & units
       await fetchDetailBarang(barangId);
       await fetchBarangUnits(barangId);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme.dart';
 import '../../models/barang_model.dart';
 import '../main_navigation.dart';
@@ -71,10 +72,7 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
               const SizedBox(height: 6),
               const Text(
                 'Barang siap digunakan.',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.textMuted,
-                ),
+                style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
               ),
               const SizedBox(height: 28),
 
@@ -108,7 +106,11 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
                             border: Border.all(color: AppTheme.borderLight),
                           ),
                           child: const Center(
-                            child: Icon(Icons.handyman, color: AppTheme.primary, size: 28),
+                            child: Icon(
+                              Icons.handyman,
+                              color: AppTheme.primary,
+                              size: 28,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -156,14 +158,18 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (_) => const MainNavigation(initialIndex: 2)),
+                    MaterialPageRoute(
+                      builder: (_) => const MainNavigation(initialIndex: 2),
+                    ),
                     (route) => false,
                   );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
                   minimumSize: const Size.fromHeight(50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: const Text(
                   'Lihat Peminjaman Saya',
@@ -177,7 +183,9 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (_) => const MainNavigation(initialIndex: 0)),
+                    MaterialPageRoute(
+                      builder: (_) => const MainNavigation(initialIndex: 0),
+                    ),
                     (route) => false,
                   );
                 },
@@ -185,7 +193,9 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
                   backgroundColor: AppTheme.cardLight,
                   side: const BorderSide(color: AppTheme.borderLight),
                   minimumSize: const Size.fromHeight(50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: const Text(
                   'Kembali ke Dashboard',
@@ -207,7 +217,10 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+        ),
         Text(
           value,
           style: const TextStyle(

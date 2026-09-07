@@ -136,9 +136,8 @@ function CategoryBarChart({ data = [], color = '#2563EB' }) {
                 {data.map((d, i) => (
                     <span
                         key={i}
-                        className={`flex-1 text-center transition-colors ${
-                            activeIndex === i ? 'text-[#1D1616] font-bold' : ''
-                        }`}
+                        className={`flex-1 text-center transition-colors ${activeIndex === i ? 'text-[#1D1616] font-bold' : ''
+                            }`}
                     >
                         {d.day}
                     </span>
@@ -469,8 +468,8 @@ export default function Dashboard({
                                         <div className="flex items-center gap-3.5 min-w-[220px]">
                                             <div
                                                 className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${isDipinjam
-                                                        ? 'bg-[#D84040] text-white'
-                                                        : 'bg-[#1D1616] text-white'
+                                                    ? 'bg-[#D84040] text-white'
+                                                    : 'bg-[#1D1616] text-white'
                                                     }`}
                                             >
                                                 {initials}
@@ -510,8 +509,8 @@ export default function Dashboard({
                                         <div className="flex items-center justify-between md:justify-end gap-3 min-w-[150px]">
                                             <span
                                                 className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-[11px] font-bold ${isDipinjam
-                                                        ? 'bg-rose-50 text-[#D84040] border border-rose-200'
-                                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                    ? 'bg-rose-50 text-[#D84040] border border-rose-200'
+                                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                                     }`}
                                             >
                                                 {isDipinjam ? (

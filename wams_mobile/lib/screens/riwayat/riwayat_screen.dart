@@ -271,34 +271,6 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         },
                       ),
           ),
-
-          // Bottom Reminder Banner on 'Aktif' tab
-          if (currentFilter == 'aktif' && displayList.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFFDE68A)),
-              ),
-              child: const Row(
-                children: [
-                  Text('😊', style: TextStyle(fontSize: 18)),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Pastikan barang dikembalikan tepat waktu untuk kenyamanan bersama.',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: Color(0xFF92400E),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );

@@ -528,7 +528,6 @@ export default function CalendarIndex({
                             <span>+ Add New Event</span>
                         </button>
 
-
                         {/* List of upcoming items with avatars matching reference */}
                         <div className="space-y-4">
                             {paginatedUpcomingLoans.length === 0 ? (

@@ -22,6 +22,56 @@ class TransaksiController extends Controller
         $user = $request->user();
         $barangId = $request->barang_id;
         $requestedUnitId = $request->barang_unit_id;
+        $requestedUnitIds = $request->barang_unit_ids;
+
+        // Multiple units handling
+        if (is_array($requestedUnitIds) && count($requestedUnitIds) > 0) {
+            return DB::transaction(function () use ($user, $barangId, $requestedUnitIds) {
+                $units = BarangUnit::whereIn('id', $requestedUnitIds)
+                    ->where('barang_id', $barangId)
+                    ->where('status', 'tersedia')
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($units->count() !== count($requestedUnitIds)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Satu atau lebih unit barang tidak tersedia untuk dipinjam saat ini.',
+                    ], 422);
+                }
+
+                $logbooks = [];
+                foreach ($units as $unit) {
+                    $unit->update(['status' => 'dipinjam']);
+
+                    $logbooks[] = Logbook::create([
+                        'user_id' => $user->id,
+                        'barang_unit_id' => $unit->id,
+                        'tanggal_pinjam' => now(),
+                        'tanggal_kembali' => null,
+                        'kondisi_kembali' => null,
+                        'status_transaksi' => 'dipinjam',
+                    ]);
+                }
+
+                $barang = Barang::find($barangId);
+                $firstLogbook = $logbooks[0] ?? null;
+
+                return response()->json([
+                    'success' => true,
+                    'message' => count($units) . ' unit berhasil dipinjam.',
+                    'data' => [
+                        'logbook_id' => $firstLogbook ? $firstLogbook->id : null,
+                        'total_unit' => count($units),
+                        'kode_unit' => $units->pluck('kode_unit')->implode(', '),
+                        'kode_units' => $units->pluck('kode_unit')->toArray(),
+                        'barang_nama' => $barang->nama_barang,
+                        'tanggal_pinjam' => now()->toIso8601String(),
+                        'status_transaksi' => 'dipinjam',
+                    ],
+                ], 201);
+            });
+        }
 
         return DB::transaction(function () use ($user, $barangId, $requestedUnitId) {
             // Lock row untuk mencegah race condition (2 user meminjam unit yang sama bersamaan)

@@ -16,6 +16,8 @@ class PeminjamanRequest extends FormRequest
         return [
             'barang_id' => ['required', 'exists:barang,id'],
             'barang_unit_id' => ['nullable', 'exists:barang_unit,id'],
+            'barang_unit_ids' => ['nullable', 'array'],
+            'barang_unit_ids.*' => ['exists:barang_unit,id'],
         ];
     }
 }

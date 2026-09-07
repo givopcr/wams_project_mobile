@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+
 import '../../core/theme.dart';
 import '../../models/barang_model.dart';
 import '../../models/barang_unit_model.dart';
@@ -10,13 +11,21 @@ import 'peminjaman_berhasil_screen.dart';
 
 class FormPeminjamanScreen extends StatefulWidget {
   final BarangModel barang;
-  final BarangUnitModel unit;
+  final List<BarangUnitModel> units;
+  final BarangUnitModel? unit;
 
   const FormPeminjamanScreen({
     super.key,
     required this.barang,
-    required this.unit,
+    this.units = const [],
+    this.unit,
   });
+
+  List<BarangUnitModel> get allUnits {
+    if (units.isNotEmpty) return units;
+    if (unit != null) return [unit!];
+    return [];
+  }
 
   @override
   State<FormPeminjamanScreen> createState() => _FormPeminjamanScreenState();
@@ -38,7 +47,9 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
 
   Future<void> _pickDate(bool isPinjam) async {
     final initial = isPinjam ? _tanggalPinjam : _tanggalKembali;
-    final firstDate = isPinjam ? DateTime.now().subtract(const Duration(days: 1)) : _tanggalPinjam;
+    final firstDate = isPinjam
+        ? DateTime.now().subtract(const Duration(days: 1))
+        : _tanggalPinjam;
     final lastDate = DateTime.now().add(const Duration(days: 60));
 
     final picked = await showDatePicker(
@@ -87,6 +98,9 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
       return;
     }
 
+    final selectedUnits = widget.allUnits;
+    if (selectedUnits.isEmpty) return;
+
     setState(() => _isSubmitting = true);
     final assetProvider = context.read<AssetProvider>();
     final txProvider = context.read<TransactionProvider>();
@@ -95,7 +109,7 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
 
     final success = await assetProvider.pinjamBarang(
       widget.barang.id,
-      unitId: widget.unit.id,
+      unitIds: selectedUnits.map((u) => u.id).toList(),
     );
 
     setState(() => _isSubmitting = false);
@@ -105,11 +119,13 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
       // Refresh transaction list
       txProvider.fetchRiwayat();
 
+      final kodeUnitsText = selectedUnits.map((u) => u.kodeUnit).join(', ');
+
       nav.pushReplacement(
         MaterialPageRoute(
           builder: (_) => PeminjamanBerhasilScreen(
             barang: widget.barang,
-            kodeUnit: widget.unit.kodeUnit,
+            kodeUnit: kodeUnitsText,
             tanggalPinjam: _dateFormat.format(_tanggalPinjam),
             tanggalKembali: _dateFormat.format(_tanggalKembali),
             keperluan: keperluan,
@@ -119,7 +135,9 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
     } else {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(assetProvider.errorMessage ?? 'Peminjaman gagal diajukan.'),
+          content: Text(
+            assetProvider.errorMessage ?? 'Peminjaman gagal diajukan.',
+          ),
           backgroundColor: AppTheme.danger,
         ),
       );
@@ -166,63 +184,93 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
                   ),
                 ],
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.borderLight),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.handyman, color: AppTheme.primary, size: 28),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.barang.namaBarang,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: AppTheme.textPrimary,
+                  Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.borderLight),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.handyman,
+                            color: AppTheme.primary,
+                            size: 26,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Row(
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                widget.unit.kodeUnit,
-                                style: const TextStyle(
-                                  color: Color(0xFF2563EB),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                ),
+                            Text(
+                              widget.barang.namaBarang,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: AppTheme.textPrimary,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Kondisi: Baik',
-                              style: TextStyle(
+                            const SizedBox(height: 4),
+                            Text(
+                              '${widget.allUnits.length} unit dipilih',
+                              style: const TextStyle(
                                 color: AppTheme.textMuted,
-                                fontSize: 11,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(color: AppTheme.borderLight, height: 1),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: widget.allUnits.map((u) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.check_circle,
+                              size: 12,
+                              color: Color(0xFF2563EB),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              u.kodeUnit,
+                              style: const TextStyle(
+                                color: Color(0xFF1D4ED8),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
@@ -243,7 +291,10 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
               onTap: () => _pickDate(true),
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.cardLight,
                   borderRadius: BorderRadius.circular(12),
@@ -260,7 +311,11 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    const Icon(Icons.calendar_today_outlined, color: AppTheme.primary, size: 20),
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      color: AppTheme.primary,
+                      size: 20,
+                    ),
                   ],
                 ),
               ),
@@ -281,7 +336,10 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
               onTap: () => _pickDate(false),
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.cardLight,
                   borderRadius: BorderRadius.circular(12),
@@ -298,7 +356,11 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    const Icon(Icons.calendar_month_outlined, color: AppTheme.primary, size: 20),
+                    const Icon(
+                      Icons.calendar_month_outlined,
+                      color: AppTheme.primary,
+                      size: 20,
+                    ),
                   ],
                 ),
               ),
@@ -337,17 +399,25 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 minimumSize: const Size.fromHeight(50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               child: _isSubmitting
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Text(
                       'Ajukan Peminjaman',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
             ),
           ],

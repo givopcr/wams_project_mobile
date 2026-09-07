@@ -1,7 +1,7 @@
 class ApiConstants {
-  // Untuk emulator Android gunakan 10.0.2.2, untuk device fisik/PC lokal gunakan IP LAN/localhost
-  // Default emulator Android: http://10.0.2.2:8000
-  // Default localhost (Windows desktop / Chrome): http://localhost:8000
+  // Untuk Android Emulator bawaan Android Studio: http://10.0.2.2:8000
+  // Untuk device fisik via USB (adb reverse) & Windows desktop: http://127.0.0.1:8000
+  // Untuk device fisik via Wi-Fi LAN: http://192.168.0.109:8000
   static const String baseUrl = 'http://10.0.2.2:8000/api';
   static const String storageBaseUrl = 'http://10.0.2.2:8000/storage';
 

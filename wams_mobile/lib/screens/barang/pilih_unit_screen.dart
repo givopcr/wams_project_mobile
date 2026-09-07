@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../../core/theme.dart';
 import '../../models/barang_model.dart';
-import '../../models/barang_unit_model.dart';
 import '../../providers/asset_provider.dart';
 import 'form_peminjaman_screen.dart';
 
@@ -17,7 +16,7 @@ class PilihUnitScreen extends StatefulWidget {
 }
 
 class _PilihUnitScreenState extends State<PilihUnitScreen> {
-  BarangUnitModel? _selectedUnit;
+  final Set<int> _selectedUnitIds = {};
 
   @override
   void initState() {
@@ -33,6 +32,9 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
   Widget build(BuildContext context) {
     final assetProvider = Provider.of<AssetProvider>(context);
     final units = assetProvider.barangUnits;
+    final availableUnits = units.where((u) => u.isTersedia).toList();
+    final allAvailableSelected = availableUnits.isNotEmpty &&
+        availableUnits.every((u) => _selectedUnitIds.contains(u.id));
 
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
@@ -62,13 +64,54 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(20.0),
                     children: [
-                      // Subtitle
-                      Text(
-                        'Pilih unit fisik ${widget.barang.namaBarang} yang ingin dipinjam:',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.textMuted,
-                        ),
+                      // Subtitle & Select All toggle
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Pilih unit fisik ${widget.barang.namaBarang} yang ingin dipinjam:',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textMuted,
+                              ),
+                            ),
+                          ),
+                          if (availableUnits.length > 1)
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  if (allAvailableSelected) {
+                                    _selectedUnitIds.removeAll(
+                                      availableUnits.map((u) => u.id),
+                                    );
+                                  } else {
+                                    _selectedUnitIds.addAll(
+                                      availableUnits.map((u) => u.id),
+                                    );
+                                  }
+                                });
+                              },
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(
+                                allAvailableSelected
+                                    ? 'Batal Semua'
+                                    : 'Pilih Semua (${availableUnits.length})',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primary,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 16),
 
@@ -84,14 +127,20 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                         )
                       else
                         ...units.map((unit) {
-                          final isSelected = _selectedUnit?.id == unit.id;
+                          final isSelected = _selectedUnitIds.contains(unit.id);
                           final isAvailable = unit.isTersedia;
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12.0),
                             child: InkWell(
                               onTap: isAvailable
-                                  ? () => setState(() => _selectedUnit = unit)
+                                  ? () => setState(() {
+                                        if (isSelected) {
+                                          _selectedUnitIds.remove(unit.id);
+                                        } else {
+                                          _selectedUnitIds.add(unit.id);
+                                        }
+                                      })
                                   : null,
                               borderRadius: BorderRadius.circular(16),
                               child: Container(
@@ -115,12 +164,16 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    // Custom Radio Indicator
-                                    Container(
-                                      width: 20,
-                                      height: 20,
+                                    // Custom Checkbox Indicator (supports multi-selection)
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 180),
+                                      width: 22,
+                                      height: 22,
                                       decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
+                                        color: isSelected
+                                            ? AppTheme.primary
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(7),
                                         border: Border.all(
                                           color: isSelected
                                               ? AppTheme.primary
@@ -131,15 +184,10 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                                         ),
                                       ),
                                       child: isSelected
-                                          ? Center(
-                                              child: Container(
-                                                width: 10,
-                                                height: 10,
-                                                decoration: const BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: AppTheme.primary,
-                                                ),
-                                              ),
+                                          ? const Icon(
+                                              Icons.check,
+                                              size: 16,
+                                              color: Colors.white,
                                             )
                                           : null,
                                     ),
@@ -221,14 +269,17 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                   ),
                   child: SafeArea(
                     child: ElevatedButton(
-                      onPressed: _selectedUnit != null
+                      onPressed: _selectedUnitIds.isNotEmpty
                           ? () {
+                              final selectedList = units
+                                  .where((u) => _selectedUnitIds.contains(u.id))
+                                  .toList();
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => FormPeminjamanScreen(
                                     barang: widget.barang,
-                                    unit: _selectedUnit!,
+                                    units: selectedList,
                                   ),
                                 ),
                               );
@@ -242,9 +293,11 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text(
-                        'Lanjutkan',
-                        style: TextStyle(
+                      child: Text(
+                        _selectedUnitIds.isEmpty
+                            ? 'Pilih Unit Terlebih Dahulu'
+                            : 'Lanjutkan (${_selectedUnitIds.length} Unit Dipilih)',
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
