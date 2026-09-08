@@ -94,12 +94,19 @@ export default function GuestStatus({ unit, logbook }) {
             });
 
             if (response.data.success) {
+                setShowReturnModal(false);
                 localStorage.removeItem(`wams_guest_token_${unit.kode_unit}`);
                 setReturnSuccess(true);
             } else {
                 setReturnError(response.data.message || 'Gagal mengembalikan barang.');
             }
         } catch (err) {
+            if (err.response?.status === 422 && err.response?.data?.message?.includes('sudah dikembalikan')) {
+                setShowReturnModal(false);
+                localStorage.removeItem(`wams_guest_token_${unit.kode_unit}`);
+                setReturnSuccess(true);
+                return;
+            }
             setReturnError(err.response?.data?.message || 'Terjadi kesalahan saat memproses pengembalian.');
         } finally {
             setReturning(false);
@@ -266,7 +273,7 @@ export default function GuestStatus({ unit, logbook }) {
             </main>
 
             {/* Return Confirmation Modal */}
-            {showReturnModal && (
+            {!returnSuccess && showReturnModal && (
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-sm w-full p-6 shadow-xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
                         <div className="text-center space-y-2">

@@ -474,14 +474,21 @@ export default function Dashboard({
                                             >
                                                 {initials}
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="text-xs font-extrabold text-[#1D1616] truncate">
-                                                    {log.user_name}
-                                                </p>
-                                                <p className="text-[11px] font-semibold text-[#6B7280] truncate">
-                                                    NIP: {log.user_nip}
-                                                </p>
-                                            </div>
+                                             <div className="min-w-0">
+                                                 <div className="flex items-center gap-1.5">
+                                                     <p className="text-xs font-extrabold text-[#1D1616] truncate">
+                                                         {log.user_name}
+                                                     </p>
+                                                     {log.is_guest && (
+                                                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                                             Tamu
+                                                         </span>
+                                                     )}
+                                                 </div>
+                                                 <p className="text-[11px] font-semibold text-[#6B7280] truncate">
+                                                     {log.is_guest ? log.user_email : `NIP: ${log.user_nip}`}
+                                                 </p>
+                                             </div>
                                         </div>
 
                                         {/* Barang & Unit */}

@@ -64,9 +64,30 @@ export default function GuestBorrow({
 
     // Handle Custom Duration Change
     const handleCustomChange = (hours) => {
-        const val = Math.max(1, parseInt(hours) || 1);
+        if (hours === '') {
+            setCustomJam('');
+            setDurasiMenit(0);
+            return;
+        }
+
+        const parsed = parseInt(hours, 10);
+        if (isNaN(parsed)) {
+            setCustomJam('');
+            setDurasiMenit(0);
+            return;
+        }
+
+        const val = Math.min(168, Math.max(0, parsed));
         setCustomJam(val);
         setDurasiMenit(val * 60);
+    };
+
+    // Handle Custom Duration Blur (revert to 1 if left empty)
+    const handleCustomBlur = () => {
+        if (customJam === '' || parseInt(customJam, 10) < 1) {
+            setCustomJam(1);
+            setDurasiMenit(60);
+        }
     };
 
     // Handle initial form submit
@@ -81,6 +102,11 @@ export default function GuestBorrow({
 
         if (!email.trim() || !email.includes('@')) {
             setError('Email aktif wajib diisi dengan benar.');
+            return;
+        }
+
+        if (isCustomDuration && (!customJam || parseInt(customJam, 10) < 1)) {
+            setError('Durasi peminjaman custom minimal 1 jam.');
             return;
         }
 
@@ -334,7 +360,9 @@ export default function GuestBorrow({
                                 onClick={() => {
                                     setIsCustomDuration(!isCustomDuration);
                                     if (!isCustomDuration) {
-                                        setDurasiMenit(customJam * 60);
+                                        const hours = parseInt(customJam, 10) || 1;
+                                        setCustomJam(hours);
+                                        setDurasiMenit(hours * 60);
                                     } else {
                                         setDurasiMenit(120);
                                     }
@@ -377,11 +405,13 @@ export default function GuestBorrow({
                                         max="168"
                                         value={customJam}
                                         onChange={(e) => handleCustomChange(e.target.value)}
+                                        onBlur={handleCustomBlur}
+                                        placeholder="1"
                                         className="w-24 px-3 py-2 bg-white border border-[#E0E0E0] rounded-lg text-xs font-bold text-center focus:outline-none focus:border-[#D84040]"
                                     />
                                     <span className="text-xs font-semibold text-[#1D1616]">Jam</span>
                                     <span className="text-xs text-[#6B7280]">
-                                        ({customJam * 60} Menit)
+                                        ({(parseInt(customJam, 10) || 0) * 60} Menit)
                                     </span>
                                 </div>
                             </div>

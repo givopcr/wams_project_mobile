@@ -404,9 +404,17 @@ class GuestPinjamController extends Controller
 
         $logbook = $unit->activeLogbook;
         if (!$logbook || $unit->status !== 'dipinjam') {
+            if ($unit->status === 'tersedia') {
+                return redirect()->route('guest.scan', ['kode_unit' => $kode_unit]);
+            }
+
             return Inertia::render('Guest/Unavailable', [
-                'type' => 'not_borrowed',
+                'type' => $unit->status === 'maintenance' ? 'maintenance' : 'not_borrowed',
                 'kode_unit' => $kode_unit,
+                'unit' => [
+                    'nama_barang' => $unit->barang?->nama_barang,
+                    'kode_unit' => $unit->kode_unit,
+                ],
                 'message' => 'Unit barang ini sedang tidak dalam status dipinjam.',
             ]);
         }

@@ -50,11 +50,13 @@ class AdminWebController extends Controller
              ->take(3)
              ->get()
              ->map(function ($log) {
+                 $isGuest = $log->tipe_peminjam === 'guest';
                  return [
                      'id' => $log->id,
-                     'user_name' => $log->user?->nama ?? 'Teknisi Workshop',
-                     'user_nip' => $log->user?->nip ?? '-',
-                     'user_email' => $log->user?->email ?? '-',
+                     'user_name' => $isGuest ? ($log->guest_nama ?: 'Tamu') . ' (Tamu)' : ($log->user?->nama ?? 'Teknisi Workshop'),
+                     'user_nip' => $isGuest ? 'Guest' : ($log->user?->nip ?? '-'),
+                     'user_email' => $isGuest ? ($log->guest_email ?: '-') : ($log->user?->email ?? '-'),
+                     'is_guest' => $isGuest,
                      'nama_barang' => $log->barangUnit?->barang?->nama_barang ?? 'Barang Workshop',
                      'kode_unit' => $log->barangUnit?->kode_unit ?? '-',
                      'kategori' => $log->barangUnit?->barang?->kategori?->nama_kategori ?? 'Umum',
@@ -1297,26 +1299,42 @@ class AdminWebController extends Controller
 
         $notifications = $logs->map(function ($log) {
             $isReturned = $log->status_transaksi === 'dikembalikan';
-            $userName = $log->user?->nama ?? 'Pengguna Workshop';
-            $userNip = $log->user?->nip ?? '-';
+            $isGuest = $log->tipe_peminjam === 'guest';
+
+            $userName = $isGuest
+                ? ($log->guest_nama ?: 'Tamu') . ' (Tamu)'
+                : ($log->user?->nama ?? 'Pengguna Workshop');
+
+            $userNip = $isGuest ? 'Guest' : ($log->user?->nip ?? '-');
             $barangName = $log->barangUnit?->barang?->nama_barang ?? 'Barang Workshop';
             $kodeUnit = $log->barangUnit?->kode_unit ?? '-';
             $kondisi = $log->kondisi_kembali ?? 'baik';
+
+            $title = $isReturned
+                ? ($isGuest ? 'Pengembalian Barang (Tamu)' : 'Pengembalian Barang Selesai')
+                : ($isGuest ? 'Peminjaman Barang Baru (Tamu)' : 'Peminjaman Barang Baru');
+
+            $message = $isReturned
+                ? ($isGuest
+                    ? "Tamu {$log->guest_nama} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi: " . ucfirst($kondisi) . "."
+                    : "{$userName} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi: " . ucfirst($kondisi) . ".")
+                : ($isGuest
+                    ? "Tamu {$log->guest_nama} ({$log->guest_email}) baru saja meminjam {$barangName} ({$kodeUnit}) via Mobile Web."
+                    : "{$userName} (NIP: {$userNip}) baru saja meminjam {$barangName} ({$kodeUnit}).");
 
             return [
                 'id' => $log->id . '_' . $log->status_transaksi . '_' . $log->updated_at->timestamp,
                 'logbook_id' => $log->id,
                 'type' => $isReturned ? 'return' : 'borrow',
-                'title' => $isReturned ? 'Pengembalian Barang Selesai' : 'Peminjaman Barang Baru',
+                'title' => $title,
                 'user_name' => $userName,
                 'user_nip' => $userNip,
+                'is_guest' => $isGuest,
                 'barang_name' => $barangName,
                 'kode_unit' => $kodeUnit,
                 'kondisi' => $kondisi,
                 'status_transaksi' => $log->status_transaksi,
-                'message' => $isReturned
-                    ? "{$userName} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi unit: " . ucfirst($kondisi) . "."
-                    : "{$userName} (NIP: {$userNip}) baru saja meminjam {$barangName} ({$kodeUnit}).",
+                'message' => $message,
                 'time' => $log->updated_at->diffForHumans(),
                 'timestamp' => $log->updated_at->toIso8601String(),
             ];

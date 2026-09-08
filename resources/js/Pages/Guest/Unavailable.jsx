@@ -47,6 +47,33 @@ export default function GuestUnavailable({
 
             <main className="flex-1 max-w-lg w-full mx-auto p-4 flex flex-col justify-center space-y-4">
                 <div className="bg-white border border-[#E0E0E0] rounded-2xl p-6 shadow-2xs text-center space-y-4">
+                    {type === 'not_borrowed' && (
+                        <>
+                            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full flex items-center justify-center mx-auto">
+                                <CheckCircle2 size={32} />
+                            </div>
+                            <div>
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    Tersedia
+                                </span>
+                                <h2 className="text-base font-bold text-[#1D1616] mt-2">
+                                    {unit ? `${unit.nama_barang} (${unit.kode_unit})` : kode_unit}
+                                </h2>
+                                <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
+                                    {message || 'Unit barang ini sedang tidak dalam status dipinjam dan siap untuk dipinjam.'}
+                                </p>
+                            </div>
+                            <div className="pt-2">
+                                <a
+                                    href={`/scan/${kode_unit}`}
+                                    className="inline-flex items-center justify-center w-full py-2.5 bg-[#1D1616] hover:bg-black text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+                                >
+                                    Pinjam Unit Ini
+                                </a>
+                            </div>
+                        </>
+                    )}
+
                     {type === 'borrowed' && (
                         <>
                             <div className="w-16 h-16 bg-amber-50 text-amber-600 border border-amber-200 rounded-full flex items-center justify-center mx-auto">
