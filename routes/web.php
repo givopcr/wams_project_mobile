@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminWebController;
 use App\Http\Controllers\Admin\AuthWebController;
+use App\Http\Controllers\Guest\GuestPinjamController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -77,3 +78,16 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/notifications/check', [AdminWebController::class, 'checkNewTransactions'])->name('admin.notifications.check');
     Route::match(['get', 'post'], '/notifications/test', [AdminWebController::class, 'testNotification'])->name('admin.notifications.test');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Public Guest Borrowing (Scan QR via Mobile Web)
+|--------------------------------------------------------------------------
+*/
+Route::get('/scan/{kode_unit}', [GuestPinjamController::class, 'show'])->name('guest.scan');
+Route::post('/guest/pinjam/{kode_unit}', [GuestPinjamController::class, 'submitBorrow'])->name('guest.borrow.submit');
+Route::post('/guest/pinjam/{kode_unit}/verify-otp', [GuestPinjamController::class, 'verifyOtp'])->name('guest.borrow.verify_otp');
+Route::post('/guest/pinjam/{kode_unit}/resend-otp', [GuestPinjamController::class, 'resendOtp'])->name('guest.borrow.resend_otp');
+Route::get('/guest/status/{kode_unit}', [GuestPinjamController::class, 'showStatus'])->name('guest.status');
+Route::post('/guest/return/{kode_unit}', [GuestPinjamController::class, 'submitReturn'])->name('guest.return.submit');
+

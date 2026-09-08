@@ -24,6 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/admin/dashboard');
         // Redirect unauthenticated users ke halaman login admin
         $middleware->redirectGuestsTo('/admin/login');
+
+        // Peminjaman tamu via scan QR publik
+        $middleware->validateCsrfTokens(except: [
+            'guest/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

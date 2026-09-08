@@ -115,9 +115,22 @@ export default function LogbookIndex({ logs, filters = {} }) {
                                         return (
                                             <tr key={log.id} className="hover:bg-[#EEEEEE]/50 bg-white transition-colors">
                                                 <td className="p-4">
-                                                    <div className="font-bold text-[#1D1616] text-sm">{log.user?.nama || 'N/A'}</div>
-                                                    <div className="text-[11px] font-mono text-[#6B7280] mt-0.5">NIP: {log.user?.nip || '-'}</div>
-                                                    <div className="text-[10px] text-[#6B7280]">{log.user?.email}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-[#1D1616] text-sm">
+                                                            {log.tipe_peminjam === 'guest' ? log.guest_nama : (log.user?.nama || 'N/A')}
+                                                        </span>
+                                                        {log.tipe_peminjam === 'guest' && (
+                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                                                Tamu
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-[11px] font-mono text-[#6B7280] mt-0.5">
+                                                        {log.tipe_peminjam === 'guest' ? 'Peminjam Guest / Tamu' : `NIP: ${log.user?.nip || '-'}`}
+                                                    </div>
+                                                    <div className="text-[10px] text-[#6B7280]">
+                                                        {log.tipe_peminjam === 'guest' ? log.guest_email : log.user?.email}
+                                                    </div>
                                                 </td>
                                                 <td className="p-4">
                                                     <div className="font-bold text-[#1D1616]">{log.barang_unit?.barang?.nama_barang || 'Barang'}</div>

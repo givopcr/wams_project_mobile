@@ -541,7 +541,7 @@ class AdminWebController extends Controller
                 'kode_unit' => $u->kode_unit,
                 'status' => $u->status,
                 'kondisi' => $u->kondisi,
-                'borrower' => $u->activeLogbook && $u->activeLogbook->user ? $u->activeLogbook->user->nama : null,
+                'borrower' => $u->activeLogbook ? $u->activeLogbook->peminjam_nama : null,
                 'borrow_date' => $u->activeLogbook ? $u->activeLogbook->tanggal_pinjam->format('d M Y H:i') : null,
                 'created_at' => $u->created_at->format('d M Y'),
             ];
@@ -608,6 +608,8 @@ class AdminWebController extends Controller
             $search = $request->q;
             $query->where(function ($q) use ($search) {
                 $q->whereHas('user', fn ($qu) => $qu->where('nama', 'like', "%{$search}%")->orWhere('nip', 'like', "%{$search}%"))
+                  ->orWhere('guest_nama', 'like', "%{$search}%")
+                  ->orWhere('guest_email', 'like', "%{$search}%")
                   ->orWhereHas('barangUnit', fn ($qun) => $qun->where('kode_unit', 'like', "%{$search}%")->orWhereHas('barang', fn ($qb) => $qb->where('nama_barang', 'like', "%{$search}%")));
             });
         }
@@ -712,8 +714,19 @@ class AdminWebController extends Controller
             'total_unit' => $k->units->count(),
         ]);
 
+        $units = BarangUnit::with('barang.kategori')->get()->map(fn ($u) => [
+            'id' => $u->id,
+            'kode_unit' => $u->kode_unit,
+            'nama_barang' => $u->barang?->nama_barang ?? 'Alat Workshop',
+            'kategori' => $u->barang?->kategori?->nama_kategori ?? 'Umum',
+            'status' => $u->status,
+            'kondisi' => $u->kondisi,
+            'qr_payload' => url("/scan/{$u->kode_unit}"),
+        ]);
+
         return Inertia::render('QrCode/Index', [
             'categories' => $categories,
+            'units' => $units,
         ]);
     }
 

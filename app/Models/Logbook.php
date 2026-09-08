@@ -15,6 +15,11 @@ class Logbook extends Model
     protected $fillable = [
         'user_id',
         'barang_unit_id',
+        'tipe_peminjam',
+        'guest_nama',
+        'guest_email',
+        'requires_verification',
+        'return_token',
         'tanggal_pinjam',
         'batas_kembali',
         'tanggal_kembali',
@@ -28,7 +33,30 @@ class Logbook extends Model
             'tanggal_pinjam' => 'datetime',
             'batas_kembali' => 'datetime',
             'tanggal_kembali' => 'datetime',
+            'requires_verification' => 'boolean',
         ];
+    }
+
+    /**
+     * Nama peminjam (user atau tamu)
+     */
+    public function getPeminjamNamaAttribute(): string
+    {
+        if ($this->tipe_peminjam === 'guest') {
+            return ($this->guest_nama ?: 'Tamu') . ' (Tamu)';
+        }
+        return $this->user?->nama ?? 'Pengguna';
+    }
+
+    /**
+     * Email peminjam
+     */
+    public function getPeminjamEmailAttribute(): string
+    {
+        if ($this->tipe_peminjam === 'guest') {
+            return $this->guest_email ?: '-';
+        }
+        return $this->user?->email ?? '-';
     }
 
     /**
