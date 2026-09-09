@@ -42,6 +42,7 @@ class AdminWebController extends Controller
              'total_user' => User::where('role', 'user')->count(),
              'transaksi_aktif' => Logbook::where('status_transaksi', 'dipinjam')->count(),
              'transaksi_selesai' => Logbook::where('status_transaksi', 'dikembalikan')->count(),
+             'menunggu_approval' => Logbook::where('status_transaksi', 'menunggu_persetujuan')->count(),
          ];
 
          // 3 Transaksi / List User Terakhir (Meminjam atau Mengembalikan)
@@ -406,6 +407,7 @@ class AdminWebController extends Controller
                 'tersedia' => $b->units->where('status', 'tersedia')->count(),
                 'dipinjam' => $b->units->where('status', 'dipinjam')->count(),
                 'maintenance' => $b->units->where('status', 'maintenance')->count(),
+                'perlu_persetujuan' => (bool) $b->perlu_persetujuan,
                 'units' => $b->units->map(function ($u) {
                     return [
                         'id' => $u->id,
@@ -448,7 +450,10 @@ class AdminWebController extends Controller
             'detail_spesifikasi' => ['nullable', 'string'],
             'lokasi' => ['nullable', 'string', 'max:255'],
             'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'perlu_persetujuan' => ['nullable', 'boolean'],
         ]);
+
+        $validated['perlu_persetujuan'] = $request->boolean('perlu_persetujuan');
 
         if ($request->hasFile('gambar')) {
             $validated['gambar'] = $request->file('gambar')->store('barang', 'public');
@@ -472,7 +477,10 @@ class AdminWebController extends Controller
             'detail_spesifikasi' => ['nullable', 'string'],
             'lokasi' => ['nullable', 'string', 'max:255'],
             'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'perlu_persetujuan' => ['nullable', 'boolean'],
         ]);
+
+        $validated['perlu_persetujuan'] = $request->boolean('perlu_persetujuan');
 
         if ($request->hasFile('gambar')) {
             if ($barang->gambar && Storage::disk('public')->exists($barang->gambar)) {
@@ -600,7 +608,7 @@ class AdminWebController extends Controller
      */
     public function logbook(Request $request): Response
     {
-        $query = Logbook::with(['user', 'barangUnit.barang']);
+        $query = Logbook::with(['user', 'barangUnit.barang', 'approver']);
 
         if ($request->filled('status')) {
             $query->where('status_transaksi', $request->status);
@@ -618,10 +626,78 @@ class AdminWebController extends Controller
 
         $logs = $query->latest('tanggal_pinjam')->paginate(10)->withQueryString();
 
+        $statusCounts = [
+            'all' => Logbook::count(),
+            'menunggu_persetujuan' => Logbook::where('status_transaksi', 'menunggu_persetujuan')->count(),
+            'dipinjam' => Logbook::where('status_transaksi', 'dipinjam')->count(),
+            'dikembalikan' => Logbook::where('status_transaksi', 'dikembalikan')->count(),
+            'ditolak' => Logbook::where('status_transaksi', 'ditolak')->count(),
+        ];
+
         return Inertia::render('Logbook/Index', [
             'logs' => $logs,
             'filters' => $request->only(['q', 'status']),
+            'statusCounts' => $statusCounts,
         ]);
+    }
+
+    /**
+     * Admin Menyetujui Pengajuan Peminjaman Barang Spesifik
+     */
+    public function approvePeminjaman(Request $request, $id): RedirectResponse
+    {
+        $log = Logbook::with('barangUnit')->findOrFail($id);
+
+        if ($log->status_transaksi !== 'menunggu_persetujuan') {
+            return back()->with('error', 'Status peminjaman ini bukan menunggu persetujuan.');
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($log, $request) {
+            $log->update([
+                'status_transaksi' => 'dipinjam',
+                'disetujui_oleh' => auth()->id(),
+                'tanggal_approval' => now(),
+                'tanggal_pinjam' => now(),
+                'batas_kembali' => $request->filled('batas_kembali') ? $request->batas_kembali : ($log->batas_kembali ?? now()->addDays(3)),
+            ]);
+
+            if ($log->barangUnit) {
+                $log->barangUnit->update(['status' => 'dipinjam']);
+            }
+        });
+
+        return back()->with('success', 'Permohonan peminjaman berhasil disetujui.');
+    }
+
+    /**
+     * Admin Menolak Pengajuan Peminjaman Barang Spesifik
+     */
+    public function rejectPeminjaman(Request $request, $id): RedirectResponse
+    {
+        $request->validate([
+            'alasan_penolakan' => ['required', 'string', 'max:500'],
+        ]);
+
+        $log = Logbook::with('barangUnit')->findOrFail($id);
+
+        if ($log->status_transaksi !== 'menunggu_persetujuan') {
+            return back()->with('error', 'Status peminjaman ini bukan menunggu persetujuan.');
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($log, $request) {
+            $log->update([
+                'status_transaksi' => 'ditolak',
+                'disetujui_oleh' => auth()->id(),
+                'tanggal_approval' => now(),
+                'alasan_penolakan' => $request->alasan_penolakan,
+            ]);
+
+            if ($log->barangUnit) {
+                $log->barangUnit->update(['status' => 'tersedia']);
+            }
+        });
+
+        return back()->with('success', 'Permohonan peminjaman berhasil ditolak.');
     }
 
     /**
@@ -1299,6 +1375,7 @@ class AdminWebController extends Controller
 
         $notifications = $logs->map(function ($log) {
             $isReturned = $log->status_transaksi === 'dikembalikan';
+            $isApproval = $log->status_transaksi === 'menunggu_persetujuan';
             $isGuest = $log->tipe_peminjam === 'guest';
 
             $userName = $isGuest
@@ -1310,22 +1387,28 @@ class AdminWebController extends Controller
             $kodeUnit = $log->barangUnit?->kode_unit ?? '-';
             $kondisi = $log->kondisi_kembali ?? 'baik';
 
-            $title = $isReturned
-                ? ($isGuest ? 'Pengembalian Barang (Tamu)' : 'Pengembalian Barang Selesai')
-                : ($isGuest ? 'Peminjaman Barang Baru (Tamu)' : 'Peminjaman Barang Baru');
-
-            $message = $isReturned
-                ? ($isGuest
+            if ($isApproval) {
+                $type = 'approval';
+                $title = 'Permohonan Izin Peminjaman Baru';
+                $message = "{$userName} (NIP: {$userNip}) mengajukan peminjaman khusus untuk {$barangName} ({$kodeUnit}). Menunggu izin Anda.";
+            } elseif ($isReturned) {
+                $type = 'return';
+                $title = $isGuest ? 'Pengembalian Barang (Tamu)' : 'Pengembalian Barang Selesai';
+                $message = $isGuest
                     ? "Tamu {$log->guest_nama} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi: " . ucfirst($kondisi) . "."
-                    : "{$userName} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi: " . ucfirst($kondisi) . ".")
-                : ($isGuest
+                    : "{$userName} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi: " . ucfirst($kondisi) . ".";
+            } else {
+                $type = 'borrow';
+                $title = $isGuest ? 'Peminjaman Barang Baru (Tamu)' : 'Peminjaman Barang Baru';
+                $message = $isGuest
                     ? "Tamu {$log->guest_nama} ({$log->guest_email}) baru saja meminjam {$barangName} ({$kodeUnit}) via Mobile Web."
-                    : "{$userName} (NIP: {$userNip}) baru saja meminjam {$barangName} ({$kodeUnit}).");
+                    : "{$userName} (NIP: {$userNip}) baru saja meminjam {$barangName} ({$kodeUnit}).";
+            }
 
             return [
                 'id' => $log->id . '_' . $log->status_transaksi . '_' . $log->updated_at->timestamp,
                 'logbook_id' => $log->id,
-                'type' => $isReturned ? 'return' : 'borrow',
+                'type' => $type,
                 'title' => $title,
                 'user_name' => $userName,
                 'user_nip' => $userNip,

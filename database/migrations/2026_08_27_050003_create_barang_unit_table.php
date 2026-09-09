@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('barang_id')->constrained('barang')->cascadeOnDelete();
             $table->string('kode_unit')->unique();
-            $table->enum('status', ['tersedia', 'dipinjam', 'maintenance'])->default('tersedia');
+            $table->enum('status', ['tersedia', 'menunggu_persetujuan', 'dipinjam', 'maintenance'])->default('tersedia');
             $table->enum('kondisi', ['baik', 'rusak'])->default('baik');
             $table->timestamps();
         });

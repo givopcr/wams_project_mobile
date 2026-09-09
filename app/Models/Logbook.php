@@ -20,6 +20,10 @@ class Logbook extends Model
         'guest_email',
         'requires_verification',
         'return_token',
+        'keperluan',
+        'disetujui_oleh',
+        'tanggal_approval',
+        'alasan_penolakan',
         'tanggal_pinjam',
         'batas_kembali',
         'tanggal_kembali',
@@ -33,6 +37,7 @@ class Logbook extends Model
             'tanggal_pinjam' => 'datetime',
             'batas_kembali' => 'datetime',
             'tanggal_kembali' => 'datetime',
+            'tanggal_approval' => 'datetime',
             'requires_verification' => 'boolean',
         ];
     }
@@ -73,5 +78,13 @@ class Logbook extends Model
     public function barangUnit(): BelongsTo
     {
         return $this->belongsTo(BarangUnit::class, 'barang_unit_id');
+    }
+
+    /**
+     * Relasi ke Admin/User yang menyetujui atau menolak
+     */
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'disetujui_oleh');
     }
 }

@@ -20,7 +20,15 @@ class Barang extends Model
         'detail_spesifikasi',
         'lokasi',
         'gambar',
+        'perlu_persetujuan',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'perlu_persetujuan' => 'boolean',
+        ];
+    }
 
     /**
      * Relasi ke Kategori (barang N:1 kategori_barang)

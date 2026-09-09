@@ -110,6 +110,8 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
     final success = await assetProvider.pinjamBarang(
       widget.barang.id,
       unitIds: selectedUnits.map((u) => u.id).toList(),
+      keperluan: keperluan,
+      batasKembali: _dateFormat.format(_tanggalKembali),
     );
 
     setState(() => _isSubmitting = false);
@@ -169,6 +171,49 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (widget.barang.perluPersetujuan) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFCD34D)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.shield_outlined, color: Color(0xFFD97706), size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Wajib Izin Langsung Admin',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Color(0xFF92400E),
+                            ),
+                          ),
+                          SizedBox(height: 3),
+                          Text(
+                            'Alat ini berstatus spesifik. Pengajuan peminjaman akan masuk antrean approval admin sebelum unit dapat diambil & digunakan.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFFB45309),
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // Item & Unit summary card
             Container(
               padding: const EdgeInsets.all(16),
@@ -412,9 +457,11 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
                         strokeWidth: 2,
                       ),
                     )
-                  : const Text(
-                      'Ajukan Peminjaman',
-                      style: TextStyle(
+                  : Text(
+                      widget.barang.perluPersetujuan
+                          ? 'Ajukan Izin Peminjaman'
+                          : 'Ajukan Peminjaman',
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                       ),

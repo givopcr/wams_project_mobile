@@ -17,7 +17,8 @@ import {
     Calendar,
     ChevronRight,
     Sparkles,
-    MoreHorizontal
+    MoreHorizontal,
+    ShieldAlert
 } from 'lucide-react';
 import {
     TotalBarangIcon,
@@ -209,6 +210,32 @@ export default function Dashboard({
             <Head title="Admin Dashboard - WAMS" />
 
             <div className="space-y-7 max-w-7xl mx-auto">
+                {/* Approval Alert Banner if there are pending approvals */}
+                {s.menunggu_approval > 0 && (
+                    <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3">
+                        <div className="flex items-center gap-3.5">
+                            <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+                                <ShieldAlert size={22} className="text-white" />
+                            </div>
+                            <div>
+                                <h4 className="font-extrabold text-sm sm:text-base tracking-tight">
+                                    Terdapat {s.menunggu_approval} Permohonan Peminjaman Menunggu Persetujuan Anda
+                                </h4>
+                                <p className="text-xs text-amber-100 mt-0.5">
+                                    Pengguna mengajukan peminjaman alat spesifik yang memerlukan izin langsung sebelum unit dapat digunakan.
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            href="/admin/logbook?status=menunggu_persetujuan"
+                            className="px-4 py-2.5 bg-white text-amber-900 rounded-xl text-xs font-extrabold hover:bg-amber-50 transition-all shadow-sm shrink-0 flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span>Tinjau Permohonan</span>
+                            <ChevronRight size={14} />
+                        </Link>
+                    </div>
+                )}
+
                 {/* 1. TOP ROW: 4 KPI CARDS */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     {/* Card 1: Barang yang sedang dipinjam */}
@@ -315,14 +342,7 @@ export default function Dashboard({
                 </div>
 
                 {/* 2. MIDDLE ROW: 3 CATEGORY CARDS (PERKAKAS, ELEKTRONIK, KOMPONEN) WITH DAILY LOAN GRAPHS */}
-                <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold text-[#1D1616]">
-                            Monitoring
-                        </h2>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {categoryCharts.map((cat, idx) => {
                             const config = categoryConfig[cat.name] || {
                                 icon: Package,
@@ -406,7 +426,6 @@ export default function Dashboard({
                             );
                         })}
                     </div>
-                </div>
 
                 {/* 3. ANALISIS SIRKULASI & MAINTENANCE (HORIZONTAL BAR CHARTS) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

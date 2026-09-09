@@ -24,7 +24,9 @@ import {
     Tag,
     UploadCloud,
     Image as ImageIcon,
-    Eye
+    Eye,
+    ShieldAlert,
+    ShieldCheck
 } from 'lucide-react';
 
 export default function BarangIndex({ barangList, categories = [], categoryStats = [], filters }) {
@@ -54,6 +56,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
         lokasi: '',
         gambar: null,
         hapus_gambar: false,
+        perlu_persetujuan: false,
     });
 
     // Form Unit Fisik
@@ -118,6 +121,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             lokasi: '',
             gambar: null,
             hapus_gambar: false,
+            perlu_persetujuan: false,
         });
         setModalOpen(true);
     };
@@ -135,6 +139,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             lokasi: b.lokasi || '',
             gambar: null,
             hapus_gambar: false,
+            perlu_persetujuan: Boolean(b.perlu_persetujuan),
         });
         setModalOpen(true);
     };
@@ -464,8 +469,15 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                         )}
                                                                     </div>
                                                                     <div className="min-w-0 flex-1">
-                                                                        <div className="font-extrabold text-[#1D1616] text-sm leading-tight">
-                                                                            {item.nama_barang}
+                                                                        <div className="flex flex-wrap items-center gap-2">
+                                                                            <span className="font-extrabold text-[#1D1616] text-sm leading-tight">
+                                                                                {item.nama_barang}
+                                                                            </span>
+                                                                            {item.perlu_persetujuan && (
+                                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shrink-0" title="Peminjaman barang ini wajib izin langsung dari Admin">
+                                                                                    <ShieldAlert size={11} className="text-amber-700" /> Wajib Izin Admin
+                                                                                </span>
+                                                                            )}
                                                                         </div>
                                                                         <div className="text-[11px] font-mono text-[#D84040] font-bold mt-0.5">
                                                                             Kode Master: {item.kode_barang}
@@ -1044,6 +1056,27 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                         <AlertTriangle size={12} /> {errors.gambar}
                                     </p>
                                 )}
+                            </div>
+
+                            {/* Pengaturan Izin / Approval Admin */}
+                            <div className="p-3.5 bg-amber-50/60 border border-amber-200/80 rounded-xl">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(data.perlu_persetujuan)}
+                                        onChange={(e) => setData('perlu_persetujuan', e.target.checked)}
+                                        className="mt-0.5 rounded border-amber-300 text-[#D84040] focus:ring-[#D84040] h-4 w-4 cursor-pointer"
+                                    />
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#1D1616]">
+                                            <ShieldAlert size={14} className="text-amber-600" />
+                                            <span>Wajib Izin Langsung Admin (Multi-Step Approval)</span>
+                                        </div>
+                                        <p className="text-[11px] text-[#6B7280] mt-0.5 leading-relaxed">
+                                            Jika dicentang, peminjaman alat/barang ini tidak akan langsung disetujui otomatis. Peminjaman masuk ke daftar antrean dan harus disetujui (approve) terlebih dahulu oleh Admin di Logbook.
+                                        </p>
+                                    </div>
+                                </label>
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">

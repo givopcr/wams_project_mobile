@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamp('tanggal_pinjam');
             $table->timestamp('tanggal_kembali')->nullable();
             $table->enum('kondisi_kembali', ['baik', 'rusak'])->nullable();
-            $table->enum('status_transaksi', ['dipinjam', 'dikembalikan'])->default('dipinjam');
+            $table->enum('status_transaksi', ['menunggu_persetujuan', 'dipinjam', 'dikembalikan', 'ditolak', 'dibatalkan'])->default('dipinjam');
             $table->timestamps();
         });
     }

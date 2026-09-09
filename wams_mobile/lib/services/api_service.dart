@@ -218,6 +218,8 @@ class ApiService {
     int barangId, {
     int? unitId,
     List<int>? unitIds,
+    String? keperluan,
+    String? batasKembali,
   }) async {
     final token = await _getToken();
     final Map<String, dynamic> body = {
@@ -227,6 +229,12 @@ class ApiService {
       body['barang_unit_ids'] = unitIds;
     } else if (unitId != null) {
       body['barang_unit_id'] = unitId;
+    }
+    if (keperluan != null && keperluan.isNotEmpty) {
+      body['keperluan'] = keperluan;
+    }
+    if (batasKembali != null && batasKembali.isNotEmpty) {
+      body['batas_kembali'] = batasKembali;
     }
 
     final response = await http.post(
@@ -240,6 +248,21 @@ class ApiService {
       return data;
     } else {
       throw Exception(data['message'] ?? 'Gagal meminjam barang.');
+    }
+  }
+
+  Future<Map<String, dynamic>> batalkanPeminjaman(int logbookId) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse('${ApiConstants.peminjaman}/$logbookId/batalkan'),
+      headers: _headers(token),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Gagal membatalkan peminjaman.');
     }
   }
 

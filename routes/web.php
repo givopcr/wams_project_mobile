@@ -54,6 +54,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
 
     // Transaksi & Logbook
     Route::get('/logbook', [AdminWebController::class, 'logbook'])->name('admin.logbook');
+    Route::post('/peminjaman/{id}/approve', [AdminWebController::class, 'approvePeminjaman'])->name('admin.peminjaman.approve');
+    Route::post('/peminjaman/{id}/reject', [AdminWebController::class, 'rejectPeminjaman'])->name('admin.peminjaman.reject');
     Route::get('/scanner', [AdminWebController::class, 'scanner'])->name('admin.scanner');
 
     // Kalender Peminjaman & Jadwal Batas Kembali

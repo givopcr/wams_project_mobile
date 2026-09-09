@@ -21,6 +21,7 @@ export function ToastItem({ notification, onDismiss }) {
         return () => clearTimeout(timer);
     }, [notification.id, isHovered, onDismiss]);
 
+    const isApproval = notification.type === 'approval' || notification.status_transaksi === 'menunggu_persetujuan';
     const isReturn = notification.type === 'return' || notification.status_transaksi === 'dikembalikan';
     const isRusak = isReturn && notification.kondisi?.toLowerCase() === 'rusak';
     const isBaik = isReturn && !isRusak;
@@ -30,7 +31,12 @@ export function ToastItem({ notification, onDismiss }) {
     let middleRingClass = 'bg-gray-200/80 border-gray-300/80';
     let innerCircleClass = 'border-[#1D1616] text-[#1D1616]';
 
-    if (isBaik) {
+    if (isApproval) {
+        // Permohonan izin / approval -> Kuning/Amber
+        outerRingClass = 'bg-amber-50/90 border-amber-200';
+        middleRingClass = 'bg-amber-100/80 border-amber-300';
+        innerCircleClass = 'border-amber-600 text-amber-600';
+    } else if (isBaik) {
         // Pengembalian kondisi baik -> Hijau
         outerRingClass = 'bg-emerald-50/90 border-emerald-100';
         middleRingClass = 'bg-emerald-100/80 border-emerald-200';
@@ -72,8 +78,8 @@ export function ToastItem({ notification, onDismiss }) {
                 {/* Content Area */}
                 <div className="flex-1 min-w-0 pr-1">
                     <div className="flex items-start justify-between gap-2">
-                        {/* Red Title */}
-                        <h4 className="text-sm sm:text-[15px] font-bold text-[#D84040] tracking-tight leading-tight">
+                        {/* Red / Amber Title */}
+                        <h4 className={`text-sm sm:text-[15px] font-bold tracking-tight leading-tight ${isApproval ? 'text-amber-700' : 'text-[#D84040]'}`}>
                             {notification.title}
                         </h4>
                         <button
@@ -90,7 +96,7 @@ export function ToastItem({ notification, onDismiss }) {
                         {notification.message}
                     </p>
 
-                    {/* Action Links with Red Accent */}
+                    {/* Action Links with Red / Amber Accent */}
                     <div className="mt-3.5 flex items-center gap-4 text-xs sm:text-[13px]">
                         <button
                             type="button"
@@ -103,11 +109,13 @@ export function ToastItem({ notification, onDismiss }) {
                             type="button"
                             onClick={() => {
                                 onDismiss(notification.id);
-                                router.visit('/admin/logbook');
+                                router.visit(isApproval ? '/admin/logbook?status=menunggu_persetujuan' : '/admin/logbook');
                             }}
-                            className="font-bold text-[#D84040] hover:text-[#8E1616] cursor-pointer transition-colors inline-flex items-center gap-1"
+                            className={`font-bold cursor-pointer transition-colors inline-flex items-center gap-1 ${
+                                isApproval ? 'text-amber-700 hover:text-amber-900' : 'text-[#D84040] hover:text-[#8E1616]'
+                            }`}
                         >
-                            Lihat Logbook
+                            {isApproval ? 'Tinjau Permohonan' : 'Lihat Logbook'}
                             <ArrowRight size={13} className="inline" />
                         </button>
                     </div>

@@ -231,29 +231,57 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                     ),
                                   ),
 
-                                  // Status Pill (Aktif / Selesai)
+                                  // Status Pill (Menunggu Izin / Ditolak / Aktif / Selesai)
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: item.isDipinjam
-                                          ? const Color(0xFFFEF3C7) // soft amber
-                                          : const Color(0xFFD1FAE5), // soft green
+                                      color: item.isMenungguApproval
+                                          ? const Color(0xFFFEF3C7)
+                                          : item.isDitolak
+                                          ? const Color(0xFFFEE2E2)
+                                          : item.isDibatalkan
+                                          ? const Color(0xFFF3F4F6)
+                                          : item.isDipinjam
+                                          ? const Color(0xFFFEF3C7)
+                                          : const Color(0xFFD1FAE5),
                                       borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: item.isMenungguApproval
+                                            ? const Color(0xFFFCD34D)
+                                            : item.isDitolak
+                                            ? const Color(0xFFFCA5A5)
+                                            : Colors.transparent,
+                                        width: 0.8,
+                                      ),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
-                                          item.isDipinjam ? 'Aktif' : 'Selesai',
+                                          item.isMenungguApproval
+                                              ? 'Menunggu Izin'
+                                              : item.isDitolak
+                                              ? 'Ditolak'
+                                              : item.isDibatalkan
+                                              ? 'Dibatalkan'
+                                              : item.isDipinjam
+                                              ? 'Aktif'
+                                              : 'Selesai',
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
-                                            color: item.isDipinjam
-                                              ? const Color(0xFFD97706)
-                                              : AppTheme.success,
+                                            color: item.isMenungguApproval
+                                                ? const Color(0xFFD97706)
+                                                : item.isDitolak
+                                                ? const Color(0xFFDC2626)
+                                                : item.isDibatalkan
+                                                ? const Color(0xFF6B7280)
+                                                : item.isDipinjam
+                                                ? const Color(0xFFD97706)
+                                                : AppTheme.success,
                                           ),
                                         ),
-                                        if (item.isDipinjam) ...[
+                                        if (item.isDipinjam || item.isMenungguApproval) ...[
                                           const SizedBox(width: 2),
                                           const Icon(
                                             Icons.chevron_right,

@@ -37,8 +37,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
 
-    // Transaksi (Peminjaman, Pengembalian, Riwayat)
+    // Transaksi (Peminjaman, Pengembalian, Riwayat, Pembatalan)
     Route::post('/peminjaman', [TransaksiController::class, 'pinjam']);
+    Route::post('/peminjaman/{id}/batalkan', [TransaksiController::class, 'batalkan']);
     Route::post('/pengembalian', [TransaksiController::class, 'kembali']);
     Route::get('/riwayat', [TransaksiController::class, 'riwayat']);
 

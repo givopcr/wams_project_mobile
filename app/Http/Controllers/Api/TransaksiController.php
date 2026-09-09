@@ -23,12 +23,18 @@ class TransaksiController extends Controller
         $barangId = $request->barang_id;
         $requestedUnitId = $request->barang_unit_id;
         $requestedUnitIds = $request->barang_unit_ids;
+        $keperluan = $request->keperluan;
+        $batasKembali = $request->filled('batas_kembali') ? $request->batas_kembali : null;
+
+        $barang = Barang::findOrFail($barangId);
+        $requiresApproval = (bool) $barang->perlu_persetujuan;
+        $targetStatus = $requiresApproval ? 'menunggu_persetujuan' : 'dipinjam';
 
         // Multiple units handling
         if (is_array($requestedUnitIds) && count($requestedUnitIds) > 0) {
-            return DB::transaction(function () use ($user, $barangId, $requestedUnitIds) {
+            return DB::transaction(function () use ($user, $barang, $requestedUnitIds, $targetStatus, $requiresApproval, $keperluan, $batasKembali) {
                 $units = BarangUnit::whereIn('id', $requestedUnitIds)
-                    ->where('barang_id', $barangId)
+                    ->where('barang_id', $barang->id)
                     ->where('status', 'tersedia')
                     ->lockForUpdate()
                     ->get();
@@ -42,24 +48,29 @@ class TransaksiController extends Controller
 
                 $logbooks = [];
                 foreach ($units as $unit) {
-                    $unit->update(['status' => 'dipinjam']);
+                    $unit->update(['status' => $targetStatus]);
 
                     $logbooks[] = Logbook::create([
                         'user_id' => $user->id,
                         'barang_unit_id' => $unit->id,
+                        'tipe_peminjam' => 'user',
+                        'keperluan' => $keperluan,
+                        'batas_kembali' => $batasKembali,
                         'tanggal_pinjam' => now(),
                         'tanggal_kembali' => null,
                         'kondisi_kembali' => null,
-                        'status_transaksi' => 'dipinjam',
+                        'status_transaksi' => $targetStatus,
                     ]);
                 }
 
-                $barang = Barang::find($barangId);
                 $firstLogbook = $logbooks[0] ?? null;
+                $msg = $requiresApproval
+                    ? count($units) . ' unit berhasil diajukan. Menunggu persetujuan langsung dari Admin.'
+                    : count($units) . ' unit berhasil dipinjam.';
 
                 return response()->json([
                     'success' => true,
-                    'message' => count($units) . ' unit berhasil dipinjam.',
+                    'message' => $msg,
                     'data' => [
                         'logbook_id' => $firstLogbook ? $firstLogbook->id : null,
                         'total_unit' => count($units),
@@ -67,22 +78,23 @@ class TransaksiController extends Controller
                         'kode_units' => $units->pluck('kode_unit')->toArray(),
                         'barang_nama' => $barang->nama_barang,
                         'tanggal_pinjam' => now()->toIso8601String(),
-                        'status_transaksi' => 'dipinjam',
+                        'status_transaksi' => $targetStatus,
+                        'requires_approval' => $requiresApproval,
                     ],
                 ], 201);
             });
         }
 
-        return DB::transaction(function () use ($user, $barangId, $requestedUnitId) {
-            // Lock row untuk mencegah race condition (2 user meminjam unit yang sama bersamaan)
+        return DB::transaction(function () use ($user, $barang, $requestedUnitId, $targetStatus, $requiresApproval, $keperluan, $batasKembali) {
+            // Lock row untuk mencegah race condition
             if ($requestedUnitId) {
                 $unit = BarangUnit::where('id', $requestedUnitId)
-                    ->where('barang_id', $barangId)
+                    ->where('barang_id', $barang->id)
                     ->where('status', 'tersedia')
                     ->lockForUpdate()
                     ->first();
             } else {
-                $unit = BarangUnit::where('barang_id', $barangId)
+                $unit = BarangUnit::where('barang_id', $barang->id)
                     ->where('status', 'tersedia')
                     ->lockForUpdate()
                     ->first();
@@ -97,30 +109,36 @@ class TransaksiController extends Controller
 
             // 1. Update status unit
             $unit->update([
-                'status' => 'dipinjam',
+                'status' => $targetStatus,
             ]);
 
             // 2. Buat logbook peminjaman
             $logbook = Logbook::create([
                 'user_id' => $user->id,
                 'barang_unit_id' => $unit->id,
+                'tipe_peminjam' => 'user',
+                'keperluan' => $keperluan,
+                'batas_kembali' => $batasKembali,
                 'tanggal_pinjam' => now(),
                 'tanggal_kembali' => null,
                 'kondisi_kembali' => null,
-                'status_transaksi' => 'dipinjam',
+                'status_transaksi' => $targetStatus,
             ]);
 
-            $barang = Barang::find($barangId);
+            $msg = $requiresApproval
+                ? 'Pengajuan peminjaman berhasil dikirim. Menunggu persetujuan langsung dari Admin.'
+                : 'Peminjaman berhasil dikonfirmasi.';
 
             return response()->json([
                 'success' => true,
-                'message' => 'Peminjaman berhasil dikonfirmasi.',
+                'message' => $msg,
                 'data' => [
                     'logbook_id' => $logbook->id,
                     'barang_nama' => $barang->nama_barang,
                     'kode_unit' => $unit->kode_unit,
                     'tanggal_pinjam' => $logbook->tanggal_pinjam->toIso8601String(),
                     'status_transaksi' => $logbook->status_transaksi,
+                    'requires_approval' => $requiresApproval,
                 ],
             ], 201);
         });
@@ -197,17 +215,55 @@ class TransaksiController extends Controller
     }
 
     /**
+     * User Membatalkan Pengajuan Peminjaman (yang masih menunggu persetujuan)
+     */
+    public function batalkan(Request $request, $id): JsonResponse
+    {
+        $user = $request->user();
+
+        return DB::transaction(function () use ($user, $id) {
+            $logbook = Logbook::where('id', $id)
+                ->where('user_id', $user->id)
+                ->where('status_transaksi', 'menunggu_persetujuan')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $logbook) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pengajuan peminjaman tidak ditemukan atau tidak dapat dibatalkan.',
+                ], 404);
+            }
+
+            $logbook->update([
+                'status_transaksi' => 'dibatalkan',
+            ]);
+
+            // Kembalikan status unit ke 'tersedia'
+            $unit = BarangUnit::where('id', $logbook->barang_unit_id)->lockForUpdate()->first();
+            if ($unit && $unit->status === 'menunggu_persetujuan') {
+                $unit->update(['status' => 'tersedia']);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengajuan peminjaman berhasil dibatalkan.',
+            ]);
+        });
+    }
+
+    /**
      * Riwayat Peminjaman User
      */
     public function riwayat(Request $request): JsonResponse
     {
         $user = $request->user();
 
-        $query = Logbook::with(['barangUnit.barang.kategori'])
+        $query = Logbook::with(['barangUnit.barang.kategori', 'approver'])
             ->where('user_id', $user->id)
             ->latest('tanggal_pinjam');
 
-        if ($request->has('status') && in_array($request->status, ['dipinjam', 'dikembalikan'])) {
+        if ($request->has('status') && in_array($request->status, ['menunggu_persetujuan', 'dipinjam', 'dikembalikan', 'ditolak', 'dibatalkan'])) {
             $query->where('status_transaksi', $request->status);
         }
 
@@ -237,8 +293,13 @@ class TransaksiController extends Controller
                 'kode_unit' => $unit ? $unit->kode_unit : 'N/A',
                 'tanggal_pinjam' => $log->tanggal_pinjam ? $log->tanggal_pinjam->toIso8601String() : null,
                 'tanggal_kembali' => $log->tanggal_kembali ? $log->tanggal_kembali->toIso8601String() : null,
+                'batas_kembali' => $log->batas_kembali ? $log->batas_kembali->toIso8601String() : null,
                 'kondisi_kembali' => $log->kondisi_kembali,
                 'status_transaksi' => $log->status_transaksi,
+                'keperluan' => $log->keperluan,
+                'alasan_penolakan' => $log->alasan_penolakan,
+                'tanggal_approval' => $log->tanggal_approval ? $log->tanggal_approval->toIso8601String() : null,
+                'nama_approver' => $log->approver?->nama,
                 'gambar_url' => ($barang && $barang->gambar) ? asset('storage/'.$barang->gambar) : null,
             ];
         });

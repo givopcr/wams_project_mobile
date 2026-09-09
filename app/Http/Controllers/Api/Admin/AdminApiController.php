@@ -117,7 +117,10 @@ class AdminApiController extends Controller
             'detail_spesifikasi' => ['nullable', 'string'],
             'lokasi' => ['nullable', 'string', 'max:255'],
             'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'perlu_persetujuan' => ['nullable', 'boolean'],
         ]);
+
+        $validated['perlu_persetujuan'] = $request->boolean('perlu_persetujuan');
 
         if ($request->hasFile('gambar')) {
             $validated['gambar'] = $request->file('gambar')->store('barang', 'public');
@@ -146,7 +149,12 @@ class AdminApiController extends Controller
             'detail_spesifikasi' => ['nullable', 'string'],
             'lokasi' => ['nullable', 'string', 'max:255'],
             'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'perlu_persetujuan' => ['nullable', 'boolean'],
         ]);
+
+        if ($request->has('perlu_persetujuan')) {
+            $validated['perlu_persetujuan'] = $request->boolean('perlu_persetujuan');
+        }
 
         if ($request->hasFile('gambar')) {
             if ($barang->gambar && Storage::disk('public')->exists($barang->gambar)) {

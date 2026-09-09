@@ -12,6 +12,7 @@ class BarangModel {
   final int dipinjam;
   final int maintenance;
   final bool canBorrow;
+  final bool perluPersetujuan;
 
   BarangModel({
     required this.id,
@@ -27,6 +28,7 @@ class BarangModel {
     this.dipinjam = 0,
     this.maintenance = 0,
     this.canBorrow = false,
+    this.perluPersetujuan = false,
   });
 
   factory BarangModel.fromJson(Map<String, dynamic> json) {
@@ -45,6 +47,7 @@ class BarangModel {
       dipinjam: json['dipinjam'] ?? 0,
       maintenance: json['maintenance'] ?? 0,
       canBorrow: json['can_borrow'] ?? (tersediaCount > 0),
+      perluPersetujuan: json['perlu_persetujuan'] == true || json['perlu_persetujuan'] == 1,
     );
   }
 }

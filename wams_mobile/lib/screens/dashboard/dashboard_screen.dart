@@ -33,13 +33,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   IconData _getCategoryIcon(String name) {
     final n = name.toLowerCase();
-    if (n.contains('perkakas') || n.contains('tangan')) return Icons.handyman;
-    if (n.contains('listrik') || n.contains('elektronik') || n.contains('ukur'))
+    if (n.contains('perkakas') || n.contains('tangan')) {
+      return Icons.handyman;
+    }
+    if (n.contains('listrik') || n.contains('elektronik') || n.contains('ukur')) {
       return Icons.bolt;
-    if (n.contains('mesin') || n.contains('berat') || n.contains('bubut'))
+    }
+    if (n.contains('mesin') || n.contains('berat') || n.contains('bubut')) {
       return Icons.precision_manufacturing;
-    if (n.contains('komponen') || n.contains('elektronika'))
+    }
+    if (n.contains('komponen') || n.contains('elektronika')) {
       return Icons.memory;
+    }
     return Icons.build_circle_outlined;
   }
 

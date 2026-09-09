@@ -44,6 +44,7 @@ class BarangController extends Controller
                 'tersedia' => $item->units->where('status', 'tersedia')->count(),
                 'dipinjam' => $item->units->where('status', 'dipinjam')->count(),
                 'maintenance' => $item->units->where('status', 'maintenance')->count(),
+                'perlu_persetujuan' => (bool) $item->perlu_persetujuan,
             ];
         });
 
@@ -77,6 +78,7 @@ class BarangController extends Controller
                 'tersedia' => $tersediaCount,
                 'dipinjam' => $barang->units->where('status', 'dipinjam')->count(),
                 'maintenance' => $barang->units->where('status', 'maintenance')->count(),
+                'perlu_persetujuan' => (bool) $barang->perlu_persetujuan,
                 'can_borrow' => $tersediaCount > 0,
             ],
         ]);

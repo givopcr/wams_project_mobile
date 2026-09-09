@@ -96,15 +96,44 @@ class AssetProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> pinjamBarang(int barangId, {int? unitId, List<int>? unitIds}) async {
+  Future<bool> pinjamBarang(
+    int barangId, {
+    int? unitId,
+    List<int>? unitIds,
+    String? keperluan,
+    String? batasKembali,
+  }) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      await _apiService.pinjamBarang(barangId, unitId: unitId, unitIds: unitIds);
+      await _apiService.pinjamBarang(
+        barangId,
+        unitId: unitId,
+        unitIds: unitIds,
+        keperluan: keperluan,
+        batasKembali: batasKembali,
+      );
       // Refresh detail barang & units
       await fetchDetailBarang(barangId);
       await fetchBarangUnits(barangId);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> batalkanPeminjaman(int logbookId) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _apiService.batalkanPeminjaman(logbookId);
       _isLoading = false;
       notifyListeners();
       return true;
