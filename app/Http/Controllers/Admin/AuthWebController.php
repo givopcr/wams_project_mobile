@@ -11,10 +11,13 @@ use Inertia\Response;
 
 class AuthWebController extends Controller
 {
-    public function showLogin(): Response
+    public function showLogin()
     {
         if (Auth::check()) {
-            return redirect()->route('admin.dashboard');
+            if (Auth::user()->role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            }
+            return redirect()->route('user.dashboard');
         }
 
         return Inertia::render('Auth/Login');
@@ -32,17 +35,11 @@ class AuthWebController extends Controller
         if (Auth::attempt([$loginField => $credentials['login'], 'password' => $credentials['password']], $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            if (Auth::user()->role !== 'admin') {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                throw ValidationException::withMessages([
-                    'login' => 'Akses ditolak. Panel admin hanya untuk pengguna dengan role Admin.',
-                ]);
+            if (Auth::user()->role === 'admin') {
+                return redirect()->intended(route('admin.dashboard'));
             }
 
-            return redirect()->intended(route('admin.dashboard'));
+            return redirect()->intended(route('user.dashboard'));
         }
 
         throw ValidationException::withMessages([

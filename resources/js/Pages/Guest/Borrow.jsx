@@ -269,6 +269,8 @@ export default function GuestBorrow({
                                 <img
                                     src={barang.gambar}
                                     alt={barang.nama_barang}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="w-full h-full object-cover"
                                 />
                             ) : (

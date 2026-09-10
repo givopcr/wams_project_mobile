@@ -20,8 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
 
-        // Redirect guest yang sudah login ke dashboard (mencegah redirect loop)
-        $middleware->redirectUsersTo('/admin/dashboard');
+        // Redirect user yang sudah login ke dashboard sesuai role
+        $middleware->redirectUsersTo(fn () => auth()->user()?->role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
         // Redirect unauthenticated users ke halaman login admin
         $middleware->redirectGuestsTo('/admin/login');
 

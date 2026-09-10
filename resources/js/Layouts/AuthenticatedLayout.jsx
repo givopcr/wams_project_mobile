@@ -22,7 +22,8 @@ import {
     Shield,
     Sparkles,
     ArrowUpRight,
-    RefreshCw
+    RefreshCw,
+    Smartphone
 } from 'lucide-react';
 import NotificationToastContainer from '@/Components/NotificationToast';
 
@@ -302,6 +303,16 @@ export default function AuthenticatedLayout({ title, children }) {
                     </div>
 
                     <div className="flex items-center gap-3 sm:gap-4 lg:gap-5" ref={dropdownRef}>
+                        {/* Tombol Pintas Tampilan Mobile User */}
+                        <Link
+                            href="/user/dashboard"
+                            title="Buka Tampilan Mobile User"
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 hover:bg-[#D84040] hover:text-white text-[#D84040] text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                        >
+                            <Smartphone size={16} />
+                            <span className="hidden sm:inline">Tampilan Mobile User</span>
+                        </Link>
+
                         {/* Setting Icon Button */}
                         <Link
                             href="/admin/users"

@@ -23,6 +23,10 @@ class EnsureUserIsAdmin
                 ], 403);
             }
 
+            if ($request->user() && $request->user()->role === 'user') {
+                return redirect()->route('user.dashboard')->with('error', 'Akses dibatasi. Halaman ini hanya untuk Administrator WAMS.');
+            }
+
             abort(403, 'Akses khusus administrator.');
         }
 

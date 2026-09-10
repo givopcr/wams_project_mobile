@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -84,6 +85,16 @@ class AdminWebController extends Controller
              'Komponen' => [5, 9, 14, 12, 20, 26, 10],   // Peak on Sabtu & Jumat
          ];
 
+         // Pre-fetch 7-day category loans to prevent 21+ subqueries in the loop
+         $categoryLoans7Days = Logbook::join('barang_unit', 'logbook.barang_unit_id', '=', 'barang_unit.id')
+             ->join('barang', 'barang_unit.barang_id', '=', 'barang.id')
+             ->where('logbook.tanggal_pinjam', '>=', now()->subDays(6)->startOfDay())
+             ->selectRaw('barang.kategori_id, DATE(logbook.tanggal_pinjam) as loan_date, count(logbook.id) as total')
+             ->groupBy('barang.kategori_id', DB::raw('DATE(logbook.tanggal_pinjam)'))
+             ->get()
+             ->groupBy('kategori_id')
+             ->map(fn ($group) => $group->pluck('total', 'loan_date'));
+
          $categoriesData = [];
          foreach ($targetCategories as $idx => $catName) {
              $cat = KategoriBarang::where('nama_kategori', $catName)->first();
@@ -112,10 +123,8 @@ class AdminWebController extends Controller
                  $dayName = $days[$dayIndex] ?? 'Sen';
 
                  $realCount = 0;
-                 if ($catId) {
-                     $realCount = Logbook::whereHas('barangUnit.barang', function ($q) use ($catId) {
-                         $q->where('kategori_id', $catId);
-                     })->whereDate('tanggal_pinjam', $date)->count();
+                 if ($catId && isset($categoryLoans7Days[$catId])) {
+                     $realCount = (int) ($categoryLoans7Days[$catId][$date] ?? 0);
                  }
 
                  $baseline = $baselineLoanPatterns[$catTitle][$dayIndex] ?? ($baselineLoanPatterns['Perkakas'][$dayIndex] ?? 10);
@@ -149,13 +158,17 @@ class AdminWebController extends Controller
              ];
          }
 
-          // 1. Top Barang Paling Sering Dipinjam (Bar Chart Horizontal)
+          // 1. Top Barang Paling Sering Dipinjam (Pre-aggregated query to avoid N+1)
+          $borrowCounts = Logbook::join('barang_unit', 'logbook.barang_unit_id', '=', 'barang_unit.id')
+              ->selectRaw('barang_unit.barang_id, count(logbook.id) as total')
+              ->groupBy('barang_unit.barang_id')
+              ->pluck('total', 'barang_id');
+
           $topBarangDipinjam = Barang::with('kategori')
+              ->withCount('units')
               ->get()
-              ->map(function ($b) {
-                  $count = Logbook::whereHas('barangUnit', function ($q) use ($b) {
-                      $q->where('barang_id', $b->id);
-                  })->count();
+              ->map(function ($b) use ($borrowCounts) {
+                  $count = (int) ($borrowCounts[$b->id] ?? 0);
 
                   return [
                       'id' => $b->id,
@@ -163,7 +176,7 @@ class AdminWebController extends Controller
                       'kode_barang' => $b->kode_barang,
                       'kategori' => $b->kategori?->nama_kategori ?? 'Umum',
                       'total_peminjaman' => $count,
-                      'total_unit' => $b->units()->count(),
+                      'total_unit' => (int) $b->units_count,
                   ];
               })
               ->sortByDesc('total_peminjaman')
@@ -178,13 +191,16 @@ class AdminWebController extends Controller
               return $item;
           });
 
-          // 2. Top Unit Yang Sering Maintenance (Bar Chart Horizontal)
+          // 2. Top Unit Yang Sering Maintenance (Pre-aggregated query to avoid N+1)
+          $maintenanceCounts = Logbook::where('kondisi_kembali', 'rusak')
+              ->selectRaw('barang_unit_id, count(id) as total')
+              ->groupBy('barang_unit_id')
+              ->pluck('total', 'barang_unit_id');
+
           $topUnitMaintenance = BarangUnit::with('barang.kategori')
               ->get()
-              ->map(function ($u) {
-                  $count = Logbook::where('barang_unit_id', $u->id)
-                      ->where('kondisi_kembali', 'rusak')
-                      ->count();
+              ->map(function ($u) use ($maintenanceCounts) {
+                  $count = (int) ($maintenanceCounts[$u->id] ?? 0);
 
                   if ($u->status === 'maintenance' && $count == 0) {
                       $count = 1;

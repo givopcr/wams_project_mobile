@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminWebController;
 use App\Http\Controllers\Admin\AuthWebController;
 use App\Http\Controllers\Guest\GuestPinjamController;
+use App\Http\Controllers\User\UserWebController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,7 +15,10 @@ use Illuminate\Support\Facades\Route;
 // Root
 Route::get('/', function () {
     if (auth()->check()) {
-        return redirect()->route('admin.dashboard');
+        if (auth()->user()->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+        return redirect()->route('user.dashboard');
     }
     return redirect()->route('login');
 });
@@ -79,6 +83,24 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // Live Notifications (Peminjaman & Pengembalian)
     Route::get('/notifications/check', [AdminWebController::class, 'checkNewTransactions'])->name('admin.notifications.check');
     Route::match(['get', 'post'], '/notifications/test', [AdminWebController::class, 'testNotification'])->name('admin.notifications.test');
+});
+
+/*
+|--------------------------------------------------------------------------
+| User Mobile Web Routes (Mobile-Friendly Portal for Workshop Users)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
+    Route::get('/dashboard', [UserWebController::class, 'dashboard'])->name('dashboard');
+    Route::get('/katalog', [UserWebController::class, 'katalog'])->name('katalog');
+    Route::get('/peminjaman', [UserWebController::class, 'peminjaman'])->name('peminjaman');
+    Route::post('/pinjam', [UserWebController::class, 'storePinjam'])->name('pinjam.store');
+    Route::post('/kembali/{id}', [UserWebController::class, 'storeKembali'])->name('kembali.store');
+    Route::post('/batalkan/{id}', [UserWebController::class, 'cancelPinjam'])->name('pinjam.cancel');
+    Route::get('/riwayat', [UserWebController::class, 'riwayat'])->name('riwayat');
+    Route::get('/scanner', [UserWebController::class, 'scanner'])->name('scanner');
+    Route::get('/lookup-unit/{kode_unit}', [UserWebController::class, 'lookupUnit'])->name('lookup.unit');
+    Route::get('/profile', [UserWebController::class, 'profile'])->name('profile');
 });
 
 /*

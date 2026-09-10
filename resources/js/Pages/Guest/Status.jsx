@@ -189,7 +189,7 @@ export default function GuestStatus({ unit, logbook }) {
                             <div className="flex items-start gap-3.5">
                                 <div className="w-14 h-14 rounded-xl bg-[#F8FAFC] border border-[#E0E0E0] shrink-0 flex items-center justify-center overflow-hidden">
                                     {unit.gambar ? (
-                                        <img src={unit.gambar} alt={unit.nama_barang} className="w-full h-full object-cover" />
+                                        <img src={unit.gambar} alt={unit.nama_barang} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                     ) : (
                                         <Wrench size={24} className="text-[#D84040]" />
                                     )}

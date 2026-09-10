@@ -459,7 +459,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                     >
                                                                         {item.gambar_url ? (
                                                                             <>
-                                                                                <img src={item.gambar_url} alt={item.nama_barang} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                                                <img src={item.gambar_url} alt={item.nama_barang} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                                                                                 <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
                                                                                     <Eye size={16} />
                                                                                 </div>
@@ -763,7 +763,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                             >
                                                                 {unit.gambar_url ? (
                                                                     <>
-                                                                        <img src={unit.gambar_url} alt={unit.nama_barang} className="w-full h-full object-cover" />
+                                                                        <img src={unit.gambar_url} alt={unit.nama_barang} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                                                         <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
                                                                             <Eye size={12} />
                                                                         </div>
@@ -1226,6 +1226,8 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                             <img
                                 src={previewModalImage.url}
                                 alt={previewModalImage.nama}
+                                loading="lazy"
+                                decoding="async"
                                 className="max-h-[60vh] max-w-full object-contain rounded-xl shadow-xs border border-[#E0E0E0]"
                             />
                         </div>

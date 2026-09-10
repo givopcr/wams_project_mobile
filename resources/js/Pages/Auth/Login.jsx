@@ -31,7 +31,7 @@ export default function Login() {
                                 WAMS
                             </h1>
                             <p className="text-xs sm:text-sm text-[#6B7280] font-normal">
-                                Masukkan Email dan Password anda
+                                Masukkan Email atau NIP dan Password anda
                             </p>
                         </div>
 
@@ -55,7 +55,7 @@ export default function Login() {
                                         type="text"
                                         value={data.login}
                                         onChange={(e) => setData('login', e.target.value)}
-                                        placeholder="Username"
+                                        placeholder="Email atau NIP"
                                         required
                                         className="w-full pr-4 py-3.5 bg-transparent border-0 text-sm text-[#1D1616] placeholder:text-[#8C93A0] focus:outline-none focus:ring-0 font-normal"
                                     />
@@ -79,7 +79,7 @@ export default function Login() {
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8C93A0] hover:text-[#1D1616] transition-colors p-1"
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8C93A0] hover:text-[#1D1616] transition-colors p-1 cursor-pointer"
                                         aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                                     >
                                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -103,15 +103,56 @@ export default function Login() {
                                 </label>
                             </div>
 
-                            {/* Centered Pill Submit Button matching reference image */}
+                            {/* Centered Pill Submit Button */}
                             <div className="pt-4 text-center">
                                 <button
                                     type="submit"
                                     disabled={processing}
-                                    className="px-10 py-3 bg-gradient-to-r from-[#D84040] to-[#8E1616] hover:from-[#c93636] hover:to-[#771111] text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-[#D84040]/30 hover:shadow-xl hover:shadow-[#D84040]/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                                    className="w-full py-3.5 bg-gradient-to-r from-[#D84040] to-[#8E1616] hover:from-[#c93636] hover:to-[#771111] text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-[#D84040]/30 hover:shadow-xl hover:shadow-[#D84040]/40 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                                 >
-                                    {processing ? 'Memproses...' : 'Login'}
+                                    {processing ? 'Memproses...' : 'Masuk ke Sistem'}
                                 </button>
+                            </div>
+
+                            {/* Quick Demo Credentials */}
+                            <div className="pt-5 border-t border-[#E5E7EB] mt-5">
+                                <p className="text-[11px] font-semibold text-[#8C93A0] uppercase tracking-wider text-center mb-2.5">
+                                    Akun Uji Coba Cepat
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setData((prev) => ({
+                                                ...prev,
+                                                login: 'givo@gmail.com',
+                                                password: 'password',
+                                            }));
+                                        }}
+                                        className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E0E0E0] hover:border-[#D84040] hover:bg-rose-50/50 text-left transition-all cursor-pointer group"
+                                    >
+                                        <span className="block text-xs font-bold text-[#1D1616] group-hover:text-[#D84040]">
+                                            👤 User / Teknisi
+                                        </span>
+                                        <span className="block text-[10px] text-[#6B7280]">givo@gmail.com</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setData((prev) => ({
+                                                ...prev,
+                                                login: 'admin@wams.test',
+                                                password: 'password',
+                                            }));
+                                        }}
+                                        className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E0E0E0] hover:border-[#D84040] hover:bg-rose-50/50 text-left transition-all cursor-pointer group"
+                                    >
+                                        <span className="block text-xs font-bold text-[#1D1616] group-hover:text-[#D84040]">
+                                            🛡️ Admin
+                                        </span>
+                                        <span className="block text-[10px] text-[#6B7280]">admin@wams.test</span>
+                                    </button>
+                                </div>
                             </div>
                         </form>
 

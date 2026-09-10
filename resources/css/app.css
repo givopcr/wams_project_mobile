@@ -1,5 +1,6 @@
 @import 'tailwindcss';
-@import '@flaticon/flaticon-uicons/css/all/all.css';
+@import '@flaticon/flaticon-uicons/css/bold/rounded.css';
+@import '@flaticon/flaticon-uicons/css/regular/rounded.css';
 
 /* Fallback / mapping for fi-br-task-checklist if not loaded in specific subset */
 .fi-br-task-checklist:before {

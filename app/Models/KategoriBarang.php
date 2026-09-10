@@ -27,6 +27,14 @@ class KategoriBarang extends Model
     }
 
     /**
+     * Alias plural relasi ke Barang
+     */
+    public function barangs(): HasMany
+    {
+        return $this->barang();
+    }
+
+    /**
      * Relasi ke Unit Barang melalui Barang
      */
     public function units(): HasManyThrough
