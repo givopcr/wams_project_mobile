@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import UserMobileLayout from '@/Layouts/UserMobileLayout';
 import {
     Search,
@@ -15,8 +15,8 @@ import {
     ShieldAlert,
     Package,
     Sparkles,
-    X,
-    Check
+    Scan,
+    QrCode
 } from 'lucide-react';
 
 export default function MobileDashboard({
@@ -27,48 +27,6 @@ export default function MobileDashboard({
     user = {}
 }) {
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedItemForBorrow, setSelectedItemForBorrow] = useState(null);
-    const [borrowDurationPreset, setBorrowDurationPreset] = useState(120); // default 2 jam (menit)
-
-    // Form Peminjaman
-    const { data, setData, post, processing, errors, reset } = useForm({
-        barang_id: '',
-        barang_unit_id: '',
-        keperluan: '',
-        batas_kembali: '',
-    });
-
-    // Helper calculate batas kembali date ISO string
-    const calculateDeadline = (minutes) => {
-        const d = new Date(Date.now() + minutes * 60 * 1000);
-        return d.toISOString().slice(0, 16); // format YYYY-MM-DDTHH:mm
-    };
-
-    const handleOpenBorrowModal = (item) => {
-        setSelectedItemForBorrow(item);
-        const firstUnitId = item.units_sample?.[0]?.id || item.available_unit_list?.[0]?.id || '';
-        setData({
-            barang_id: item.id,
-            barang_unit_id: firstUnitId,
-            keperluan: 'Pekerjaan / Praktikum Workshop',
-            batas_kembali: calculateDeadline(borrowDurationPreset),
-        });
-    };
-
-    const handlePresetChange = (minutes) => {
-        setBorrowDurationPreset(minutes);
-        setData('batas_kembali', calculateDeadline(minutes));
-    };
-
-    const handleSubmitBorrow = (e) => {
-        e.preventDefault();
-        post('/user/pinjam', {
-            onSuccess: () => {
-                setSelectedItemForBorrow(null);
-                reset();
-            },
-        });
-    };
 
     const handleSearchSubmit = (e) => {
         e.preventDefault();
@@ -338,7 +296,22 @@ export default function MobileDashboard({
 
                 {/* 5. Available Equipment Grid */}
                 <div className="space-y-2.5">
-                    <div className="flex items-center justify-between px-1">
+                    {/* Notice: Scan QR Requirement */}
+                    <div className="bg-rose-50 border border-rose-200/80 rounded-2xl p-3 flex items-start gap-2.5 shadow-2xs">
+                        <div className="w-8 h-8 rounded-xl bg-[#D84040] text-white flex items-center justify-center shrink-0">
+                            <Scan size={16} />
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-black text-[#8E1616]">
+                                Akses Peminjaman Wajib Scan QR Code
+                            </h4>
+                            <p className="text-[11px] text-[#1D1616]/80 mt-0.5 leading-snug">
+                                Untuk meminjam alat, temukan unit fisik di workshop lalu pindai stiker QR Code yang tertempel pada alat.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between px-1 pt-1">
                         <h3 className="text-xs font-black uppercase tracking-wider text-[#6B7280]">
                             Alat Siap Dipinjam
                         </h3>
@@ -386,156 +359,18 @@ export default function MobileDashboard({
                                     </h4>
                                 </div>
 
-                                <button
-                                    type="button"
-                                    onClick={() => handleOpenBorrowModal(item)}
-                                    className="w-full py-2 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-colors shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                                <Link
+                                    href={`/user/scanner?target=${encodeURIComponent(item.nama_barang)}`}
+                                    className="w-full py-2 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                                 >
-                                    <span>Pinjam</span>
-                                    <ArrowRight size={12} />
-                                </button>
+                                    <Scan size={13} />
+                                    <span>Scan QR Unit</span>
+                                </Link>
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
-
-            {/* Quick Borrow Modal / Bottom Sheet */}
-            {selectedItemForBorrow && (
-                <div className="fixed inset-0 z-50 bg-[#1D1616]/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
-                    <div className="w-full max-w-[440px] bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-[#E0E0E0] max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-5 duration-200">
-                        {/* Modal Header */}
-                        <div className="flex items-center justify-between pb-3 border-b border-[#E0E0E0] mb-4">
-                            <div>
-                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#D84040]">
-                                    Peminjaman Alat
-                                </span>
-                                <h3 className="text-base font-black text-[#1D1616] line-clamp-1">
-                                    {selectedItemForBorrow.nama_barang}
-                                </h3>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setSelectedItemForBorrow(null)}
-                                className="w-8 h-8 rounded-full bg-[#EEEEEE] hover:bg-[#E0E0E0] text-[#6B7280] flex items-center justify-center cursor-pointer"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        {/* Approval Notice if applicable */}
-                        {selectedItemForBorrow.perlu_persetujuan && (
-                            <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2">
-                                <ShieldAlert size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="font-bold">Memerlukan Persetujuan Admin</p>
-                                    <p className="text-[11px] text-amber-700">
-                                        Alat ini perlu disetujui langsung oleh Admin sebelum dapat diambil.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        <form onSubmit={handleSubmitBorrow} className="space-y-3.5">
-                            {/* Available Unit Selector */}
-                            <div>
-                                <label className="block text-xs font-bold text-[#1D1616] mb-1">
-                                    Pilih Unit Fisik Tersedia
-                                </label>
-                                <select
-                                    value={data.barang_unit_id}
-                                    onChange={(e) => setData('barang_unit_id', e.target.value)}
-                                    className="w-full px-3 py-2.5 bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl text-xs font-mono text-[#1D1616] focus:outline-none focus:border-[#D84040]"
-                                    required
-                                >
-                                    {(selectedItemForBorrow.available_unit_list || selectedItemForBorrow.units_sample || []).map((u) => (
-                                        <option key={u.id} value={u.id}>
-                                            {u.kode_unit} ({u.kondisi === 'baik' ? 'Kondisi Baik' : u.kondisi})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Keperluan */}
-                            <div>
-                                <label className="block text-xs font-bold text-[#1D1616] mb-1">
-                                    Keperluan Peminjaman
-                                </label>
-                                <input
-                                    type="text"
-                                    value={data.keperluan}
-                                    onChange={(e) => setData('keperluan', e.target.value)}
-                                    placeholder="Contoh: Praktikum Kelistrikan / Uji Komponen"
-                                    required
-                                    className="w-full px-3 py-2.5 bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
-                                />
-                                {errors.keperluan && (
-                                    <p className="text-rose-600 text-[10px] mt-1 font-medium">{errors.keperluan}</p>
-                                )}
-                            </div>
-
-                            {/* Durasi Peminjaman Preset */}
-                            <div>
-                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
-                                    Pilihan Durasi Peminjaman
-                                </label>
-                                <div className="grid grid-cols-4 gap-1.5">
-                                    {[
-                                        { label: '2 Jam', min: 120 },
-                                        { label: '4 Jam', min: 240 },
-                                        { label: '1 Hari', min: 1440 },
-                                        { label: '3 Hari', min: 4320 },
-                                    ].map((preset) => (
-                                        <button
-                                            key={preset.min}
-                                            type="button"
-                                            onClick={() => handlePresetChange(preset.min)}
-                                            className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                                                borrowDurationPreset === preset.min
-                                                    ? 'bg-[#D84040] text-white border-[#D84040] shadow-xs'
-                                                    : 'bg-[#F8F9FA] text-[#1D1616] border-[#E0E0E0] hover:border-[#D84040]'
-                                            }`}
-                                        >
-                                            {preset.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Batas Tanggal & Waktu Pengembalian */}
-                            <div>
-                                <label className="block text-xs font-bold text-[#1D1616] mb-1">
-                                    Batas Pengembalian (Waktu Maksimal)
-                                </label>
-                                <input
-                                    type="datetime-local"
-                                    value={data.batas_kembali}
-                                    onChange={(e) => {
-                                        setData('batas_kembali', e.target.value);
-                                        setBorrowDurationPreset(0);
-                                    }}
-                                    className="w-full px-3 py-2.5 bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
-                                    required
-                                />
-                                {errors.batas_kembali && (
-                                    <p className="text-rose-600 text-[10px] mt-1 font-medium">{errors.batas_kembali}</p>
-                                )}
-                            </div>
-
-                            {/* Submit Button */}
-                            <div className="pt-2">
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="w-full py-3 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-[#D84040]/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-                                >
-                                    {processing ? 'Memproses...' : 'Konfirmasi Peminjaman'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </UserMobileLayout>
     );
 }

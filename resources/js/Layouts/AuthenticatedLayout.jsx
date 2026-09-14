@@ -193,7 +193,7 @@ export default function AuthenticatedLayout({ title, children }) {
     };
 
     const handleLogout = () => {
-        router.post('/admin/logout');
+        router.post('/logout');
     };
 
     return (

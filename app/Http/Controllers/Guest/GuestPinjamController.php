@@ -8,6 +8,7 @@ use App\Models\BarangUnit;
 use App\Models\GuestOtp;
 use App\Models\Logbook;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -26,8 +27,13 @@ class GuestPinjamController extends Controller
     /**
      * Menampilkan halaman peminjaman atau status unit berdasarkan scan QR
      */
-    public function show(Request $request, string $kode_unit): Response
+    public function show(Request $request, string $kode_unit): Response|RedirectResponse
     {
+        // Jika pengguna terautentikasi (role user), langsung arahkan ke portal scanner user
+        if (auth()->check() && auth()->user()->role === 'user') {
+            return redirect()->route('user.scanner', ['code' => $kode_unit]);
+        }
+
         $unit = BarangUnit::with(['barang.kategori', 'activeLogbook'])
             ->where('kode_unit', $kode_unit)
             ->first();

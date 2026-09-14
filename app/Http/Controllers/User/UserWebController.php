@@ -187,9 +187,11 @@ class UserWebController extends Controller
     {
         $request->validate([
             'barang_id' => ['required', 'exists:barang,id'],
-            'barang_unit_id' => ['nullable', 'exists:barang_unit,id'],
+            'barang_unit_id' => ['required', 'exists:barang_unit,id'],
             'keperluan' => ['required', 'string', 'max:500'],
             'batas_kembali' => ['required', 'date'],
+        ], [
+            'barang_unit_id.required' => 'Peminjaman wajib memindai stiker QR Code pada unit fisik alat terlebih dahulu.',
         ]);
 
         $user = auth()->user();
@@ -198,19 +200,15 @@ class UserWebController extends Controller
         $targetStatus = $requiresApproval ? 'menunggu_persetujuan' : 'dipinjam';
 
         return DB::transaction(function () use ($user, $barang, $request, $targetStatus, $requiresApproval) {
-            // Pilih unit spesifik atau unit pertama yang tersedia
-            $unitQuery = BarangUnit::where('barang_id', $barang->id)
+            // Unit wajib dipilih secara spesifik dari hasil scan QR unit fisik
+            $unit = BarangUnit::where('id', $request->barang_unit_id)
+                ->where('barang_id', $barang->id)
                 ->where('status', 'tersedia')
-                ->lockForUpdate();
-
-            if ($request->filled('barang_unit_id')) {
-                $unit = $unitQuery->where('id', $request->barang_unit_id)->first();
-            } else {
-                $unit = $unitQuery->first();
-            }
+                ->lockForUpdate()
+                ->first();
 
             if (!$unit) {
-                return back()->with('error', 'Maaf, unit untuk barang ini sedang tidak tersedia atau baru saja dipinjam.');
+                return back()->with('error', 'Unit fisik ini tidak tersedia untuk dipinjam atau sedang digunakan.');
             }
 
             // Update status unit fisik
@@ -358,7 +356,7 @@ class UserWebController extends Controller
     /**
      * Halaman Scanner QR Code Mobile
      */
-    public function scanner(): Response
+    public function scanner(Request $request): Response
     {
         $categories = KategoriBarang::all();
         $recentUnits = BarangUnit::with('barang')
@@ -373,6 +371,8 @@ class UserWebController extends Controller
         return Inertia::render('User/MobileScanner', [
             'categories' => $categories,
             'recentUnits' => $recentUnits,
+            'initialCode' => (string) $request->query('code', ''),
+            'targetName' => (string) $request->query('target', ''),
         ]);
     }
 
@@ -383,9 +383,14 @@ class UserWebController extends Controller
     {
         $user = auth()->user();
 
-        // Normalisasi format QR code jika membawa awalan URL
+        // Normalisasi format QR code jika membawa awalan URL atau query parameter
         $cleanKode = trim($kode_unit);
-        if (preg_match('/scan\/([A-Za-z0-9_\-]+)/', $cleanKode, $matches)) {
+        if (str_contains($cleanKode, '?')) {
+            $cleanKode = explode('?', $cleanKode)[0];
+        }
+        if (preg_match('#/(?:scan)/([A-Za-z0-9_\-]+)#i', $cleanKode, $matches)) {
+            $cleanKode = $matches[1];
+        } elseif (preg_match('#^scan/([A-Za-z0-9_\-]+)#i', $cleanKode, $matches)) {
             $cleanKode = $matches[1];
         }
 

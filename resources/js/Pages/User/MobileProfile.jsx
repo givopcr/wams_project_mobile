@@ -21,7 +21,7 @@ export default function MobileProfile({ user = {}, stats = {} }) {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const handleLogout = () => {
-        router.post('/admin/logout');
+        router.post('/logout');
     };
 
     return (

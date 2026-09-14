@@ -22,8 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Redirect user yang sudah login ke dashboard sesuai role
         $middleware->redirectUsersTo(fn () => auth()->user()?->role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
-        // Redirect unauthenticated users ke halaman login admin
-        $middleware->redirectGuestsTo('/admin/login');
+        // Redirect unauthenticated users ke halaman login
+        $middleware->redirectGuestsTo('/login');
 
         // Peminjaman tamu via scan QR publik
         $middleware->validateCsrfTokens(except: [

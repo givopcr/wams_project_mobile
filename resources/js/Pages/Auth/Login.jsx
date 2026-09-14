@@ -13,7 +13,7 @@ export default function Login() {
 
     const submit = (e) => {
         e.preventDefault();
-        post('/admin/login');
+        post('/login');
     };
 
     return (

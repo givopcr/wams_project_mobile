@@ -8,12 +8,10 @@ import {
     AlertCircle,
     Calendar,
     ShieldCheck,
-    Share2,
     RotateCcw,
     Sparkles,
     AlertTriangle,
-    RefreshCw,
-    Check
+    RefreshCw
 } from 'lucide-react';
 
 export default function GuestStatus({ unit, logbook }) {
@@ -27,7 +25,6 @@ export default function GuestStatus({ unit, logbook }) {
     const [returning, setReturning] = useState(false);
     const [returnError, setReturnError] = useState(null);
     const [returnSuccess, setReturnSuccess] = useState(false);
-    const [copied, setCopied] = useState(false);
 
     // Countdown Timer calculation
     useEffect(() => {
@@ -64,14 +61,6 @@ export default function GuestStatus({ unit, logbook }) {
         return () => clearInterval(interval);
     }, [logbook?.batas_kembali]);
 
-    // Handle Copy / Share Ticket Link
-    const handleShare = () => {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(window.location.href);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }
-    };
 
     // Submit Return
     const handleReturn = async (e) => {
@@ -129,14 +118,6 @@ export default function GuestStatus({ unit, logbook }) {
                             <p className="text-[10px] text-[#6B7280]">Tiket Peminjaman Digital</p>
                         </div>
                     </div>
-                    <button
-                        onClick={handleShare}
-                        className="p-2 rounded-xl bg-white border border-[#E0E0E0] hover:bg-[#EEEEEE] text-[#1D1616] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                        title="Salin Link Tiket"
-                    >
-                        {copied ? <Check size={14} className="text-emerald-600" /> : <Share2 size={14} />}
-                        <span className="hidden sm:inline">{copied ? 'Tersalin' : 'Bagikan'}</span>
-                    </button>
                 </div>
             </header>
 

@@ -12,29 +12,25 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Root
+// Root - Selalu arahkan ke Login agar pengguna dapat melihat & memilih portal/akun
 Route::get('/', function () {
-    if (auth()->check()) {
-        if (auth()->user()->role === 'admin') {
-            return redirect()->route('admin.dashboard');
-        }
-        return redirect()->route('user.dashboard');
-    }
     return redirect()->route('login');
 });
 
-// Auth Routes (Guest)
-Route::middleware('guest')->group(function () {
-    Route::get('/admin/login', [AuthWebController::class, 'showLogin'])->name('login');
-    Route::post('/admin/login', [AuthWebController::class, 'login'])->name('login.post');
-    Route::get('/login', fn() => redirect('/admin/login'));
-    Route::post('/login', [AuthWebController::class, 'login']);
+// Auth Routes (Universal Login untuk Admin maupun Teknisi/User)
+Route::get('/login', [AuthWebController::class, 'showLogin'])->name('login');
+Route::post('/login', [AuthWebController::class, 'login'])->name('login.post');
+Route::get('/admin/login', fn () => redirect()->route('login'));
+Route::post('/admin/login', [AuthWebController::class, 'login']);
+
+// Universal Logout (Bisa diakses oleh role admin maupun user tanpa terblokir middleware)
+Route::middleware('auth')->group(function () {
+    Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
+    Route::post('/admin/logout', [AuthWebController::class, 'logout'])->name('admin.logout');
 });
 
 // Admin Protected Routes
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
-    Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
-
     // Dashboard
     Route::get('/dashboard', [AdminWebController::class, 'dashboard'])->name('admin.dashboard');
 
