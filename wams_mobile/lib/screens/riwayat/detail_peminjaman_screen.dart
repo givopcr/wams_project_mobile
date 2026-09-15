@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme.dart';
 import '../../models/riwayat_model.dart';
 import '../../providers/asset_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../widgets/tool_thumbnail.dart';
+import '../../widgets/countdown_badge.dart';
 import '../riwayat/form_pengembalian_screen.dart';
 
 class DetailPeminjamanScreen extends StatelessWidget {
@@ -245,21 +248,11 @@ class DetailPeminjamanScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppTheme.borderLight),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.handyman,
-                        size: 42,
-                        color: AppTheme.primaryDark,
-                      ),
-                    ),
+                  ToolThumbnail(
+                    imageUrl: item.gambarUrl,
+                    toolName: item.namaBarang,
+                    size: 80,
+                    borderRadius: 14,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -276,11 +269,27 @@ class DetailPeminjamanScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          item.kodeUnit,
+                          'Kategori: ${item.namaKategori}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.textMuted,
-                            fontFamily: 'monospace',
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            item.kodeUnit,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'monospace',
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
                         ),
                       ],
@@ -288,8 +297,8 @@ class DetailPeminjamanScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
+            ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.08, end: 0),
+            const SizedBox(height: 18),
 
             // Metadata Detail Table
             Container(
@@ -310,7 +319,32 @@ class DetailPeminjamanScreen extends StatelessWidget {
                 children: [
                   _buildRow('Tanggal Pengajuan', _formatDate(item.tanggalPinjam)),
                   const Divider(color: AppTheme.borderLight, height: 24),
-                  _buildRow('Batas Waktu Kembali', _formatDate(item.batasKembali ?? item.tanggalKembali)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Batas Waktu Kembali',
+                        style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _formatDate(item.batasKembali ?? item.tanggalKembali),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          if (item.isDipinjam) ...[
+                            const SizedBox(width: 8),
+                            CountdownBadge(batasKembali: item.batasKembali, compact: true),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
                   const Divider(color: AppTheme.borderLight, height: 24),
                   _buildRow('Keperluan', item.keperluan ?? 'Praktikum Workshop'),
                   const Divider(color: AppTheme.borderLight, height: 24),
@@ -337,7 +371,7 @@ class DetailPeminjamanScreen extends StatelessWidget {
                   ],
                 ],
               ),
-            ),
+            ).animate(delay: 100.ms).fadeIn(duration: 350.ms).slideY(begin: 0.08, end: 0),
             const SizedBox(height: 28),
 
             // Actions:

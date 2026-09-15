@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme.dart';
 import '../../providers/asset_provider.dart';
+import '../../widgets/skeleton_loader.dart';
+import '../../widgets/tool_thumbnail.dart';
 import 'pilih_unit_screen.dart';
 
 class DetailBarangScreen extends StatefulWidget {
@@ -51,9 +53,7 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
         ),
       ),
       body: assetProvider.isLoading || barang == null
-          ? const Center(
-              child: SpinKitFadingCircle(color: AppTheme.primary, size: 36),
-            )
+          ? const WamsSkeletonDetail()
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -77,20 +77,12 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                     ),
                     child: Column(
                       children: [
-                        Container(
-                          width: 140,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF9FAFB),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.handyman,
-                              size: 70,
-                              color: AppTheme.primaryDark,
-                            ),
-                          ),
+                        ToolThumbnail(
+                          imageUrl: barang.gambarUrl,
+                          toolName: barang.namaBarang,
+                          size: 140,
+                          borderRadius: 20,
+                          heroTag: 'tool_img_${barang.id}',
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -122,7 +114,7 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                         ),
                       ],
                     ),
-                  ),
+                  ).animate().fadeIn(duration: 350.ms).scale(begin: const Offset(0.96, 0.96), end: const Offset(1, 1), curve: Curves.easeOutCubic),
                   const SizedBox(height: 20),
 
                   // Detail Specifications Card
@@ -149,10 +141,10 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                         const Divider(color: AppTheme.borderLight, height: 24),
                         _buildSpecRow('Deskripsi', barang.detailSpesifikasi ?? 'Peralatan standar workshop mesin dan industri.'),
                         const Divider(color: AppTheme.borderLight, height: 24),
-                        _buildSpecRow('Total Unit', '${barang.totalUnit} Unit'),
+                        _buildSpecRow('Lokasi Rak', barang.lokasi ?? 'Workshop Mesin / Lab Utama'),
                       ],
                     ),
-                  ),
+                  ).animate(delay: 100.ms).fadeIn(duration: 350.ms).slideY(begin: 0.08, end: 0),
                   const SizedBox(height: 24),
 
                   // Section Unit Tersedia
@@ -270,7 +262,7 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                         color: Colors.white,
                       ),
                     ),
-                  ),
+                  ).animate(delay: 200.ms).fadeIn(duration: 350.ms).slideY(begin: 0.1, end: 0),
                   const SizedBox(height: 20),
                 ],
               ),

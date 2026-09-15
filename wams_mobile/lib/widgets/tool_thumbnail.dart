@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../core/theme.dart';
+import 'skeleton_loader.dart';
 
 class ToolThumbnail extends StatelessWidget {
   final String? imageUrl;
   final String? toolName;
   final double size;
   final double borderRadius;
+  final String? heroTag;
 
   const ToolThumbnail({
     super.key,
@@ -13,6 +16,7 @@ class ToolThumbnail extends StatelessWidget {
     this.toolName,
     this.size = 52,
     this.borderRadius = 12,
+    this.heroTag,
   });
 
   IconData _getIconForTool(String? name) {
@@ -29,7 +33,7 @@ class ToolThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    Widget content = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
@@ -40,14 +44,31 @@ class ToolThumbnail extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
         child: imageUrl != null && imageUrl!.isNotEmpty
-            ? Image.network(
-                imageUrl!,
+            ? CachedNetworkImage(
+                imageUrl: imageUrl!,
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+                memCacheWidth: (size * 2).toInt(),
+                memCacheHeight: (size * 2).toInt(),
+                placeholder: (context, url) => const WamsShimmer(
+                  child: ColoredBox(color: Colors.white),
+                ),
+                errorWidget: (context, url, error) => _buildPlaceholder(),
               )
             : _buildPlaceholder(),
       ),
     );
+
+    if (heroTag != null && heroTag!.isNotEmpty) {
+      return Hero(
+        tag: heroTag!,
+        child: Material(
+          type: MaterialType.transparency,
+          child: content,
+        ),
+      );
+    }
+
+    return content;
   }
 
   Widget _buildPlaceholder() {

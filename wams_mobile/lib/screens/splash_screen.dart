@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import '../core/constants.dart';
 import '../core/theme.dart';
 import '../providers/auth_provider.dart';
 import 'auth/login_screen.dart';
@@ -21,7 +22,11 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthStatus() async {
-    await Future.delayed(const Duration(milliseconds: 1200));
+    // Probing for active host and splash animation run concurrently
+    await Future.wait([
+      ApiConstants.init(),
+      Future.delayed(const Duration(milliseconds: 1200)),
+    ]);
     if (!mounted) return;
 
     final authProvider = context.read<AuthProvider>();

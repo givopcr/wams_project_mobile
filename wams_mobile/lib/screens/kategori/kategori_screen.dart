@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme.dart';
 import '../../providers/asset_provider.dart';
+import '../../widgets/skeleton_loader.dart';
 import 'barang_kategori_screen.dart';
 
 class KategoriScreen extends StatefulWidget {
@@ -98,8 +99,11 @@ class _KategoriScreenState extends State<KategoriScreen> {
           // Categories List
           Expanded(
             child: assetProvider.isLoading
-                ? const Center(
-                    child: SpinKitFadingCircle(color: AppTheme.primary, size: 36),
+                ? ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    itemCount: 6,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, _) => const WamsSkeletonCategory(),
                   )
                 : filteredCategories.isEmpty
                     ? const Center(
@@ -190,7 +194,7 @@ class _KategoriScreenState extends State<KategoriScreen> {
                                 ],
                               ),
                             ),
-                          );
+                          ).animate(delay: (index * 40).ms).fadeIn(duration: 300.ms).slideY(begin: 0.05, end: 0);
                         },
                       ),
           ),

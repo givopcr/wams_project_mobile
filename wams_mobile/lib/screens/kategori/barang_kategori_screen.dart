@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/theme.dart';
 import '../../providers/asset_provider.dart';
+import '../../widgets/skeleton_loader.dart';
+import '../../widgets/tool_thumbnail.dart';
 import '../barang/detail_barang_screen.dart';
 
 class BarangKategoriScreen extends StatefulWidget {
@@ -146,11 +148,14 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
           // Items List
           Expanded(
             child: assetProvider.isLoading
-                ? const Center(
-                    child: SpinKitFadingCircle(
-                      color: AppTheme.primary,
-                      size: 36,
+                ? ListView.separated(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
                     ),
+                    itemCount: 5,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, _) => const WamsSkeletonCard(),
                   )
                 : items.isEmpty
                 ? const Center(
@@ -196,23 +201,12 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                           child: Row(
                             children: [
                               // Tool Thumbnail
-                              Container(
-                                width: 52,
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppTheme.borderLight,
-                                  ),
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.handyman,
-                                    color: AppTheme.primary,
-                                    size: 26,
-                                  ),
-                                ),
+                              ToolThumbnail(
+                                imageUrl: item.gambarUrl,
+                                toolName: item.namaBarang,
+                                size: 52,
+                                borderRadius: 12,
+                                heroTag: 'tool_img_${item.id}',
                               ),
                               const SizedBox(width: 14),
 
@@ -249,7 +243,7 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                             ],
                           ),
                         ),
-                      );
+                      ).animate(delay: (index * 45).ms).fadeIn(duration: 300.ms).slideY(begin: 0.05, end: 0);
                     },
                   ),
           ),

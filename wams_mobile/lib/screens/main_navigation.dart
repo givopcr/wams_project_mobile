@@ -49,77 +49,77 @@ class _MainNavigationState extends State<MainNavigation> {
             top: BorderSide(color: AppTheme.borderLight, width: 0.8),
           ),
         ),
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (idx) {
-            setState(() {
-              _currentIndex = idx;
-            });
-          },
-          backgroundColor: Colors.transparent,
-          indicatorColor: AppTheme.primary.withValues(alpha: 0.12),
-          destinations: [
-            NavigationDestination(
-              icon: Image.asset(
-                'assets/icons/nav_home.png',
-                width: 24,
-                height: 24,
-                color: AppTheme.textMuted,
-              ),
-              selectedIcon: Image.asset(
-                'assets/icons/nav_home.png',
-                width: 24,
-                height: 24,
-                color: AppTheme.primary,
-              ),
-              label: 'Dashboard',
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 64,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final totalWidth = constraints.maxWidth;
+                final tabWidth = totalWidth / 4;
+                const pillWidth = 60.0;
+                const pillHeight = 40.0;
+
+                return Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    // Smooth sliding red pill indicator
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeInOutCubic,
+                      left: _currentIndex * tabWidth + (tabWidth - pillWidth) / 2,
+                      top: (64 - pillHeight) / 2,
+                      width: pillWidth,
+                      height: pillHeight,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+
+                    // Interactive Nav Items on top
+                    Row(
+                      children: [
+                        _buildNavItem(0, 'assets/icons/nav_home.png'),
+                        _buildNavItem(1, 'assets/icons/nav_scan.png'),
+                        _buildNavItem(2, 'assets/icons/nav_history.png'),
+                        _buildNavItem(3, 'assets/icons/nav_profile.png'),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
-            NavigationDestination(
-              icon: Image.asset(
-                'assets/icons/nav_scan.png',
-                width: 24,
-                height: 24,
-                color: AppTheme.textMuted,
-              ),
-              selectedIcon: Image.asset(
-                'assets/icons/nav_scan.png',
-                width: 24,
-                height: 24,
-                color: AppTheme.primary,
-              ),
-              label: 'Scan QR',
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, String iconAsset) {
+    final isSelected = _currentIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        child: Center(
+          child: AnimatedScale(
+            scale: isSelected ? 1.08 : 1.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutBack,
+            child: Image.asset(
+              iconAsset,
+              width: 24,
+              height: 24,
+              color: isSelected ? AppTheme.primary : AppTheme.textMuted,
             ),
-            NavigationDestination(
-              icon: Image.asset(
-                'assets/icons/nav_history.png',
-                width: 24,
-                height: 24,
-                color: AppTheme.textMuted,
-              ),
-              selectedIcon: Image.asset(
-                'assets/icons/nav_history.png',
-                width: 24,
-                height: 24,
-                color: AppTheme.primary,
-              ),
-              label: 'Riwayat',
-            ),
-            NavigationDestination(
-              icon: Image.asset(
-                'assets/icons/nav_profile.png',
-                width: 24,
-                height: 24,
-                color: AppTheme.textMuted,
-              ),
-              selectedIcon: Image.asset(
-                'assets/icons/nav_profile.png',
-                width: 24,
-                height: 24,
-                color: AppTheme.primary,
-              ),
-              label: 'Profil',
-            ),
-          ],
+          ),
         ),
       ),
     );

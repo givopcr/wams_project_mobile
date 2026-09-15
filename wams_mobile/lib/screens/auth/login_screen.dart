@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../main_navigation.dart';
@@ -17,6 +18,29 @@ class _LoginScreenState extends State<LoginScreen> {
   final _loginController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final remember = prefs.getBool('remember_me') ?? false;
+      final savedLogin = prefs.getString('saved_login_identifier') ?? '';
+      if (mounted) {
+        setState(() {
+          _rememberMe = remember;
+          if (remember && savedLogin.isNotEmpty) {
+            _loginController.text = savedLogin;
+          }
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -36,6 +60,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
     if (success) {
+      // Save or clear remember me preference
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (_rememberMe) {
+          await prefs.setBool('remember_me', true);
+          await prefs.setString('saved_login_identifier', _loginController.text.trim());
+        } else {
+          await prefs.setBool('remember_me', false);
+          await prefs.remove('saved_login_identifier');
+        }
+      } catch (_) {}
+
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainNavigation()),
@@ -235,7 +272,59 @@ class _LoginScreenState extends State<LoginScreen> {
                                     v == null || v.isEmpty ? 'Password wajib diisi' : null,
                               ),
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 14),
+
+                            // Row Ingat Saya (Remember Me)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  setState(() {
+                                    _rememberMe = !_rememberMe;
+                                  });
+                                },
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    AnimatedContainer(
+                                      duration: const Duration(milliseconds: 180),
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: _rememberMe
+                                            ? AppTheme.primary
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: _rememberMe
+                                              ? AppTheme.primary
+                                              : const Color(0xFFCBD5E1),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: _rememberMe
+                                          ? const Icon(
+                                              Icons.check,
+                                              size: 14,
+                                              color: Colors.white,
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Text(
+                                      'Ingat saya',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF4B5563),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
 
                             // Centered Pill Button matching reference image
                             Center(

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/theme.dart';
 import '../../models/barang_model.dart';
+import '../../widgets/tool_thumbnail.dart';
 import '../main_navigation.dart';
 
 class PeminjamanBerhasilScreen extends StatelessWidget {
@@ -43,7 +45,7 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
                       color: AppTheme.success.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                  ),
+                  ).animate().scale(duration: 700.ms, curve: Curves.easeOutBack),
                   Container(
                     width: 80,
                     height: 80,
@@ -56,24 +58,28 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
                       color: Colors.white,
                       size: 48,
                     ),
-                  ),
+                  ).animate().scale(duration: 550.ms, curve: Curves.elasticOut),
                 ],
               ),
               const SizedBox(height: 24),
 
-              const Text(
-                'Peminjaman Berhasil!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Barang siap digunakan.',
-                style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-              ),
+              Column(
+                children: const [
+                  Text(
+                    'Peminjaman Berhasil!',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Barang siap digunakan.',
+                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                  ),
+                ],
+              ).animate(delay: 150.ms).fadeIn(duration: 350.ms).slideY(begin: 0.1, end: 0),
               const SizedBox(height: 28),
 
               // Summary Card
@@ -97,21 +103,11 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
                     // Item row
                     Row(
                       children: [
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppTheme.borderLight),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.handyman,
-                              color: AppTheme.primary,
-                              size: 28,
-                            ),
-                          ),
+                        ToolThumbnail(
+                          imageUrl: barang.gambarUrl,
+                          toolName: barang.namaBarang,
+                          size: 56,
+                          borderRadius: 12,
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -150,62 +146,64 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
                     _buildRow('Keperluan', keperluan),
                   ],
                 ),
-              ),
+              ).animate(delay: 250.ms).fadeIn(duration: 400.ms).slideY(begin: 0.12, end: 0),
               const SizedBox(height: 36),
 
-              // Lihat Peminjaman Saya button
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MainNavigation(initialIndex: 2),
+              // Buttons
+              Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MainNavigation(initialIndex: 2),
+                        ),
+                        (route) => false,
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-                    (route) => false,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary,
-                  minimumSize: const Size.fromHeight(50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: const Text(
-                  'Lihat Peminjaman Saya',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Kembali ke Dashboard button
-              OutlinedButton(
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MainNavigation(initialIndex: 0),
+                    child: const Text(
+                      'Lihat Peminjaman Saya',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
-                    (route) => false,
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: AppTheme.cardLight,
-                  side: const BorderSide(color: AppTheme.borderLight),
-                  minimumSize: const Size.fromHeight(50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
                   ),
-                ),
-                child: const Text(
-                  'Kembali ke Dashboard',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MainNavigation(initialIndex: 0),
+                        ),
+                        (route) => false,
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: AppTheme.cardLight,
+                      side: const BorderSide(color: AppTheme.borderLight),
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Kembali ke Dashboard',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                ],
+              ).animate(delay: 350.ms).fadeIn(duration: 350.ms).slideY(begin: 0.1, end: 0),
             ],
           ),
         ),

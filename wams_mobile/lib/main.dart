@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'core/constants.dart';
 import 'core/theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/asset_provider.dart';
 import 'providers/transaction_provider.dart';
-import 'screens/auth/login_screen.dart';
+import 'screens/splash_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ApiConstants.init();
   runApp(const WamsApp());
 }
 
@@ -26,7 +28,7 @@ class WamsApp extends StatelessWidget {
         title: 'WAMS Mobile',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const LoginScreen(),
+        home: const SplashScreen(),
       ),
     );
   }

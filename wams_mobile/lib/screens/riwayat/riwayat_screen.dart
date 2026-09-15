@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme.dart';
 import '../../models/riwayat_model.dart';
 import '../../providers/transaction_provider.dart';
+import '../../widgets/skeleton_loader.dart';
+import '../../widgets/countdown_badge.dart';
+import '../../widgets/tool_thumbnail.dart';
 import 'detail_peminjaman_screen.dart';
 
 class RiwayatScreen extends StatefulWidget {
@@ -81,56 +84,86 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
       ),
       body: Column(
         children: [
-          // Segmented Control Pill Bar matching the UI style
+          // Segmented Control Pill Bar with Smooth Sliding Indicator
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F2F6),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: _tabs.map((tab) {
-                  final key = tab.toLowerCase();
-                  final isSelected = currentFilter == key;
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        txProvider.setFilter(key);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeInOut,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isSelected ? Colors.white : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.06),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Center(
-                          child: Text(
-                            tab,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                              color: isSelected ? AppTheme.textPrimary : const Color(0xFF4B5563),
-                            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final totalWidth = constraints.maxWidth;
+                const horizontalPadding = 4.0;
+                final availableWidth = totalWidth - (horizontalPadding * 2);
+                final tabWidth = availableWidth / _tabs.length;
+                final foundIndex = _tabs.indexWhere((tab) => tab.toLowerCase() == currentFilter);
+                final selectedIndex = (foundIndex != -1 ? foundIndex : 0).clamp(0, _tabs.length - 1);
+
+                return Container(
+                  height: 44,
+                  padding: const EdgeInsets.all(horizontalPadding),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F2F6),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Stack(
+                    children: [
+                      // Smooth Sliding White Pill Indicator
+                      AnimatedPositioned(
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeInOutCubic,
+                        left: selectedIndex * tabWidth,
+                        top: 0,
+                        bottom: 0,
+                        width: tabWidth,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.07),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
+
+                      // Tabs Text Buttons on top
+                      Row(
+                        children: _tabs.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final tab = entry.value;
+                          final key = tab.toLowerCase();
+                          final isSelected = selectedIndex == index;
+
+                          return Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                txProvider.setFilter(key);
+                              },
+                              child: Center(
+                                child: AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 200),
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    color: isSelected
+                                        ? AppTheme.textPrimary
+                                        : const Color(0xFF4B5563),
+                                  ),
+                                  child: Text(tab),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 6),
@@ -138,8 +171,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           // Transaction list
           Expanded(
             child: txProvider.isLoading
-                ? const Center(
-                    child: SpinKitFadingCircle(color: AppTheme.primary, size: 36),
+                ? ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    itemCount: 5,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, _) => const WamsSkeletonCard(),
                   )
                 : displayList.isEmpty
                     ? Center(
@@ -160,6 +196,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         ),
                       )
                     : ListView.separated(
+                        key: ValueKey(currentFilter),
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                         itemCount: displayList.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -192,17 +229,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                               child: Row(
                                 children: [
                                   // Thumbnail Icon
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF8FAFC),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: AppTheme.borderLight),
-                                    ),
-                                    child: const Center(
-                                      child: Icon(Icons.handyman_rounded, color: AppTheme.primary, size: 26),
-                                    ),
+                                  ToolThumbnail(
+                                    imageUrl: item.gambarUrl,
+                                    toolName: item.namaBarang,
+                                    size: 52,
+                                    borderRadius: 12,
                                   ),
                                   const SizedBox(width: 14),
 
@@ -231,71 +262,68 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                     ),
                                   ),
 
-                                  // Status Pill (Menunggu Izin / Ditolak / Aktif / Selesai)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: item.isMenungguApproval
-                                          ? const Color(0xFFFEF3C7)
-                                          : item.isDitolak
-                                          ? const Color(0xFFFEE2E2)
-                                          : item.isDibatalkan
-                                          ? const Color(0xFFF3F4F6)
-                                          : item.isDipinjam
-                                          ? const Color(0xFFFEF3C7)
-                                          : const Color(0xFFD1FAE5),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
+                                  // Status Pill or Countdown Badge
+                                  if (item.isDipinjam)
+                                    CountdownBadge(batasKembali: item.batasKembali)
+                                  else
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
                                         color: item.isMenungguApproval
-                                            ? const Color(0xFFFCD34D)
+                                            ? const Color(0xFFFEF3C7)
                                             : item.isDitolak
-                                            ? const Color(0xFFFCA5A5)
-                                            : Colors.transparent,
-                                        width: 0.8,
+                                            ? const Color(0xFFFEE2E2)
+                                            : item.isDibatalkan
+                                            ? const Color(0xFFF3F4F6)
+                                            : const Color(0xFFD1FAE5),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: item.isMenungguApproval
+                                              ? const Color(0xFFFCD34D)
+                                              : item.isDitolak
+                                              ? const Color(0xFFFCA5A5)
+                                              : Colors.transparent,
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            item.isMenungguApproval
+                                                ? 'Menunggu Izin'
+                                                : item.isDitolak
+                                                ? 'Ditolak'
+                                                : item.isDibatalkan
+                                                ? 'Dibatalkan'
+                                                : 'Selesai',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: item.isMenungguApproval
+                                                  ? const Color(0xFFD97706)
+                                                  : item.isDitolak
+                                                  ? AppTheme.danger
+                                                  : item.isDibatalkan
+                                                  ? AppTheme.textMuted
+                                                  : AppTheme.success,
+                                            ),
+                                          ),
+                                          if (item.isMenungguApproval) ...[
+                                            const SizedBox(width: 2),
+                                            const Icon(
+                                              Icons.chevron_right,
+                                              size: 14,
+                                              color: Color(0xFFD97706),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          item.isMenungguApproval
-                                              ? 'Menunggu Izin'
-                                              : item.isDitolak
-                                              ? 'Ditolak'
-                                              : item.isDibatalkan
-                                              ? 'Dibatalkan'
-                                              : item.isDipinjam
-                                              ? 'Aktif'
-                                              : 'Selesai',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: item.isMenungguApproval
-                                                ? const Color(0xFFD97706)
-                                                : item.isDitolak
-                                                ? const Color(0xFFDC2626)
-                                                : item.isDibatalkan
-                                                ? const Color(0xFF6B7280)
-                                                : item.isDipinjam
-                                                ? const Color(0xFFD97706)
-                                                : AppTheme.success,
-                                          ),
-                                        ),
-                                        if (item.isDipinjam || item.isMenungguApproval) ...[
-                                          const SizedBox(width: 2),
-                                          const Icon(
-                                            Icons.chevron_right,
-                                            size: 14,
-                                            color: Color(0xFFD97706),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
                                 ],
                               ),
                             ),
-                          );
+                          ).animate(delay: (index * 40).ms).fadeIn(duration: 300.ms).slideY(begin: 0.05, end: 0);
                         },
                       ),
           ),

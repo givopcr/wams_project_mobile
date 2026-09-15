@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme.dart';
 import '../../models/barang_model.dart';
 import '../../providers/asset_provider.dart';
+import '../../widgets/skeleton_loader.dart';
 import 'form_peminjaman_screen.dart';
 
 class PilihUnitScreen extends StatefulWidget {
@@ -55,8 +56,11 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
         ),
       ),
       body: assetProvider.isLoading
-          ? const Center(
-              child: SpinKitFadingCircle(color: AppTheme.primary, size: 36),
+          ? ListView.separated(
+              padding: const EdgeInsets.all(20.0),
+              itemCount: 4,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (_, _) => const WamsSkeletonCard(),
             )
           : Column(
               children: [
@@ -126,7 +130,9 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                           ),
                         )
                       else
-                        ...units.map((unit) {
+                        ...units.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final unit = entry.value;
                           final isSelected = _selectedUnitIds.contains(unit.id);
                           final isAvailable = unit.isTersedia;
 
@@ -247,7 +253,7 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                                 ),
                               ),
                             ),
-                          );
+                          ).animate(delay: (index * 40).ms).fadeIn(duration: 300.ms).slideY(begin: 0.05, end: 0);
                         }),
                     ],
                   ),

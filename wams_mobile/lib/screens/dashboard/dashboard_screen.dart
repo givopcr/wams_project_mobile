@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/theme.dart';
 import '../../providers/asset_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../widgets/skeleton_loader.dart';
+import '../../widgets/countdown_badge.dart';
+import '../../widgets/tool_thumbnail.dart';
 import '../kategori/barang_kategori_screen.dart';
 import '../kategori/kategori_screen.dart';
 import '../riwayat/detail_peminjaman_screen.dart';
@@ -271,7 +274,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ],
                 ),
-              ),
+              ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.05, end: 0),
               const SizedBox(height: 20),
 
               // Scan QR Banner Shortcut Card
@@ -341,7 +344,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
-              ),
+              ).animate(delay: 100.ms).fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0),
               const SizedBox(height: 24),
 
               // Section: Peminjaman Aktif (Mockup 1)
@@ -374,7 +377,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 8),
 
-              if (activeBorrows.isEmpty)
+              if (txProvider.isLoading)
+                Column(
+                  children: const [
+                    WamsSkeletonCard(),
+                    SizedBox(height: 10),
+                    WamsSkeletonCard(),
+                  ],
+                )
+              else if (activeBorrows.isEmpty)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -391,7 +402,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 )
               else
-                ...activeBorrows.take(2).map((item) {
+                ...activeBorrows.take(2).toList().asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: InkWell(
@@ -420,21 +433,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppTheme.borderLight),
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.handyman,
-                                  color: AppTheme.primary,
-                                  size: 24,
-                                ),
-                              ),
+                            ToolThumbnail(
+                              imageUrl: item.gambarUrl,
+                              toolName: item.namaBarang,
+                              size: 48,
+                              borderRadius: 12,
+                              heroTag: 'tool_img_active_${item.id}',
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -461,29 +465,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ],
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFEF3C7),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Text(
-                                '3 hari lagi',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFFD97706),
-                                ),
-                              ),
-                            ),
+                            CountdownBadge(batasKembali: item.batasKembali),
                           ],
                         ),
                       ),
                     ),
-                  );
+                  ).animate(delay: (150 + index * 60).ms).fadeIn(duration: 350.ms).slideY(begin: 0.08, end: 0);
                 }),
 
               const SizedBox(height: 20),
@@ -523,14 +510,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 8),
 
               if (assetProvider.isLoading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: SpinKitFadingCircle(
-                      color: AppTheme.primary,
-                      size: 32,
-                    ),
-                  ),
+                Column(
+                  children: const [
+                    WamsSkeletonCategory(),
+                    WamsSkeletonCategory(),
+                    WamsSkeletonCategory(),
+                  ],
                 )
               else if (assetProvider.categories.isEmpty)
                 const Center(
@@ -543,7 +528,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 )
               else
-                ...assetProvider.categories.take(3).map((kat) {
+                ...assetProvider.categories.take(3).toList().asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final kat = entry.value;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: InkWell(
@@ -623,7 +610,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ),
-                  );
+                  ).animate(delay: (220 + index * 60).ms).fadeIn(duration: 350.ms).slideX(begin: 0.04, end: 0);
                 }),
               const SizedBox(height: 24),
             ],
