@@ -4,6 +4,8 @@ class BarangUnitModel {
   final String kodeUnit;
   final String status; // 'tersedia' | 'dipinjam' | 'maintenance'
   final String kondisi; // 'baik' | 'rusak'
+  final String? gambarUrl;
+  final String? unitGambarUrl;
 
   BarangUnitModel({
     required this.id,
@@ -11,6 +13,8 @@ class BarangUnitModel {
     required this.kodeUnit,
     required this.status,
     required this.kondisi,
+    this.gambarUrl,
+    this.unitGambarUrl,
   });
 
   factory BarangUnitModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +24,8 @@ class BarangUnitModel {
       kodeUnit: json['kode_unit'] ?? '',
       status: json['status'] ?? 'tersedia',
       kondisi: json['kondisi'] ?? 'baik',
+      gambarUrl: json['gambar_url'],
+      unitGambarUrl: json['unit_gambar_url'],
     );
   }
 

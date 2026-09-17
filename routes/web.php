@@ -49,7 +49,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // Unit Fisik
     Route::get('/unit', [AdminWebController::class, 'unit'])->name('admin.unit');
     Route::post('/unit', [AdminWebController::class, 'storeUnit'])->name('admin.unit.store');
-    Route::put('/unit/{id}', [AdminWebController::class, 'updateUnit'])->name('admin.unit.update');
+    Route::match(['put', 'post'], '/unit/{id}', [AdminWebController::class, 'updateUnit'])->name('admin.unit.update');
     Route::delete('/unit/{id}', [AdminWebController::class, 'destroyUnit'])->name('admin.unit.destroy');
 
     // Transaksi & Logbook

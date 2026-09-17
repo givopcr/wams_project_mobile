@@ -13,6 +13,7 @@ import {
     Mail,
     CreditCard
 } from 'lucide-react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function UserIndex({ users, filters }) {
     const [search, setSearch] = useState(filters.q || '');
@@ -74,10 +75,17 @@ export default function UserIndex({ users, filters }) {
         }
     };
 
-    const handleDelete = (id) => {
-        if (confirm('Yakin ingin menghapus user ini?')) {
-            router.delete(`/admin/users/${id}`);
-        }
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
+
+    const openDeleteModal = (u) => {
+        setDeleteModal({ isOpen: true, user: u });
+    };
+
+    const handleConfirmDelete = () => {
+        if (!deleteModal.user) return;
+        router.delete(`/admin/users/${deleteModal.user.id}`, {
+            onSuccess: () => setDeleteModal({ isOpen: false, user: null }),
+        });
     };
 
     return (
@@ -188,8 +196,8 @@ export default function UserIndex({ users, filters }) {
                                                         <Edit2 size={15} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(u.id)}
-                                                        className="p-1.5 rounded-lg text-[#D84040] hover:bg-[#D84040]/10 transition-colors"
+                                                        onClick={() => openDeleteModal(u)}
+                                                        className="p-1.5 rounded-lg text-[#D84040] hover:bg-[#D84040]/10 transition-colors cursor-pointer"
                                                         title="Hapus"
                                                     >
                                                         <Trash2 size={15} />
@@ -311,6 +319,17 @@ export default function UserIndex({ users, filters }) {
                     </div>
                 </div>
             )}
+
+            {/* Modal Confirm Delete */}
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, user: null })}
+                onConfirm={handleConfirmDelete}
+                title="Hapus Pengguna"
+                message="Apakah Anda yakin ingin menghapus akun pengguna ini? Akses pengguna ke sistem akan dicabut secara permanen."
+                itemBadge={deleteModal.user ? `${deleteModal.user.nama} (${deleteModal.user.email})` : null}
+                confirmText="Hapus"
+            />
         </AuthenticatedLayout>
     );
 }

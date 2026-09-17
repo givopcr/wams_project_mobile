@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ConfirmModal from '@/Components/ConfirmModal';
 import {
     Layers,
     Plus,
@@ -12,7 +13,11 @@ import {
     Clock,
     AlertTriangle,
     Wrench,
-    UserCheck
+    UserCheck,
+    Image as ImageIcon,
+    UploadCloud,
+    Eye,
+    Tag
 } from 'lucide-react';
 
 export default function UnitIndex({ units, barangList, filters }) {
@@ -21,12 +26,18 @@ export default function UnitIndex({ units, barangList, filters }) {
     const [selectedStatus, setSelectedStatus] = useState(filters.status || '');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUnit, setEditingUnit] = useState(null);
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, itemBadge: null });
+    const [imagePreview, setImagePreview] = useState(null);
+    const [previewModalImage, setPreviewModalImage] = useState(null);
+    const fileInputRef = useRef(null);
 
-    const { data, setData, post, put, processing, reset, errors } = useForm({
+    const { data, setData, post, processing, reset, errors, clearErrors } = useForm({
         barang_id: '',
         kode_unit: '',
         status: 'tersedia',
         kondisi: 'baik',
+        gambar: null,
+        hapus_gambar: false,
     });
 
     const handleFilter = (e) => {
@@ -40,47 +51,94 @@ export default function UnitIndex({ units, barangList, filters }) {
 
     const openCreateModal = () => {
         setEditingUnit(null);
+        clearErrors();
         reset();
+        setImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
         setData({
             barang_id: barangList.length > 0 ? barangList[0].id : '',
             kode_unit: '',
             status: 'tersedia',
             kondisi: 'baik',
+            gambar: null,
+            hapus_gambar: false,
         });
         setModalOpen(true);
     };
 
     const openEditModal = (u) => {
         setEditingUnit(u);
+        clearErrors();
+        setImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
         setData({
             barang_id: u.barang_id,
             kode_unit: u.kode_unit,
             status: u.status,
             kondisi: u.kondisi,
+            gambar: null,
+            hapus_gambar: false,
         });
         setModalOpen(true);
+    };
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setData((prev) => ({ ...prev, gambar: file, hapus_gambar: false }));
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRemoveSelectedFile = () => {
+        setData((prev) => ({ ...prev, gambar: null }));
+        setImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleRemoveExistingImage = () => {
+        setData((prev) => ({ ...prev, gambar: null, hapus_gambar: true }));
+        setImagePreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (editingUnit) {
-            put(`/admin/unit/${editingUnit.id}`, {
-                onSuccess: () => setModalOpen(false),
+            post(`/admin/unit/${editingUnit.id}`, {
+                onSuccess: () => {
+                    setModalOpen(false);
+                    setImagePreview(null);
+                },
             });
         } else {
             post('/admin/unit', {
                 onSuccess: () => {
                     setModalOpen(false);
+                    setImagePreview(null);
                     reset();
                 },
             });
         }
     };
 
-    const handleDelete = (id) => {
-        if (confirm('Yakin ingin menghapus unit fisik ini?')) {
-            router.delete(`/admin/unit/${id}`);
-        }
+    const openDeleteModal = (u) => {
+        setDeleteModal({
+            isOpen: true,
+            id: u.id,
+            itemBadge: `Kode Unit: ${u.kode_unit}`,
+        });
+    };
+
+    const handleConfirmDelete = () => {
+        if (!deleteModal.id) return;
+        router.delete(`/admin/unit/${deleteModal.id}`, {
+            onSuccess: () => setDeleteModal({ isOpen: false, id: null, itemBadge: null }),
+        });
     };
 
     const getStatusBadge = (status) => {
@@ -172,7 +230,7 @@ export default function UnitIndex({ units, barangList, filters }) {
                     <table className="w-full text-left text-xs">
                         <thead className="bg-[#EEEEEE] border-b border-[#E0E0E0] text-[#1D1616] uppercase tracking-wider font-bold">
                             <tr>
-                                <th className="p-4">Kode Unit</th>
+                                <th className="p-4">Foto & Kode Unit</th>
                                 <th className="p-4">Master Barang</th>
                                 <th className="p-4">Status</th>
                                 <th className="p-4">Kondisi Fisik</th>
@@ -191,7 +249,38 @@ export default function UnitIndex({ units, barangList, filters }) {
                                 units.data.map((u) => (
                                     <tr key={u.id} className="hover:bg-[#EEEEEE]/50 bg-white transition-colors">
                                         <td className="p-4 font-mono font-bold text-[#D84040] text-sm">
-                                            {u.kode_unit}
+                                            <div className="flex items-center gap-3">
+                                                <div
+                                                    onClick={() => u.gambar_url && setPreviewModalImage({ url: u.gambar_url, nama: u.nama_barang, kode: u.kode_unit, kategori: u.nama_kategori })}
+                                                    className={`w-11 h-11 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] overflow-hidden flex items-center justify-center shrink-0 relative group ${u.gambar_url ? 'cursor-pointer hover:ring-2 hover:ring-[#D84040]/50' : ''}`}
+                                                    title={u.unit_gambar_url ? 'Foto khusus unit fisik (Klik untuk perbesar)' : u.gambar_url ? 'Foto master barang (Klik untuk perbesar)' : 'Belum ada foto'}
+                                                >
+                                                    {u.gambar_url ? (
+                                                        <>
+                                                            <img src={u.gambar_url} alt={u.kode_unit} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                                                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                                                <Eye size={13} />
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <ImageIcon size={18} className="text-[#8C93A0]" />
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 border border-gray-200 text-[#1D1616] font-bold text-xs">
+                                                        {u.kode_unit}
+                                                    </span>
+                                                    {u.unit_gambar_url ? (
+                                                        <span className="block text-[10px] font-sans font-bold text-emerald-600 mt-1">
+                                                            • Foto Khusus Unit
+                                                        </span>
+                                                    ) : u.gambar_url ? (
+                                                        <span className="block text-[10px] font-sans font-medium text-[#8C93A0] mt-1">
+                                                            • Ikut Master
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="p-4">
                                             <div className="font-bold text-[#1D1616]">{u.nama_barang}</div>
@@ -230,8 +319,8 @@ export default function UnitIndex({ units, barangList, filters }) {
                                                     <Edit2 size={15} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(u.id)}
-                                                    className="p-1.5 rounded-lg text-[#D84040] hover:bg-[#D84040]/10 transition-colors"
+                                                    onClick={() => openDeleteModal(u)}
+                                                    className="p-1.5 rounded-lg text-[#D84040] hover:bg-[#D84040]/10 transition-colors cursor-pointer"
                                                     title="Hapus"
                                                 >
                                                     <Trash2 size={15} />
@@ -325,6 +414,117 @@ export default function UnitIndex({ units, barangList, filters }) {
                                 </div>
                             </div>
 
+                            {/* Unggah Foto Unit Fisik */}
+                            <div>
+                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5 flex items-center justify-between">
+                                    <span>Foto Spesifik Unit Fisik (Opsional)</span>
+                                    <span className="text-[11px] font-normal text-[#6B7280]">Maks. 2MB (JPG, PNG, WebP)</span>
+                                </label>
+
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleImageChange}
+                                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                                    className="hidden"
+                                />
+
+                                {imagePreview ? (
+                                    /* Preview foto baru dipilih */
+                                    <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <img
+                                                src={imagePreview}
+                                                alt="Preview Unit"
+                                                className="w-12 h-12 rounded-lg object-cover border border-emerald-300 shrink-0 bg-white"
+                                            />
+                                            <div className="min-w-0">
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 mb-0.5">
+                                                    <CheckCircle2 size={10} /> Foto Baru Dipilih
+                                                </span>
+                                                <p className="text-[11px] text-[#6B7280] truncate">
+                                                    {data.gambar?.name}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="px-2.5 py-1 text-xs font-bold text-[#1D1616] bg-white border border-[#E0E0E0] rounded-lg hover:bg-gray-50 cursor-pointer shadow-2xs"
+                                            >
+                                                Ganti
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveSelectedFile}
+                                                className="p-1.5 text-[#D84040] hover:bg-rose-100 rounded-lg cursor-pointer"
+                                                title="Batal pilih foto"
+                                            >
+                                                <X size={15} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : editingUnit?.unit_gambar_url && !data.hapus_gambar ? (
+                                    /* Foto khusus unit saat ini */
+                                    <div className="p-3 bg-gray-50 border border-[#E0E0E0] rounded-xl flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <img
+                                                src={editingUnit.unit_gambar_url}
+                                                alt={editingUnit.kode_unit}
+                                                className="w-12 h-12 rounded-lg object-cover border border-[#E0E0E0] shrink-0 bg-white"
+                                            />
+                                            <div className="min-w-0">
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 mb-0.5">
+                                                    <ImageIcon size={10} /> Foto Khusus Unit Ini
+                                                </span>
+                                                <p className="text-[11px] text-[#6B7280]">
+                                                    Tersimpan di sistem
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="px-2.5 py-1 text-xs font-bold text-[#1D1616] bg-white border border-[#E0E0E0] rounded-lg hover:bg-gray-50 cursor-pointer shadow-2xs flex items-center gap-1"
+                                            >
+                                                <UploadCloud size={12} /> Ganti
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveExistingImage}
+                                                className="p-1.5 text-[#D84040] hover:bg-rose-50 rounded-lg cursor-pointer"
+                                                title="Hapus foto khusus unit ini (akan ikut foto master barang)"
+                                            >
+                                                <Trash2 size={15} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* Belum ada foto unit */
+                                    <div>
+                                        <div
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="border-2 border-dashed border-[#E0E0E0] hover:border-[#D84040] rounded-xl p-3.5 text-center cursor-pointer transition-colors bg-gray-50/50 hover:bg-rose-50/10 group"
+                                        >
+                                            <div className="w-8 h-8 mx-auto rounded-full bg-[#EEEEEE] group-hover:bg-rose-50 flex items-center justify-center text-[#6B7280] group-hover:text-[#D84040] transition-colors mb-1.5">
+                                                <UploadCloud size={16} />
+                                            </div>
+                                            <p className="text-xs font-bold text-[#1D1616]">
+                                                Klik untuk unggah foto khusus unit
+                                            </p>
+                                            <p className="text-[10.5px] text-[#6B7280] mt-0.5">
+                                                Jika dikosongkan, unit akan otomatis menggunakan foto Master Barang
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                                {errors.gambar && (
+                                    <p className="text-[#D84040] text-xs mt-1">{errors.gambar}</p>
+                                )}
+                            </div>
+
                             <div className="flex justify-end gap-2 pt-3 border-t border-[#E0E0E0]">
                                 <button
                                     type="button"
@@ -345,6 +545,73 @@ export default function UnitIndex({ units, barangList, filters }) {
                     </div>
                 </div>
             )}
+
+            {/* Modal Lightbox Preview Foto */}
+            {previewModalImage && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
+                    onClick={() => setPreviewModalImage(null)}
+                >
+                    <div
+                        className="bg-white rounded-2xl overflow-hidden max-w-lg w-full shadow-2xl border border-gray-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between p-4 border-b border-[#E0E0E0]">
+                            <div className="min-w-0 pr-2">
+                                <h3 className="font-extrabold text-[#1D1616] text-sm truncate">
+                                    {previewModalImage.nama}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="font-mono text-xs font-bold text-[#D84040]">
+                                        {previewModalImage.kode}
+                                    </span>
+                                    {previewModalImage.kategori && (
+                                        <span className="text-[11px] text-[#6B7280]">
+                                            • {previewModalImage.kategori}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setPreviewModalImage(null)}
+                                className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1D1616] hover:bg-[#EEEEEE] transition-colors cursor-pointer"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-4 bg-gray-50 flex items-center justify-center max-h-[70vh]">
+                            <img
+                                src={previewModalImage.url}
+                                alt={previewModalImage.nama}
+                                loading="lazy"
+                                decoding="async"
+                                className="max-h-[60vh] max-w-full object-contain rounded-xl shadow-xs border border-[#E0E0E0]"
+                            />
+                        </div>
+                        <div className="p-3 bg-white border-t border-[#E0E0E0] text-right">
+                            <button
+                                onClick={() => setPreviewModalImage(null)}
+                                className="px-4 py-1.5 bg-[#EEEEEE] hover:bg-gray-200 text-[#1D1616] text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Pop-up Card Alert Konfirmasi Hapus */}
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, id: null, itemBadge: null })}
+                onConfirm={handleConfirmDelete}
+                title="Hapus Unit Fisik"
+                message="Yakin ingin menghapus unit fisik ini dari sistem? Unit yang telah dihapus tidak dapat dipinjam kembali."
+                itemBadge={deleteModal.itemBadge}
+                confirmText="Hapus"
+                cancelText="Batal"
+                variant="danger"
+            />
         </AuthenticatedLayout>
     );
 }

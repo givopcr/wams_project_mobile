@@ -67,7 +67,8 @@ class _MainNavigationState extends State<MainNavigation> {
                     AnimatedPositioned(
                       duration: const Duration(milliseconds: 280),
                       curve: Curves.easeInOutCubic,
-                      left: _currentIndex * tabWidth + (tabWidth - pillWidth) / 2,
+                      left:
+                          _currentIndex * tabWidth + (tabWidth - pillWidth) / 2,
                       top: (64 - pillHeight) / 2,
                       width: pillWidth,
                       height: pillHeight,

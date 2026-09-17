@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../main_navigation.dart';
@@ -65,7 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         if (_rememberMe) {
           await prefs.setBool('remember_me', true);
-          await prefs.setString('saved_login_identifier', _loginController.text.trim());
+          await prefs.setString(
+            'saved_login_identifier',
+            _loginController.text.trim(),
+          );
         } else {
           await prefs.setBool('remember_me', false);
           await prefs.remove('saved_login_identifier');
@@ -83,7 +87,9 @@ class _LoginScreenState extends State<LoginScreen> {
           content: Text(authProvider.errorMessage ?? 'Login gagal.'),
           backgroundColor: AppTheme.danger,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -96,27 +102,16 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. Background with Theme Gradient & Organic Contour / Wave Lines
+          // 1. Background Image with Topographic Contour Lines
           Container(
             width: double.infinity,
             height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF781212), // Deep WAMS Red
-                  Color(0xFF9E1818),
-                  Color(0xFFD84040), // WAMS Coral
-                ],
-              ),
-            ),
+            color: const Color(0xFF781212),
           ),
-
-          // 2. Custom Painter for Subtle Contour Curve Lines
           Positioned.fill(
-            child: CustomPaint(
-              painter: ContourBackgroundPainter(),
+            child: Image.asset(
+              'assets/icons/login_bg.png',
+              fit: BoxFit.cover,
             ),
           ),
 
@@ -124,7 +119,10 @@ class _LoginScreenState extends State<LoginScreen> {
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 16.0,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -132,7 +130,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     Container(
                       width: double.infinity,
                       constraints: const BoxConstraints(maxWidth: 380),
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0,
+                        vertical: 32.0,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(28),
@@ -201,7 +202,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(18),
                                     borderSide: BorderSide(
-                                      color: AppTheme.primary.withValues(alpha: 0.5),
+                                      color: AppTheme.primary.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       width: 1.5,
                                     ),
                                   ),
@@ -210,8 +213,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     vertical: 16,
                                   ),
                                 ),
-                                validator: (v) =>
-                                    v == null || v.isEmpty ? 'Username / Email wajib diisi' : null,
+                                validator: (v) => v == null || v.isEmpty
+                                    ? 'Username / Email wajib diisi'
+                                    : null,
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -259,7 +263,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(18),
                                     borderSide: BorderSide(
-                                      color: AppTheme.primary.withValues(alpha: 0.5),
+                                      color: AppTheme.primary.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       width: 1.5,
                                     ),
                                   ),
@@ -268,8 +274,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     vertical: 16,
                                   ),
                                 ),
-                                validator: (v) =>
-                                    v == null || v.isEmpty ? 'Password wajib diisi' : null,
+                                validator: (v) => v == null || v.isEmpty
+                                    ? 'Password wajib diisi'
+                                    : null,
                               ),
                             ),
                             const SizedBox(height: 14),
@@ -288,7 +295,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     AnimatedContainer(
-                                      duration: const Duration(milliseconds: 180),
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
                                       width: 20,
                                       height: 20,
                                       decoration: BoxDecoration(
@@ -339,14 +348,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFD84040).withValues(alpha: 0.35),
+                                      color: const Color(0xFFD84040)
+                                          .withValues(alpha: 0.35),
                                       blurRadius: 16,
                                       offset: const Offset(0, 6),
                                     ),
                                   ],
                                 ),
                                 child: ElevatedButton(
-                                  onPressed: authProvider.isLoading ? null : _handleLogin,
+                                  onPressed: authProvider.isLoading
+                                      ? null
+                                      : _handleLogin,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
                                     shadowColor: Colors.transparent,

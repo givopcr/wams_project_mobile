@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../main_navigation.dart';
@@ -38,7 +39,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final success = await authProvider.register(
       nama: _namaController.text.trim(),
       email: _emailController.text.trim(),
-      nip: _nipController.text.trim().isEmpty ? null : _nipController.text.trim(),
+      nip: _nipController.text.trim().isEmpty
+          ? null
+          : _nipController.text.trim(),
       password: _passwordController.text,
       passwordConfirmation: _passwordConfirmController.text,
     );
@@ -56,7 +59,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           content: Text(authProvider.errorMessage ?? 'Registrasi gagal.'),
           backgroundColor: AppTheme.danger,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -69,27 +74,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 1. Background with Theme Gradient & Organic Contour Lines
+          // 1. Background Image with Topographic Contour Lines
           Container(
             width: double.infinity,
             height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF781212), // Deep WAMS Red
-                  Color(0xFF9E1818),
-                  Color(0xFFD84040), // WAMS Coral
-                ],
-              ),
-            ),
+            color: const Color(0xFF781212),
           ),
-
-          // 2. Custom Painter for Subtle Contour Curve Lines
           Positioned.fill(
-            child: CustomPaint(
-              painter: ContourBackgroundPainter(),
+            child: Image.asset(
+              'assets/icons/login_bg.png',
+              fit: BoxFit.cover,
             ),
           ),
 
@@ -97,14 +91,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 20.0,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: double.infinity,
                       constraints: const BoxConstraints(maxWidth: 390),
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0,
+                        vertical: 30.0,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(28),
@@ -173,7 +173,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(18),
                                     borderSide: BorderSide(
-                                      color: AppTheme.primary.withValues(alpha: 0.5),
+                                      color: AppTheme.primary.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       width: 1.5,
                                     ),
                                   ),
@@ -182,8 +184,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     vertical: 15,
                                   ),
                                 ),
-                                validator: (v) =>
-                                    v == null || v.isEmpty ? 'Nama lengkap wajib diisi' : null,
+                                validator: (v) => v == null || v.isEmpty
+                                    ? 'Nama lengkap wajib diisi'
+                                    : null,
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -217,7 +220,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(18),
                                     borderSide: BorderSide(
-                                      color: AppTheme.primary.withValues(alpha: 0.5),
+                                      color: AppTheme.primary.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       width: 1.5,
                                     ),
                                   ),
@@ -226,8 +231,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     vertical: 15,
                                   ),
                                 ),
-                                validator: (v) =>
-                                    v == null || !v.contains('@') ? 'Email tidak valid' : null,
+                                validator: (v) => v == null || !v.contains('@')
+                                    ? 'Email tidak valid'
+                                    : null,
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -261,7 +267,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(18),
                                     borderSide: BorderSide(
-                                      color: AppTheme.primary.withValues(alpha: 0.5),
+                                      color: AppTheme.primary.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       width: 1.5,
                                     ),
                                   ),
@@ -317,7 +325,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(18),
                                     borderSide: BorderSide(
-                                      color: AppTheme.primary.withValues(alpha: 0.5),
+                                      color: AppTheme.primary.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       width: 1.5,
                                     ),
                                   ),
@@ -326,8 +336,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     vertical: 15,
                                   ),
                                 ),
-                                validator: (v) =>
-                                    v == null || v.length < 6 ? 'Password minimal 6 karakter' : null,
+                                validator: (v) => v == null || v.length < 6
+                                    ? 'Password minimal 6 karakter'
+                                    : null,
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -366,7 +377,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                     onPressed: () {
                                       setState(() {
-                                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                                        _obscureConfirmPassword =
+                                            !_obscureConfirmPassword;
                                       });
                                     },
                                   ),
@@ -375,7 +387,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(18),
                                     borderSide: BorderSide(
-                                      color: AppTheme.primary.withValues(alpha: 0.5),
+                                      color: AppTheme.primary.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       width: 1.5,
                                     ),
                                   ),
@@ -407,14 +421,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFD84040).withValues(alpha: 0.35),
+                                      color: const Color(0xFFD84040)
+                                          .withValues(alpha: 0.35),
                                       blurRadius: 16,
                                       offset: const Offset(0, 6),
                                     ),
                                   ],
                                 ),
                                 child: ElevatedButton(
-                                  onPressed: authProvider.isLoading ? null : _handleRegister,
+                                  onPressed: authProvider.isLoading
+                                      ? null
+                                      : _handleRegister,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
                                     shadowColor: Colors.transparent,

@@ -39,7 +39,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (n.contains('perkakas') || n.contains('tangan')) {
       return Icons.handyman;
     }
-    if (n.contains('listrik') || n.contains('elektronik') || n.contains('ukur')) {
+    if (n.contains('listrik') ||
+        n.contains('elektronik') ||
+        n.contains('ukur')) {
       return Icons.bolt;
     }
     if (n.contains('mesin') || n.contains('berat') || n.contains('bubut')) {
@@ -279,72 +281,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               // Scan QR Banner Shortcut Card
               GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ScanScreen()),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.cardLight,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.borderLight),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ScanScreen()),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardLight,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.borderLight),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.qr_code_scanner,
-                          color: AppTheme.primary,
-                          size: 26,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Pindai QR Code Rak / Kategori',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: AppTheme.textPrimary,
-                              ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Arahkan kamera ke stiker QR untuk melihat alat',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.textMuted,
-                              ),
+                            child: const Icon(
+                              Icons.qr_code_scanner,
+                              color: AppTheme.primary,
+                              size: 26,
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Pindai QR Code Rak / Kategori',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Arahkan kamera ke stiker QR untuk melihat alat',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right,
+                            color: AppTheme.textMuted,
+                          ),
+                        ],
                       ),
-                      const Icon(
-                        Icons.chevron_right,
-                        color: AppTheme.textMuted,
-                      ),
-                    ],
-                  ),
-                ),
-              ).animate(delay: 100.ms).fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0),
+                    ),
+                  )
+                  .animate(delay: 100.ms)
+                  .fadeIn(duration: 400.ms)
+                  .slideY(begin: 0.05, end: 0),
               const SizedBox(height: 24),
 
               // Section: Peminjaman Aktif (Mockup 1)
@@ -406,71 +411,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final index = entry.key;
                   final item = entry.value;
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 10.0),
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => DetailPeminjamanScreen(item: item),
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppTheme.cardLight,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppTheme.borderLight),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            ToolThumbnail(
-                              imageUrl: item.gambarUrl,
-                              toolName: item.namaBarang,
-                              size: 48,
-                              borderRadius: 12,
-                              heroTag: 'tool_img_active_${item.id}',
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.namaBarang,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: AppTheme.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    item.kodeUnit,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppTheme.textMuted,
-                                      fontFamily: 'monospace',
-                                    ),
-                                  ),
-                                ],
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    DetailPeminjamanScreen(item: item),
                               ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardLight,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppTheme.borderLight),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.02),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            CountdownBadge(batasKembali: item.batasKembali),
-                          ],
+                            child: Row(
+                              children: [
+                                ToolThumbnail(
+                                  imageUrl: item.gambarUrl,
+                                  toolName: item.namaBarang,
+                                  size: 48,
+                                  borderRadius: 12,
+                                  heroTag: 'tool_img_active_${item.id}',
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.namaBarang,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        item.kodeUnit,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppTheme.textMuted,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                CountdownBadge(batasKembali: item.batasKembali),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ).animate(delay: (150 + index * 60).ms).fadeIn(duration: 350.ms).slideY(begin: 0.08, end: 0);
+                      )
+                      .animate(delay: (150 + index * 60).ms)
+                      .fadeIn(duration: 350.ms)
+                      .slideY(begin: 0.08, end: 0);
                 }),
 
               const SizedBox(height: 20),
@@ -528,89 +538,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 )
               else
-                ...assetProvider.categories.take(3).toList().asMap().entries.map((entry) {
+                ...assetProvider.categories.take(3).toList().asMap().entries.map((
+                  entry,
+                ) {
                   final index = entry.key;
                   final kat = entry.value;
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 10.0),
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BarangKategoriScreen(
-                              kategoriId: kat.id,
-                              namaKategori: kat.namaKategori,
-                            ),
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppTheme.cardLight,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppTheme.borderLight),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.02),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 46,
-                              height: 46,
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  _getCategoryIcon(kat.namaKategori),
-                                  color: AppTheme.primary,
-                                  size: 24,
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => BarangKategoriScreen(
+                                  kategoriId: kat.id,
+                                  namaKategori: kat.namaKategori,
                                 ),
                               ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardLight,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppTheme.borderLight),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.02),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    kat.namaKategori,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: AppTheme.textPrimary,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 46,
+                                  height: 46,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      _getCategoryIcon(kat.namaKategori),
+                                      color: AppTheme.primary,
+                                      size: 24,
                                     ),
                                   ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    '${kat.totalBarang} Master Barang • ${kat.tersedia}/${kat.totalUnit} Unit Siap',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppTheme.textMuted,
-                                    ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        kat.namaKategori,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        '${kat.totalBarang} Master Barang • ${kat.tersedia}/${kat.totalUnit} Unit Siap',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppTheme.textMuted,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  color: Color(0xFF9CA3AF),
+                                  size: 20,
+                                ),
+                              ],
                             ),
-                            const Icon(
-                              Icons.chevron_right,
-                              color: Color(0xFF9CA3AF),
-                              size: 20,
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                  ).animate(delay: (220 + index * 60).ms).fadeIn(duration: 350.ms).slideX(begin: 0.04, end: 0);
+                      )
+                      .animate(delay: (220 + index * 60).ms)
+                      .fadeIn(duration: 350.ms)
+                      .slideX(begin: 0.04, end: 0);
                 }),
               const SizedBox(height: 24),
             ],

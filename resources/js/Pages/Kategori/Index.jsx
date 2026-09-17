@@ -13,6 +13,7 @@ import {
     Download
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function KategoriIndex({ categories, filters }) {
     const [search, setSearch] = useState(filters.q || '');
@@ -57,10 +58,17 @@ export default function KategoriIndex({ categories, filters }) {
         }
     };
 
-    const handleDelete = (id) => {
-        if (confirm('Yakin ingin menghapus kategori ini? Seluruh master barang di dalamnya juga akan terhapus.')) {
-            router.delete(`/admin/kategori/${id}`);
-        }
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, kategori: null });
+
+    const openDeleteModal = (kat) => {
+        setDeleteModal({ isOpen: true, kategori: kat });
+    };
+
+    const handleConfirmDelete = () => {
+        if (!deleteModal.kategori) return;
+        router.delete(`/admin/kategori/${deleteModal.kategori.id}`, {
+            onSuccess: () => setDeleteModal({ isOpen: false, kategori: null }),
+        });
     };
 
     return (
@@ -155,8 +163,8 @@ export default function KategoriIndex({ categories, filters }) {
                                                         <Edit2 size={15} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(kat.id)}
-                                                        className="p-1.5 rounded-lg text-[#D84040] hover:bg-[#D84040]/10 transition-colors"
+                                                        onClick={() => openDeleteModal(kat)}
+                                                        className="p-1.5 rounded-lg text-[#D84040] hover:bg-[#D84040]/10 transition-colors cursor-pointer"
                                                         title="Hapus"
                                                     >
                                                         <Trash2 size={15} />
@@ -301,6 +309,17 @@ export default function KategoriIndex({ categories, filters }) {
                     </div>
                 </div>
             )}
+
+            {/* Modal Confirm Delete */}
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, kategori: null })}
+                onConfirm={handleConfirmDelete}
+                title="Hapus Kategori Barang"
+                message="Yakin ingin menghapus kategori ini? Seluruh master barang di dalamnya juga akan terhapus."
+                itemBadge={deleteModal.kategori ? deleteModal.kategori.nama_kategori : null}
+                confirmText="Hapus"
+            />
         </AuthenticatedLayout>
     );
 }

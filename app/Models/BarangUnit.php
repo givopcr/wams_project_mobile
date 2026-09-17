@@ -18,7 +18,37 @@ class BarangUnit extends Model
         'kode_unit',
         'status',
         'kondisi',
+        'gambar',
     ];
+
+    protected $appends = [
+        'gambar_url',
+        'unit_gambar_url',
+    ];
+
+    /**
+     * URL Foto Unit (fallback ke Foto Master Barang jika unit belum memiliki foto khusus)
+     */
+    public function getGambarUrlAttribute(): ?string
+    {
+        if ($this->gambar) {
+            return asset('storage/' . $this->gambar);
+        }
+
+        if ($this->relationLoaded('barang') && $this->barang && $this->barang->gambar) {
+            return asset('storage/' . $this->barang->gambar);
+        }
+
+        return null;
+    }
+
+    /**
+     * URL Foto Khusus Unit (null jika belum diunggah)
+     */
+    public function getUnitGambarUrlAttribute(): ?string
+    {
+        return $this->gambar ? asset('storage/' . $this->gambar) : null;
+    }
 
     /**
      * Relasi ke Master Barang (barang_unit N:1 barang)

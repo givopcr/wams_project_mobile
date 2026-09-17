@@ -424,12 +424,15 @@ class AdminWebController extends Controller
                 'dipinjam' => $b->units->where('status', 'dipinjam')->count(),
                 'maintenance' => $b->units->where('status', 'maintenance')->count(),
                 'perlu_persetujuan' => (bool) $b->perlu_persetujuan,
-                'units' => $b->units->map(function ($u) {
+                'units' => $b->units->map(function ($u) use ($b) {
                     return [
                         'id' => $u->id,
                         'kode_unit' => $u->kode_unit,
                         'status' => $u->status,
                         'kondisi' => $u->kondisi,
+                        'gambar' => $u->gambar,
+                        'unit_gambar_url' => $u->gambar ? asset('storage/'.$u->gambar) : null,
+                        'gambar_url' => $u->gambar ? asset('storage/'.$u->gambar) : ($b->gambar ? asset('storage/'.$b->gambar) : null),
                     ];
                 })->values(),
             ];
@@ -477,7 +480,22 @@ class AdminWebController extends Controller
             unset($validated['gambar']);
         }
 
-        Barang::create($validated);
+        $jumlahUnit = (int) $request->input('jumlah_unit', 0);
+
+        $barang = Barang::create($validated);
+
+        if ($jumlahUnit > 0) {
+            for ($i = 1; $i <= $jumlahUnit; $i++) {
+                $kodeUnit = sprintf('%s-%02d', $barang->kode_barang, $i);
+                BarangUnit::create([
+                    'barang_id' => $barang->id,
+                    'kode_unit' => $kodeUnit,
+                    'status' => 'tersedia',
+                    'kondisi' => 'baik',
+                ]);
+            }
+            return back()->with('success', "Master barang berhasil dibuat beserta {$jumlahUnit} unit fisik siap pakai.");
+        }
 
         return back()->with('success', 'Master barang berhasil dibuat.');
     }
@@ -519,9 +537,14 @@ class AdminWebController extends Controller
 
     public function destroyBarang($id): RedirectResponse
     {
-        $barang = Barang::findOrFail($id);
+        $barang = Barang::with('units')->findOrFail($id);
         if ($barang->gambar && Storage::disk('public')->exists($barang->gambar)) {
             Storage::disk('public')->delete($barang->gambar);
+        }
+        foreach ($barang->units as $u) {
+            if ($u->gambar && Storage::disk('public')->exists($u->gambar)) {
+                Storage::disk('public')->delete($u->gambar);
+            }
         }
         $barang->delete();
 
@@ -567,6 +590,9 @@ class AdminWebController extends Controller
                 'kode_unit' => $u->kode_unit,
                 'status' => $u->status,
                 'kondisi' => $u->kondisi,
+                'gambar' => $u->gambar,
+                'unit_gambar_url' => $u->gambar ? asset('storage/'.$u->gambar) : null,
+                'gambar_url' => $u->gambar ? asset('storage/'.$u->gambar) : ($u->barang && $u->barang->gambar ? asset('storage/'.$u->barang->gambar) : null),
                 'borrower' => $u->activeLogbook ? $u->activeLogbook->peminjam_nama : null,
                 'borrow_date' => $u->activeLogbook ? $u->activeLogbook->tanggal_pinjam->format('d M Y H:i') : null,
                 'created_at' => $u->created_at->format('d M Y'),
@@ -584,12 +610,51 @@ class AdminWebController extends Controller
 
     public function storeUnit(Request $request): RedirectResponse
     {
+        $jumlahUnit = (int) $request->input('jumlah_unit', 1);
+
+        if ($jumlahUnit > 1) {
+            $validated = $request->validate([
+                'barang_id' => ['required', 'exists:barang,id'],
+                'status' => ['required', 'in:tersedia,menunggu_persetujuan,dipinjam,maintenance'],
+                'kondisi' => ['required', 'in:baik,rusak'],
+            ]);
+
+            $barang = Barang::findOrFail($validated['barang_id']);
+            $existingCount = $barang->units()->count();
+
+            $createdCount = 0;
+            for ($i = 1; $i <= $jumlahUnit; $i++) {
+                $unitNumber = $existingCount + $i;
+                $kodeUnit = sprintf('%s-%02d', $barang->kode_barang, $unitNumber);
+
+                while (BarangUnit::where('kode_unit', $kodeUnit)->exists()) {
+                    $unitNumber++;
+                    $kodeUnit = sprintf('%s-%02d', $barang->kode_barang, $unitNumber);
+                }
+
+                BarangUnit::create([
+                    'barang_id' => $barang->id,
+                    'kode_unit' => $kodeUnit,
+                    'status' => $validated['status'],
+                    'kondisi' => $validated['kondisi'],
+                ]);
+                $createdCount++;
+            }
+
+            return back()->with('success', "{$createdCount} unit fisik baru berhasil dibuat secara otomatis.");
+        }
+
         $validated = $request->validate([
             'barang_id' => ['required', 'exists:barang,id'],
             'kode_unit' => ['required', 'string', 'max:50', 'unique:barang_unit,kode_unit'],
-            'status' => ['required', 'in:tersedia,dipinjam,maintenance'],
+            'status' => ['required', 'in:tersedia,menunggu_persetujuan,dipinjam,maintenance'],
             'kondisi' => ['required', 'in:baik,rusak'],
+            'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ]);
+
+        if ($request->hasFile('gambar')) {
+            $validated['gambar'] = $request->file('gambar')->store('unit', 'public');
+        }
 
         BarangUnit::create($validated);
 
@@ -604,7 +669,22 @@ class AdminWebController extends Controller
             'kode_unit' => ['required', 'string', 'max:50', Rule::unique('barang_unit', 'kode_unit')->ignore($unit->id)],
             'status' => ['required', 'in:tersedia,dipinjam,maintenance'],
             'kondisi' => ['required', 'in:baik,rusak'],
+            'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ]);
+
+        if ($request->hasFile('gambar')) {
+            if ($unit->gambar && Storage::disk('public')->exists($unit->gambar)) {
+                Storage::disk('public')->delete($unit->gambar);
+            }
+            $validated['gambar'] = $request->file('gambar')->store('unit', 'public');
+        } elseif ($request->boolean('hapus_gambar')) {
+            if ($unit->gambar && Storage::disk('public')->exists($unit->gambar)) {
+                Storage::disk('public')->delete($unit->gambar);
+            }
+            $validated['gambar'] = null;
+        } else {
+            unset($validated['gambar']);
+        }
 
         $unit->update($validated);
 
@@ -614,6 +694,9 @@ class AdminWebController extends Controller
     public function destroyUnit($id): RedirectResponse
     {
         $unit = BarangUnit::findOrFail($id);
+        if ($unit->gambar && Storage::disk('public')->exists($unit->gambar)) {
+            Storage::disk('public')->delete($unit->gambar);
+        }
         $unit->delete();
 
         return back()->with('success', 'Unit fisik berhasil dihapus.');

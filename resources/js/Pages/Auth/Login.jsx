@@ -159,55 +159,13 @@ export default function Login() {
                     </div>
                 </div>
 
-                {/* Right Section - Decorative Theme Panel with Wave / Contour Lines */}
-                <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-[#8E1616] via-[#B82424] to-[#D84040] overflow-hidden min-h-screen items-center justify-center">
-                    {/* Subtle Wave / Contour SVG Overlay matching reference image */}
-                    <svg
-                        className="absolute inset-0 w-full h-full object-cover pointer-events-none opacity-20"
-                        viewBox="0 0 800 800"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <path
-                            d="M -100,200 C 150,100 250,400 500,300 C 750,200 850,500 1000,450"
-                            stroke="white"
-                            strokeWidth="35"
-                            strokeLinecap="round"
-                            fill="none"
-                        />
-                        <path
-                            d="M -100,350 C 180,250 280,550 550,450 C 800,350 880,650 1050,600"
-                            stroke="white"
-                            strokeWidth="45"
-                            strokeLinecap="round"
-                            fill="none"
-                        />
-                        <path
-                            d="M -100,500 C 200,400 300,700 600,600 C 850,500 900,800 1100,750"
-                            stroke="white"
-                            strokeWidth="55"
-                            strokeLinecap="round"
-                            fill="none"
-                        />
-                        <path
-                            d="M -50,50 C 200,0 350,250 600,150 C 850,50 950,300 1100,250"
-                            stroke="white"
-                            strokeWidth="30"
-                            strokeLinecap="round"
-                            fill="none"
-                        />
-                        <path
-                            d="M 100,700 C 350,600 450,900 700,800 C 950,700 1050,950 1200,900"
-                            stroke="white"
-                            strokeWidth="40"
-                            strokeLinecap="round"
-                            fill="none"
-                        />
-                    </svg>
-
-                    {/* Subtle Glow & Ambient Lighting */}
-                    <div className="absolute -top-32 -right-32 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-                    <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-black/20 rounded-full blur-3xl pointer-events-none" />
+                {/* Right Section - Decorative Theme Panel with Background Image */}
+                <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden min-h-screen bg-[#781212] items-center justify-center">
+                    <img
+                        src="/images/login_bg.png"
+                        alt="Background"
+                        className="w-full h-full object-cover object-center pointer-events-none select-none"
+                    />
                 </div>
 
             </div>
