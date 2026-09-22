@@ -23,6 +23,7 @@ export default function KategoriIndex({ categories, filters }) {
 
     const { data, setData, post, put, processing, reset, errors } = useForm({
         nama_kategori: '',
+        tipe: 'aset',
     });
 
     const handleSearch = (e) => {
@@ -32,13 +33,13 @@ export default function KategoriIndex({ categories, filters }) {
 
     const openCreateModal = () => {
         setEditingKategori(null);
-        setData({ nama_kategori: '' });
+        setData({ nama_kategori: '', tipe: 'aset' });
         setModalOpen(true);
     };
 
     const openEditModal = (kat) => {
         setEditingKategori(kat);
-        setData({ nama_kategori: kat.nama_kategori });
+        setData({ nama_kategori: kat.nama_kategori, tipe: kat.tipe || 'aset' });
         setModalOpen(true);
     };
 
@@ -105,9 +106,10 @@ export default function KategoriIndex({ categories, filters }) {
                             <thead className="bg-[#EEEEEE] border-b border-[#E0E0E0] text-[#1D1616] uppercase tracking-wider font-bold">
                                 <tr>
                                     <th className="p-4">Nama Kategori</th>
+                                    <th className="p-4">Tipe</th>
                                     <th className="p-4">QR Code String</th>
                                     <th className="p-4 text-center">Master Barang</th>
-                                    <th className="p-4 text-center">Total Unit</th>
+                                    <th className="p-4 text-center">Unit / Mode Stok</th>
                                     <th className="p-4 text-center">Status Unit (T / D / M)</th>
                                     <th className="p-4 text-right">Aksi</th>
                                 </tr>
@@ -115,7 +117,7 @@ export default function KategoriIndex({ categories, filters }) {
                             <tbody className="divide-y divide-[#E0E0E0]">
                                 {categories.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-[#6B7280] bg-white">
+                                        <td colSpan={7} className="p-8 text-center text-[#6B7280] bg-white">
                                             Tidak ada kategori barang ditemukan.
                                         </td>
                                     </tr>
@@ -130,6 +132,19 @@ export default function KategoriIndex({ categories, filters }) {
                                                 <div className="text-[10px] text-[#6B7280] mt-0.5">Dibuat: {kat.created_at}</div>
                                             </td>
                                             <td className="p-4">
+                                                {kat.tipe === 'habis_pakai' ? (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                        Habis Pakai
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                                        Aset Peminjaman
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="p-4">
                                                 <button
                                                     onClick={() => setQrModal(kat)}
                                                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#EEEEEE] text-[#D84040] border border-[#E0E0E0] font-mono text-[11px] font-bold hover:bg-[#D84040] hover:text-white transition-colors cursor-pointer"
@@ -141,17 +156,31 @@ export default function KategoriIndex({ categories, filters }) {
                                             <td className="p-4 text-center font-bold text-[#1D1616]">
                                                 {kat.total_barang}
                                             </td>
-                                            <td className="p-4 text-center font-extrabold text-[#D84040]">
-                                                {kat.total_unit}
+                                            <td className="p-4 text-center">
+                                                {kat.tipe === 'habis_pakai' ? (
+                                                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                                        Monitoring Stok
+                                                    </span>
+                                                ) : (
+                                                    <span className="font-extrabold text-[#D84040]">
+                                                        {kat.total_unit} Unit
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="p-4 text-center">
-                                                <div className="inline-flex items-center gap-1.5 font-mono text-[11px] bg-[#EEEEEE] px-3 py-1 rounded-lg border border-[#E0E0E0]">
-                                                    <span className="text-emerald-700 font-bold" title="Tersedia">{kat.tersedia} T</span>
-                                                    <span className="text-[#6B7280]">/</span>
-                                                    <span className="text-amber-700 font-bold" title="Dipinjam">{kat.dipinjam} D</span>
-                                                    <span className="text-[#6B7280]">/</span>
-                                                    <span className="text-[#D84040] font-bold" title="Maintenance">{kat.maintenance} M</span>
-                                                </div>
+                                                {kat.tipe === 'habis_pakai' ? (
+                                                    <span className="text-[11px] text-[#8C93A0] italic">
+                                                        Kuantitas Bahan
+                                                    </span>
+                                                ) : (
+                                                    <div className="inline-flex items-center gap-1.5 font-mono text-[11px] bg-[#EEEEEE] px-3 py-1 rounded-lg border border-[#E0E0E0]">
+                                                        <span className="text-emerald-700 font-bold" title="Tersedia">{kat.tersedia} T</span>
+                                                        <span className="text-[#6B7280]">/</span>
+                                                        <span className="text-amber-700 font-bold" title="Dipinjam">{kat.dipinjam} D</span>
+                                                        <span className="text-[#6B7280]">/</span>
+                                                        <span className="text-[#D84040] font-bold" title="Maintenance">{kat.maintenance} M</span>
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="p-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
@@ -201,7 +230,7 @@ export default function KategoriIndex({ categories, filters }) {
                                     type="text"
                                     value={data.nama_kategori}
                                     onChange={(e) => setData('nama_kategori', e.target.value)}
-                                    placeholder="Contoh: Perkakas, Elektronik, Komponen"
+                                    placeholder="Contoh: Perkakas, Elektronik, Bahan Habis Pakai"
                                     required
                                     className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
                                 />
@@ -209,6 +238,43 @@ export default function KategoriIndex({ categories, filters }) {
                                     <p className="text-[#D84040] text-xs mt-1">{errors.nama_kategori}</p>
                                 )}
                             </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
+                                    Tipe Kategori
+                                </label>
+                                <div className="grid grid-cols-2 gap-2.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setData('tipe', 'aset')}
+                                        className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                                            data.tipe === 'aset'
+                                                ? 'border-[#D84040] bg-[#D84040]/5 ring-1 ring-[#D84040]'
+                                                : 'border-[#E0E0E0] hover:border-gray-300 bg-white'
+                                        }`}
+                                    >
+                                        <div className="font-bold text-xs text-[#1D1616]">Aset Peminjaman</div>
+                                        <div className="text-[10px] text-[#6B7280] mt-0.5">Alat/mesin yang dipinjam & dikembalikan</div>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setData('tipe', 'habis_pakai')}
+                                        className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                                            data.tipe === 'habis_pakai'
+                                                ? 'border-amber-600 bg-amber-50 ring-1 ring-amber-600'
+                                                : 'border-[#E0E0E0] hover:border-gray-300 bg-white'
+                                        }`}
+                                    >
+                                        <div className="font-bold text-xs text-amber-900">Habis Pakai</div>
+                                        <div className="text-[10px] text-amber-700/80 mt-0.5">Bahan sekali pakai (monitoring sisa stok)</div>
+                                    </button>
+                                </div>
+                                {errors.tipe && (
+                                    <p className="text-[#D84040] text-xs mt-1">{errors.tipe}</p>
+                                )}
+                            </div>
+
                             <div className="flex justify-end gap-2 pt-2">
                                 <button
                                     type="button"

@@ -165,15 +165,29 @@ export default function MobileKatalog({
                                             )}
 
                                             {/* Stock Availability Pill */}
-                                            <span
-                                                className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
-                                                    isAvailable
-                                                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                                                        : 'bg-rose-100 text-rose-800 border-rose-200'
-                                                }`}
-                                            >
-                                                {isAvailable ? `${item.available_units} Tersedia` : 'Habis'}
-                                            </span>
+                                            {item.is_habis_pakai ? (
+                                                <span
+                                                    className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                                                        item.stok_saat_ini > 0
+                                                            ? item.is_low_stock
+                                                                ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                                                : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                                            : 'bg-rose-100 text-rose-800 border-rose-200'
+                                                    }`}
+                                                >
+                                                    {item.stok_saat_ini > 0 ? `Stok: ${item.stok_saat_ini} ${item.satuan || ''}` : 'Stok Habis'}
+                                                </span>
+                                            ) : (
+                                                <span
+                                                    className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                                                        isAvailable
+                                                            ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                                            : 'bg-rose-100 text-rose-800 border-rose-200'
+                                                    }`}
+                                                >
+                                                    {isAvailable ? `${item.available_units} Tersedia` : 'Habis'}
+                                                </span>
+                                            )}
                                         </div>
 
                                         <div className="flex items-center justify-between mb-1">
@@ -196,8 +210,13 @@ export default function MobileKatalog({
                                         )}
                                     </div>
 
-                                    {/* Action Button: Strictly Scan QR to borrow */}
-                                    {isAvailable ? (
+                                    {/* Action Button: Scan QR for loan assets, or badge for consumables */}
+                                    {item.is_habis_pakai ? (
+                                        <div className="w-full py-2 bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-bold rounded-xl text-center flex items-center justify-center gap-1">
+                                            <Package size={12} className="text-amber-600" />
+                                            <span>Bahan Praktikum</span>
+                                        </div>
+                                    ) : isAvailable ? (
                                         <Link
                                             href={`/user/scanner?target=${encodeURIComponent(item.nama_barang)}`}
                                             className="w-full py-2 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"

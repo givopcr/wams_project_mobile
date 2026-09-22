@@ -17,6 +17,9 @@ class Barang extends Model
         'kategori_id',
         'nama_barang',
         'kode_barang',
+        'satuan',
+        'stok_saat_ini',
+        'stok_minimum',
         'detail_spesifikasi',
         'lokasi',
         'gambar',
@@ -27,6 +30,8 @@ class Barang extends Model
     {
         return [
             'perlu_persetujuan' => 'boolean',
+            'stok_saat_ini' => 'float',
+            'stok_minimum' => 'float',
         ];
     }
 
@@ -39,11 +44,27 @@ class Barang extends Model
     }
 
     /**
-     * Relasi ke Unit Barang (barang 1:N barang_unit)
+     * Relasi ke Unit Barang (barang 1:N barang_unit) - untuk barang aset
      */
     public function units(): HasMany
     {
         return $this->hasMany(BarangUnit::class, 'barang_id');
+    }
+
+    /**
+     * Relasi ke Mutasi Transaksi Stok - untuk barang habis pakai
+     */
+    public function transaksiStok(): HasMany
+    {
+        return $this->hasMany(TransaksiStok::class, 'barang_id');
+    }
+
+    /**
+     * Cek apakah stok habis pakai berada pada atau di bawah ambang minimum
+     */
+    public function isLowStock(): bool
+    {
+        return (float) $this->stok_saat_ini <= (float) $this->stok_minimum;
     }
 
     /**

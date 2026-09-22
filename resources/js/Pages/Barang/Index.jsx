@@ -66,12 +66,37 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
         kategori_id: '',
         nama_barang: '',
         kode_barang: '',
+        satuan: 'pcs',
+        stok_saat_ini: '',
+        stok_minimum: '5',
         detail_spesifikasi: '',
         lokasi: '',
         gambar: null,
         hapus_gambar: false,
         perlu_persetujuan: false,
         jumlah_unit: '',
+    });
+
+    // Form Restock Bahan Habis Pakai
+    const [restockModal, setRestockModal] = useState({ isOpen: false, barang: null });
+    const {
+        data: restockData,
+        setData: setRestockData,
+        post: postRestock,
+        processing: restockProcessing,
+        reset: resetRestock,
+        errors: restockErrors,
+    } = useForm({
+        jumlah: '',
+        keterangan: '',
+    });
+
+    // Modal Kartu Stok
+    const [kartuStokModal, setKartuStokModal] = useState({
+        isOpen: false,
+        loading: false,
+        barang: null,
+        mutasi: [],
     });
 
     // Form Unit Fisik
@@ -136,6 +161,9 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             kategori_id: categories.length > 0 ? categories[0].id : '',
             nama_barang: '',
             kode_barang: '',
+            satuan: 'pcs',
+            stok_saat_ini: '',
+            stok_minimum: '5',
             detail_spesifikasi: '',
             lokasi: '',
             gambar: null,
@@ -155,6 +183,9 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             kategori_id: b.kategori_id,
             nama_barang: b.nama_barang,
             kode_barang: b.kode_barang,
+            satuan: b.satuan || 'pcs',
+            stok_saat_ini: b.stok_saat_ini ?? '',
+            stok_minimum: b.stok_minimum ?? '5',
             detail_spesifikasi: b.detail_spesifikasi || '',
             lokasi: b.lokasi || '',
             gambar: null,
@@ -163,6 +194,38 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             jumlah_unit: '',
         });
         setModalOpen(true);
+    };
+
+    const handleOpenRestock = (b) => {
+        setRestockModal({ isOpen: true, barang: b });
+        setRestockData({ jumlah: '', keterangan: '' });
+    };
+
+    const handleRestockSubmit = (e) => {
+        e.preventDefault();
+        if (!restockModal.barang) return;
+        postRestock(`/admin/barang/${restockModal.barang.id}/restock`, {
+            onSuccess: () => {
+                setRestockModal({ isOpen: false, barang: null });
+                resetRestock();
+            },
+        });
+    };
+
+    const handleOpenKartuStok = async (b) => {
+        setKartuStokModal({ isOpen: true, loading: true, barang: b, mutasi: [] });
+        try {
+            const res = await fetch(`/admin/barang/${b.id}/kartu-stok`);
+            const json = await res.json();
+            setKartuStokModal({
+                isOpen: true,
+                loading: false,
+                barang: json.barang || b,
+                mutasi: json.mutasi || [],
+            });
+        } catch (err) {
+            setKartuStokModal((prev) => ({ ...prev, loading: false }));
+        }
     };
 
     const handleFileChange = (e) => {
@@ -504,6 +567,14 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2.5">
+                            <Link
+                                href="/admin/kategori"
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white border border-[#E0E0E0] hover:border-[#D84040] text-[#1D1616] hover:text-[#D84040] text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
+                            >
+                                <Boxes size={15} />
+                                <span>Kelola Kategori</span>
+                            </Link>
+
                             <button
                                 onClick={openCreateModal}
                                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
@@ -577,55 +648,71 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                             Kode Master: {item.kode_barang}
                                                                         </div>
 
-                                                                        {/* DAFTAR KODE UNIT FISIK (BOR-001, BOR-002, dst.) */}
+                                                                        {/* DAFTAR KODE UNIT FISIK ATAU STATUS BAHAN HABIS PAKAI */}
                                                                         <div className="mt-2 pt-2 border-t border-[#E0E0E0]/60">
-                                                                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                                                                                <span className="text-[10px] font-extrabold text-[#6B7280] uppercase tracking-wider flex items-center gap-1">
-                                                                                    <Layers size={12} className="text-[#D84040]" />
-                                                                                    Unit Terdaftar ({item.units?.length || 0}):
-                                                                                </span>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => toggleExpand(item.id)}
-                                                                                    className="text-[11px] font-bold text-[#D84040] hover:text-[#8E1616] inline-flex items-center gap-0.5 cursor-pointer"
-                                                                                >
-                                                                                    {isExpanded ? (
-                                                                                        <>Tutup Rincian <ChevronDown size={12} /></>
-                                                                                    ) : (
-                                                                                        <>Kelola Unit <ChevronRight size={12} /></>
+                                                                            {item.tipe_kategori === 'habis_pakai' ? (
+                                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                                    <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                                                                                        <Boxes size={12} className="text-amber-600" />
+                                                                                        Bahan Habis Pakai
+                                                                                    </span>
+                                                                                    {item.is_low_stock && (
+                                                                                        <span className="text-[10px] font-extrabold text-red-700 bg-red-100 border border-red-300 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                                                                                            <AlertTriangle size={11} /> Stok Menipis (Batas: {item.stok_minimum} {item.satuan})
+                                                                                        </span>
                                                                                     )}
-                                                                                </button>
-                                                                            </div>
-
-                                                                            {item.units && item.units.length > 0 ? (
-                                                                                <div className="flex flex-wrap items-center gap-1.5">
-                                                                                    {item.units.map((u) => {
-                                                                                        const isAvailable = u.status === 'tersedia';
-                                                                                        const isBorrowed = u.status === 'dipinjam';
-                                                                                        const badgeCls = isAvailable
-                                                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                                                            : isBorrowed
-                                                                                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                                                                            : 'bg-rose-50 text-[#D84040] border-rose-200';
-                                                                                        const dotCls = isAvailable ? 'bg-emerald-500' : isBorrowed ? 'bg-amber-500' : 'bg-[#D84040]';
-
-                                                                                        return (
-                                                                                            <span
-                                                                                                key={u.id}
-                                                                                                onClick={() => openEditUnitModal(item, u)}
-                                                                                                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold border ${badgeCls} cursor-pointer hover:shadow-xs transition-shadow`}
-                                                                                                title={`Klik untuk edit status unit: ${u.kode_unit} | Status: ${u.status} | Kondisi: ${u.kondisi}`}
-                                                                                            >
-                                                                                                <span className={`w-1.5 h-1.5 rounded-full ${dotCls}`} />
-                                                                                                {u.kode_unit}
-                                                                                            </span>
-                                                                                        );
-                                                                                    })}
                                                                                 </div>
                                                                             ) : (
-                                                                                <span className="text-[11px] text-[#8C93A0] italic">
-                                                                                    Belum ada unit fisik terdaftar
-                                                                                </span>
+                                                                                <>
+                                                                                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                                                        <span className="text-[10px] font-extrabold text-[#6B7280] uppercase tracking-wider flex items-center gap-1">
+                                                                                            <Layers size={12} className="text-[#D84040]" />
+                                                                                            Unit Terdaftar ({item.units?.length || 0}):
+                                                                                        </span>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => toggleExpand(item.id)}
+                                                                                            className="text-[11px] font-bold text-[#D84040] hover:text-[#8E1616] inline-flex items-center gap-0.5 cursor-pointer"
+                                                                                        >
+                                                                                            {isExpanded ? (
+                                                                                                <>Tutup Rincian <ChevronDown size={12} /></>
+                                                                                            ) : (
+                                                                                                <>Kelola Unit <ChevronRight size={12} /></>
+                                                                                            )}
+                                                                                        </button>
+                                                                                    </div>
+
+                                                                                    {item.units && item.units.length > 0 ? (
+                                                                                        <div className="flex flex-wrap items-center gap-1.5">
+                                                                                            {item.units.map((u) => {
+                                                                                                const isAvailable = u.status === 'tersedia';
+                                                                                                const isBorrowed = u.status === 'dipinjam';
+                                                                                                const badgeCls = isAvailable
+                                                                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                                                                    : isBorrowed
+                                                                                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                                                                    : 'bg-rose-50 text-[#D84040] border-rose-200';
+                                                                                                const dotCls = isAvailable ? 'bg-emerald-500' : isBorrowed ? 'bg-amber-500' : 'bg-[#D84040]';
+
+                                                                                                return (
+                                                                                                    <span
+                                                                                                        key={u.id}
+                                                                                                        onClick={() => openEditUnitModal(item, u)}
+                                                                                                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold border ${badgeCls} cursor-pointer hover:shadow-xs transition-shadow`}
+                                                                                                        title={`Klik untuk edit status unit: ${u.kode_unit} | Status: ${u.status} | Kondisi: ${u.kondisi}`}
+                                                                                                    >
+                                                                                                        <span className={`w-1.5 h-1.5 rounded-full ${dotCls}`} />
+                                                                                                        {u.kode_unit}
+                                                                                                    </span>
+                                                                                                );
+                                                                                            })}
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <span className="text-[11px] text-[#8C93A0] italic">
+                                                                                            Belum ada unit fisik terdaftar
+                                                                                        </span>
+                                                                                    )}
+                                                                                </>
                                                                             )}
                                                                         </div>
                                                                     </div>
@@ -640,43 +727,74 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                 </div>
                                                             </td>
 
-                                                            {/* Total Unit dengan expander button */}
+                                                            {/* Total Unit / Sisa Stok Bahan */}
                                                             <td className="p-4 text-center align-top">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggleExpand(item.id)}
-                                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#EEEEEE] hover:bg-gray-200 text-[#1D1616] font-bold text-xs cursor-pointer transition-colors"
-                                                                    title="Klik untuk melihat rincian unit fisik"
-                                                                >
-                                                                    <span>{item.total_unit} Unit</span>
-                                                                    {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                                                                </button>
+                                                                {item.tipe_kategori === 'habis_pakai' ? (
+                                                                    <div>
+                                                                        <div className="font-extrabold text-sm text-[#1D1616]">
+                                                                            {item.stok_saat_ini} <span className="text-xs text-[#6B7280] font-normal">{item.satuan || 'unit'}</span>
+                                                                        </div>
+                                                                        <div className="text-[10px] text-[#6B7280] mt-0.5">
+                                                                            Min: {item.stok_minimum} {item.satuan}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => toggleExpand(item.id)}
+                                                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#EEEEEE] hover:bg-gray-200 text-[#1D1616] font-bold text-xs cursor-pointer transition-colors"
+                                                                        title="Klik untuk melihat rincian unit fisik"
+                                                                    >
+                                                                        <span>{item.total_unit} Unit</span>
+                                                                        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                                                    </button>
+                                                                )}
                                                             </td>
 
                                                             {/* Status Counts */}
                                                             <td className="p-4 text-center font-bold text-emerald-700 align-top">
-                                                                {item.tersedia}
+                                                                {item.tipe_kategori === 'habis_pakai' ? `${item.stok_saat_ini} ${item.satuan}` : item.tersedia}
                                                             </td>
                                                             <td className="p-4 text-center font-bold text-amber-700 align-top">
-                                                                {item.dipinjam}
+                                                                {item.tipe_kategori === 'habis_pakai' ? '-' : item.dipinjam}
                                                             </td>
                                                             <td className="p-4 text-center font-bold text-[#D84040] align-top">
-                                                                {item.maintenance}
+                                                                {item.tipe_kategori === 'habis_pakai' ? '-' : item.maintenance}
                                                             </td>
 
                                                             {/* Aksi Master Barang */}
                                                             <td className="p-4 text-right align-top">
                                                                 <div className="flex items-center justify-end gap-1.5">
-                                                                    <button
-                                                                        onClick={() => openAddUnitModal(item)}
-                                                                        className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors"
-                                                                        title="Tambah Unit Fisik Baru"
-                                                                    >
-                                                                        <Plus size={16} />
-                                                                    </button>
+                                                                    {item.tipe_kategori === 'habis_pakai' ? (
+                                                                        <>
+                                                                            <button
+                                                                                onClick={() => handleOpenRestock(item)}
+                                                                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                                                                                title="Restock Stok Bahan"
+                                                                            >
+                                                                                <Plus size={13} />
+                                                                                <span>Restock</span>
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleOpenKartuStok(item)}
+                                                                                className="p-1.5 rounded-lg text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
+                                                                                title="Lihat Kartu Stok & Mutasi"
+                                                                            >
+                                                                                <Clock size={15} />
+                                                                            </button>
+                                                                        </>
+                                                                    ) : (
+                                                                        <button
+                                                                            onClick={() => openAddUnitModal(item)}
+                                                                            className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                                                            title="Tambah Unit Fisik Baru"
+                                                                        >
+                                                                            <Plus size={16} />
+                                                                        </button>
+                                                                    )}
                                                                     <button
                                                                         onClick={() => openEditModal(item)}
-                                                                        className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1D1616] hover:bg-[#EEEEEE] transition-colors"
+                                                                        className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1D1616] hover:bg-[#EEEEEE] transition-colors cursor-pointer"
                                                                         title="Edit Master Barang"
                                                                     >
                                                                         <Edit2 size={15} />
@@ -693,7 +811,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                         </tr>
 
                                                         {/* SUB-ROW ACCORDION: DETAIL UNIT FISIK */}
-                                                        {isExpanded && (
+                                                        {isExpanded && item.tipe_kategori !== 'habis_pakai' && (
                                                             <tr className="bg-gray-50/80 border-b border-[#E0E0E0]">
                                                                 <td colSpan={7} className="p-4 sm:p-5">
                                                                     <div className="bg-white border border-[#E0E0E0] rounded-xl p-4 shadow-xs">
@@ -1036,30 +1154,97 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                 />
                             </div>
 
-                            {!editingBarang && (
-                                <div className="p-3.5 bg-emerald-50/50 border border-emerald-200/80 rounded-xl">
-                                    <label className="block text-xs font-bold text-emerald-900 mb-1 flex items-center justify-between">
-                                        <span>Jumlah Unit Fisik Awal (Batch Generate)</span>
-                                        <span className="text-[11px] font-normal text-emerald-700">Opsional</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="50"
-                                        value={data.jumlah_unit}
-                                        onChange={(e) => setData('jumlah_unit', e.target.value)}
-                                        placeholder="Contoh: 1, 3, atau 5 unit"
-                                        className="w-full px-3.5 py-2 bg-white border border-emerald-300 rounded-xl text-xs text-[#1D1616] font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                                    />
-                                    <p className="text-[11px] text-emerald-700 mt-1.5 leading-relaxed">
-                                        {data.jumlah_unit && parseInt(data.jumlah_unit) > 0 ? (
-                                            <>Sistem akan otomatis membuat <span className="font-bold">{data.jumlah_unit} unit fisik</span>: <span className="font-mono font-bold">{data.kode_barang ? `${data.kode_barang}-01 s/d ${data.kode_barang}-${String(data.jumlah_unit).padStart(2, '0')}` : `KODE-01 s/d KODE-${String(data.jumlah_unit).padStart(2, '0')}`}</span> berstatus siap dipinjam.</>
-                                        ) : (
-                                            <>Kosongkan jika ingin menambahkan nomor seri unit fisik secara terpisah nanti.</>
-                                        )}
-                                    </p>
-                                </div>
-                            )}
+                            {(() => {
+                                const selectedCat = categories.find((c) => String(c.id) === String(data.kategori_id));
+                                const isHabisPakai = selectedCat?.tipe === 'habis_pakai';
+
+                                if (isHabisPakai) {
+                                    return (
+                                        <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <Boxes size={16} className="text-amber-700" />
+                                                <span className="text-xs font-bold text-amber-900">Pengaturan Bahan Habis Pakai</span>
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="block text-[11px] font-bold text-[#1D1616] mb-1">
+                                                        Satuan Ukuran
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={data.satuan}
+                                                        onChange={(e) => setData('satuan', e.target.value)}
+                                                        placeholder="Contoh: pcs, meter, roll"
+                                                        required
+                                                        className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-amber-600"
+                                                    />
+                                                    {errors.satuan && <p className="text-[#D84040] text-xs mt-1">{errors.satuan}</p>}
+                                                </div>
+                                                {!editingBarang && (
+                                                    <div>
+                                                        <label className="block text-[11px] font-bold text-[#1D1616] mb-1">
+                                                            Stok Awal
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            min="0"
+                                                            value={data.stok_saat_ini}
+                                                            onChange={(e) => setData('stok_saat_ini', e.target.value)}
+                                                            placeholder="0"
+                                                            className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-bold focus:outline-none focus:border-amber-600"
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <label className="block text-[11px] font-bold text-[#1D1616] mb-1">
+                                                        Batas Minimum Alert
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        step="any"
+                                                        min="0"
+                                                        value={data.stok_minimum}
+                                                        onChange={(e) => setData('stok_minimum', e.target.value)}
+                                                        placeholder="5"
+                                                        required
+                                                        className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-bold focus:outline-none focus:border-amber-600"
+                                                    />
+                                                    {errors.stok_minimum && <p className="text-[#D84040] text-xs mt-1">{errors.stok_minimum}</p>}
+                                                </div>
+                                            </div>
+                                            <p className="text-[10.5px] text-amber-800 leading-relaxed">
+                                                Kategori ini melacak kuantitas agregat secara otomatis. Tidak perlu membuat kode unit fisik.
+                                            </p>
+                                        </div>
+                                    );
+                                }
+
+                                return !editingBarang ? (
+                                    <div className="p-3.5 bg-emerald-50/50 border border-emerald-200/80 rounded-xl">
+                                        <label className="block text-xs font-bold text-emerald-900 mb-1 flex items-center justify-between">
+                                            <span>Jumlah Unit Fisik Awal (Batch Generate)</span>
+                                            <span className="text-[11px] font-normal text-emerald-700">Opsional</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="50"
+                                            value={data.jumlah_unit}
+                                            onChange={(e) => setData('jumlah_unit', e.target.value)}
+                                            placeholder="Contoh: 1, 3, atau 5 unit"
+                                            className="w-full px-3.5 py-2 bg-white border border-emerald-300 rounded-xl text-xs text-[#1D1616] font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                        />
+                                        <p className="text-[11px] text-emerald-700 mt-1.5 leading-relaxed">
+                                            {data.jumlah_unit && parseInt(data.jumlah_unit) > 0 ? (
+                                                <>Sistem akan otomatis membuat <span className="font-bold">{data.jumlah_unit} unit fisik</span>: <span className="font-mono font-bold">{data.kode_barang ? `${data.kode_barang}-01 s/d ${data.kode_barang}-${String(data.jumlah_unit).padStart(2, '0')}` : `KODE-01 s/d KODE-${String(data.jumlah_unit).padStart(2, '0')}`}</span> berstatus siap dipinjam.</>
+                                            ) : (
+                                                <>Kosongkan jika ingin menambahkan nomor seri unit fisik secara terpisah nanti.</>
+                                            )}
+                                        </p>
+                                    </div>
+                                ) : null;
+                            })()}
 
                             <div>
                                 <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
@@ -1540,6 +1725,183 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                 variant="danger"
                 processing={isDeleting}
             />
+
+            {/* Modal Restock Bahan Habis Pakai */}
+            {restockModal.isOpen && restockModal.barang && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/60 backdrop-blur-none animate-in fade-in duration-150">
+                    <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-md w-full p-6 shadow-xl">
+                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E0E0E0]">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                                    <Plus size={18} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-extrabold text-[#1D1616]">
+                                        Restock: {restockModal.barang.nama_barang}
+                                    </h3>
+                                    <p className="text-[11px] text-[#6B7280]">
+                                        Sisa Stok Saat Ini: <span className="font-bold text-[#1D1616]">{restockModal.barang.stok_saat_ini} {restockModal.barang.satuan}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setRestockModal({ isOpen: false, barang: null })}
+                                className="text-[#6B7280] hover:text-[#1D1616]"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleRestockSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
+                                    Jumlah Restock Masuk ({restockModal.barang.satuan || 'unit'})
+                                </label>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    min="0.01"
+                                    value={restockData.jumlah}
+                                    onChange={(e) => setRestockData('jumlah', e.target.value)}
+                                    placeholder="Contoh: 10, 50, 100"
+                                    required
+                                    autoFocus
+                                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-sm font-extrabold text-[#1D1616] focus:outline-none focus:border-emerald-600"
+                                />
+                                {restockErrors.jumlah && (
+                                    <p className="text-[#D84040] text-xs mt-1">{restockErrors.jumlah}</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
+                                    Keterangan / Nomor Faktur / Toko
+                                </label>
+                                <input
+                                    type="text"
+                                    value={restockData.keterangan}
+                                    onChange={(e) => setRestockData('keterangan', e.target.value)}
+                                    placeholder="Contoh: Pembelian Faktur #INV-9821 Toko Baut Jaya"
+                                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-emerald-600"
+                                />
+                                {restockErrors.keterangan && (
+                                    <p className="text-[#D84040] text-xs mt-1">{restockErrors.keterangan}</p>
+                                )}
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setRestockModal({ isOpen: false, barang: null })}
+                                    className="px-4 py-2 rounded-xl text-xs font-semibold text-[#6B7280] hover:bg-[#EEEEEE]"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={restockProcessing}
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-colors cursor-pointer shadow-xs"
+                                >
+                                    {restockProcessing ? 'Memproses...' : 'Simpan Restock'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Kartu Stok & Riwayat Mutasi */}
+            {kartuStokModal.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/60 backdrop-blur-none animate-in fade-in duration-150">
+                    <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-2xl w-full p-6 shadow-xl max-h-[85vh] flex flex-col">
+                        <div className="flex items-center justify-between pb-3 border-b border-[#E0E0E0] shrink-0">
+                            <div>
+                                <h3 className="text-base font-extrabold text-[#1D1616] flex items-center gap-2">
+                                    <Clock size={18} className="text-blue-600" />
+                                    Kartu Stok: {kartuStokModal.barang?.nama_barang}
+                                </h3>
+                                <div className="text-xs text-[#6B7280] mt-0.5 flex items-center gap-2">
+                                    <span>Kode: <span className="font-mono font-bold text-[#1D1616]">{kartuStokModal.barang?.kode_barang}</span></span>
+                                    <span>•</span>
+                                    <span>Sisa Saldo: <span className="font-bold text-emerald-700">{kartuStokModal.barang?.stok_saat_ini} {kartuStokModal.barang?.satuan}</span></span>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setKartuStokModal({ isOpen: false, loading: false, barang: null, mutasi: [] })}
+                                className="text-[#6B7280] hover:text-[#1D1616]"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="overflow-y-auto flex-1 my-4">
+                            {kartuStokModal.loading ? (
+                                <div className="p-8 text-center text-xs text-[#6B7280]">
+                                    Memuat kartu stok...
+                                </div>
+                            ) : kartuStokModal.mutasi.length === 0 ? (
+                                <div className="p-8 text-center text-xs text-[#6B7280]">
+                                    Belum ada transaksi mutasi stok untuk barang ini.
+                                </div>
+                            ) : (
+                                <table className="w-full text-left text-xs">
+                                    <thead className="bg-[#EEEEEE] border-b border-[#E0E0E0] text-[#1D1616] uppercase font-bold text-[10px]">
+                                        <tr>
+                                            <th className="p-2.5">Tanggal</th>
+                                            <th className="p-2.5">Tipe</th>
+                                            <th className="p-2.5 text-right">Jumlah</th>
+                                            <th className="p-2.5 text-right">Sisa Stok</th>
+                                            <th className="p-2.5">Oleh</th>
+                                            <th className="p-2.5">Keterangan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-[#E0E0E0]">
+                                        {kartuStokModal.mutasi.map((m) => {
+                                            const isMasuk = m.tipe === 'masuk';
+                                            return (
+                                                <tr key={m.id} className="hover:bg-[#EEEEEE]/40">
+                                                    <td className="p-2.5 text-[11px] text-[#6B7280] whitespace-nowrap">
+                                                        {m.tanggal}
+                                                    </td>
+                                                    <td className="p-2.5">
+                                                        {isMasuk ? (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                                                MASUK
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
+                                                                KELUAR
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className={`p-2.5 text-right font-bold ${isMasuk ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                                        {isMasuk ? `+${m.jumlah}` : `-${m.jumlah}`}
+                                                    </td>
+                                                    <td className="p-2.5 text-right font-extrabold text-[#1D1616]">
+                                                        {m.sisa_stok}
+                                                    </td>
+                                                    <td className="p-2.5 font-medium text-[#1D1616]">
+                                                        {m.user_nama}
+                                                    </td>
+                                                    <td className="p-2.5 text-[#6B7280]">
+                                                        {m.keterangan}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        <div className="pt-3 border-t border-[#E0E0E0] flex justify-end shrink-0">
+                            <button
+                                onClick={() => setKartuStokModal({ isOpen: false, loading: false, barang: null, mutasi: [] })}
+                                className="px-4 py-2 bg-[#EEEEEE] hover:bg-gray-200 text-[#1D1616] text-xs font-bold rounded-xl transition-colors"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

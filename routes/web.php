@@ -45,6 +45,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::post('/barang', [AdminWebController::class, 'storeBarang'])->name('admin.barang.store');
     Route::post('/barang/{id}', [AdminWebController::class, 'updateBarang'])->name('admin.barang.update'); // Form data with file
     Route::delete('/barang/{id}', [AdminWebController::class, 'destroyBarang'])->name('admin.barang.destroy');
+    Route::post('/barang/{id}/restock', [AdminWebController::class, 'restockBarang'])->name('admin.barang.restock');
+    Route::get('/barang/{id}/kartu-stok', [AdminWebController::class, 'kartuStokJson'])->name('admin.barang.kartu_stok');
 
     // Unit Fisik
     Route::get('/unit', [AdminWebController::class, 'unit'])->name('admin.unit');
@@ -91,6 +93,7 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
     Route::get('/katalog', [UserWebController::class, 'katalog'])->name('katalog');
     Route::get('/peminjaman', [UserWebController::class, 'peminjaman'])->name('peminjaman');
     Route::post('/pinjam', [UserWebController::class, 'storePinjam'])->name('pinjam.store');
+    Route::post('/pakai-bahan', [\App\Http\Controllers\Api\TransaksiStokController::class, 'pakai'])->name('pakai.store');
     Route::post('/kembali/{id}', [UserWebController::class, 'storeKembali'])->name('kembali.store');
     Route::post('/batalkan/{id}', [UserWebController::class, 'cancelPinjam'])->name('pinjam.cancel');
     Route::get('/riwayat', [UserWebController::class, 'riwayat'])->name('riwayat');

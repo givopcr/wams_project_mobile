@@ -18,7 +18,8 @@ import {
     ChevronRight,
     Sparkles,
     MoreHorizontal,
-    ShieldAlert
+    ShieldAlert,
+    AlertTriangle
 } from 'lucide-react';
 import {
     TotalBarangIcon,
@@ -231,6 +232,32 @@ export default function Dashboard({
                             className="px-4 py-2.5 bg-white text-amber-900 rounded-xl text-xs font-extrabold hover:bg-amber-50 transition-all shadow-sm shrink-0 flex items-center gap-1.5 cursor-pointer"
                         >
                             <span>Tinjau Permohonan</span>
+                            <ChevronRight size={14} />
+                        </Link>
+                    </div>
+                )}
+
+                {/* Low Stock Alert Banner for Consumables */}
+                {s.low_stock_count > 0 && (
+                    <div className="bg-gradient-to-r from-rose-600 to-rose-700 rounded-2xl p-4 sm:p-5 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-3">
+                        <div className="flex items-center gap-3.5">
+                            <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0">
+                                <AlertTriangle size={22} className="text-white" />
+                            </div>
+                            <div>
+                                <h4 className="font-extrabold text-sm sm:text-base tracking-tight">
+                                    Peringatan: {s.low_stock_count} Bahan Sekali Pakai Menipis / Perlu Restock
+                                </h4>
+                                <p className="text-xs text-rose-100 mt-0.5">
+                                    Stok bahan praktikum telah mencapai atau di bawah batas minimum. Segera lakukan restock agar kegiatan workshop tidak terhambat.
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            href="/admin/barang"
+                            className="px-4 py-2.5 bg-white text-rose-900 rounded-xl text-xs font-extrabold hover:bg-rose-50 transition-all shadow-sm shrink-0 flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span>Periksa & Restock Stok</span>
                             <ChevronRight size={14} />
                         </Link>
                     </div>

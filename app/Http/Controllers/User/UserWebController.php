@@ -138,6 +138,12 @@ class UserWebController extends Controller
                 'perlu_persetujuan' => (bool) $b->perlu_persetujuan,
                 'total_units' => $b->total_units,
                 'available_units' => $b->available_units,
+                'tipe' => $b->kategori?->tipe ?? 'aset',
+                'is_habis_pakai' => $b->kategori?->isHabisPakai() ?? false,
+                'satuan' => $b->satuan ?? 'pcs',
+                'stok_saat_ini' => (float) $b->stok_saat_ini,
+                'stok_minimum' => (float) $b->stok_minimum,
+                'is_low_stock' => $b->isLowStock(),
                 'gambar_url' => $b->gambar ? asset('storage/' . $b->gambar) : null,
                 'available_unit_list' => $b->units->map(fn ($u) => [
                     'id' => $u->id,

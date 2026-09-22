@@ -35,6 +35,7 @@ class _KategoriScreenState extends State<KategoriScreen> {
 
   IconData _getCategoryIcon(String name) {
     final n = name.toLowerCase();
+    if (n.contains('habis') || n.contains('sekali') || n.contains('konsum') || n.contains('bahan') || n.contains('material')) return Icons.inventory_2_outlined;
     if (n.contains('perkakas') || n.contains('tangan')) return Icons.handyman;
     if (n.contains('listrik') || n.contains('elektronik') || n.contains('ukur')) return Icons.bolt;
     if (n.contains('mesin') || n.contains('berat') || n.contains('bubut')) return Icons.precision_manufacturing;
@@ -170,17 +171,41 @@ class _KategoriScreenState extends State<KategoriScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          kat.namaKategori,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                            color: AppTheme.textPrimary,
-                                          ),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                kat.namaKategori,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                  color: AppTheme.textPrimary,
+                                                ),
+                                              ),
+                                            ),
+                                            if (kat.isHabisPakai)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFFEF3C7),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: const Text(
+                                                  'Habis Pakai',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Color(0xFFB45309),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          '${kat.totalBarang} Master Barang • ${kat.tersedia}/${kat.totalUnit} Unit Tersedia',
+                                          kat.isHabisPakai
+                                              ? '${kat.totalBarang} Bahan Habis Pakai • Monitoring Stok'
+                                              : '${kat.totalBarang} Master Barang • ${kat.tersedia}/${kat.totalUnit} Unit Tersedia',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: AppTheme.textMuted,

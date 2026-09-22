@@ -251,6 +251,31 @@ class ApiService {
     }
   }
 
+  // --- TRANSAKSI BAHAN SEKALI PAKAI / HABIS PAKAI ---
+  Future<Map<String, dynamic>> pakaiBahan({
+    required int barangId,
+    required double jumlah,
+    String? keterangan,
+  }) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse(ApiConstants.transaksiStokPakai),
+      headers: _headers(token),
+      body: jsonEncode({
+        'barang_id': barangId,
+        'jumlah': jumlah,
+        'keterangan': keterangan,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Gagal mencatat pemakaian bahan.');
+    }
+  }
+
   Future<Map<String, dynamic>> batalkanPeminjaman(int logbookId) async {
     final token = await _getToken();
     final response = await http.post(

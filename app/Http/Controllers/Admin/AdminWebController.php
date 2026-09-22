@@ -7,6 +7,7 @@ use App\Models\Barang;
 use App\Models\BarangUnit;
 use App\Models\KategoriBarang;
 use App\Models\Logbook;
+use App\Models\TransaksiStok;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -44,6 +45,8 @@ class AdminWebController extends Controller
              'transaksi_aktif' => Logbook::where('status_transaksi', 'dipinjam')->count(),
              'transaksi_selesai' => Logbook::where('status_transaksi', 'dikembalikan')->count(),
              'menunggu_approval' => Logbook::where('status_transaksi', 'menunggu_persetujuan')->count(),
+             'total_habis_pakai' => Barang::whereHas('kategori', fn($q) => $q->where('tipe', 'habis_pakai'))->count(),
+             'low_stock_count' => Barang::whereHas('kategori', fn($q) => $q->where('tipe', 'habis_pakai'))->whereColumn('stok_saat_ini', '<=', 'stok_minimum')->count(),
          ];
 
          // 3 Transaksi / List User Terakhir (Meminjam atau Mengembalikan)
@@ -336,6 +339,7 @@ class AdminWebController extends Controller
             return [
                 'id' => $k->id,
                 'nama_kategori' => $k->nama_kategori,
+                'tipe' => $k->tipe ?? 'aset',
                 'qr_code' => $k->qr_code,
                 'total_barang' => $k->barang_count,
                 'total_unit' => $k->units->count(),
@@ -356,7 +360,10 @@ class AdminWebController extends Controller
     {
         $validated = $request->validate([
             'nama_kategori' => ['required', 'string', 'max:255'],
+            'tipe' => ['nullable', 'in:aset,habis_pakai'],
         ]);
+
+        $validated['tipe'] = $validated['tipe'] ?? 'aset';
 
         $kategori = KategoriBarang::create($validated);
         $kategori->update([
@@ -371,6 +378,7 @@ class AdminWebController extends Controller
         $kategori = KategoriBarang::findOrFail($id);
         $validated = $request->validate([
             'nama_kategori' => ['required', 'string', 'max:255'],
+            'tipe' => ['nullable', 'in:aset,habis_pakai'],
         ]);
 
         $kategori->update($validated);
@@ -410,12 +418,18 @@ class AdminWebController extends Controller
         $barangList = $query->latest()->paginate(10)->withQueryString();
 
         $barangList->getCollection()->transform(function ($b) {
+            $isHabisPakai = ($b->kategori?->tipe ?? 'aset') === 'habis_pakai';
             return [
                 'id' => $b->id,
                 'kategori_id' => $b->kategori_id,
                 'nama_kategori' => $b->kategori ? $b->kategori->nama_kategori : '-',
+                'tipe_kategori' => $b->kategori ? ($b->kategori->tipe ?? 'aset') : 'aset',
                 'nama_barang' => $b->nama_barang,
                 'kode_barang' => $b->kode_barang,
+                'satuan' => $b->satuan,
+                'stok_saat_ini' => (float) $b->stok_saat_ini,
+                'stok_minimum' => (float) $b->stok_minimum,
+                'is_low_stock' => $isHabisPakai ? $b->isLowStock() : false,
                 'detail_spesifikasi' => $b->detail_spesifikasi,
                 'lokasi' => $b->lokasi,
                 'gambar_url' => $b->gambar ? asset('storage/'.$b->gambar) : null,
@@ -444,6 +458,7 @@ class AdminWebController extends Controller
             return [
                 'id' => $k->id,
                 'nama_kategori' => $k->nama_kategori,
+                'tipe' => $k->tipe ?? 'aset',
                 'total_barang' => $k->barang_count,
                 'total_unit' => $k->units->count(),
                 'tersedia' => $k->units->where('status', 'tersedia')->count(),
@@ -454,7 +469,11 @@ class AdminWebController extends Controller
 
         return Inertia::render('Barang/Index', [
             'barangList' => $barangList,
-            'categories' => $categories,
+            'categories' => $categories->map(fn ($c) => [
+                'id' => $c->id,
+                'nama_kategori' => $c->nama_kategori,
+                'tipe' => $c->tipe ?? 'aset',
+            ]),
             'categoryStats' => $categoryStats,
             'filters' => $request->only(['q', 'kategori_id']),
         ]);
@@ -466,6 +485,9 @@ class AdminWebController extends Controller
             'kategori_id' => ['required', 'exists:kategori_barang,id'],
             'nama_barang' => ['required', 'string', 'max:255'],
             'kode_barang' => ['required', 'string', 'max:50', 'unique:barang,kode_barang'],
+            'satuan' => ['nullable', 'string', 'max:50'],
+            'stok_saat_ini' => ['nullable', 'numeric', 'min:0'],
+            'stok_minimum' => ['nullable', 'numeric', 'min:0'],
             'detail_spesifikasi' => ['nullable', 'string'],
             'lokasi' => ['nullable', 'string', 'max:255'],
             'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
@@ -480,10 +502,30 @@ class AdminWebController extends Controller
             unset($validated['gambar']);
         }
 
-        $jumlahUnit = (int) $request->input('jumlah_unit', 0);
+        $kategori = KategoriBarang::find($validated['kategori_id']);
+        $isHabisPakai = $kategori && $kategori->tipe === 'habis_pakai';
+
+        $stokAwal = (float) ($validated['stok_saat_ini'] ?? 0);
+        $validated['stok_saat_ini'] = $stokAwal;
+        $validated['stok_minimum'] = (float) ($validated['stok_minimum'] ?? 0);
 
         $barang = Barang::create($validated);
 
+        if ($isHabisPakai) {
+            if ($stokAwal > 0) {
+                TransaksiStok::create([
+                    'barang_id' => $barang->id,
+                    'user_id' => auth()->id(),
+                    'tipe' => 'masuk',
+                    'jumlah' => $stokAwal,
+                    'sisa_stok' => $stokAwal,
+                    'keterangan' => 'Stok awal saat pendaftaran barang',
+                ]);
+            }
+            return back()->with('success', "Master barang habis pakai {$barang->nama_barang} berhasil dibuat.");
+        }
+
+        $jumlahUnit = (int) $request->input('jumlah_unit', 0);
         if ($jumlahUnit > 0) {
             for ($i = 1; $i <= $jumlahUnit; $i++) {
                 $kodeUnit = sprintf('%s-%02d', $barang->kode_barang, $i);
@@ -508,6 +550,8 @@ class AdminWebController extends Controller
             'kategori_id' => ['required', 'exists:kategori_barang,id'],
             'nama_barang' => ['required', 'string', 'max:255'],
             'kode_barang' => ['required', 'string', 'max:50', Rule::unique('barang', 'kode_barang')->ignore($barang->id)],
+            'satuan' => ['nullable', 'string', 'max:50'],
+            'stok_minimum' => ['nullable', 'numeric', 'min:0'],
             'detail_spesifikasi' => ['nullable', 'string'],
             'lokasi' => ['nullable', 'string', 'max:255'],
             'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
@@ -533,6 +577,74 @@ class AdminWebController extends Controller
         $barang->update($validated);
 
         return back()->with('success', 'Master barang berhasil diperbarui.');
+    }
+
+    /**
+     * Restock Bahan Habis Pakai (Admin Web)
+     */
+    public function restockBarang(Request $request, $id): RedirectResponse
+    {
+        $validated = $request->validate([
+            'jumlah' => ['required', 'numeric', 'gt:0'],
+            'keterangan' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        DB::transaction(function () use ($validated, $id) {
+            $barang = Barang::lockForUpdate()->findOrFail($id);
+            $jumlahMasuk = (float) $validated['jumlah'];
+            $stokBaru = round((float) $barang->stok_saat_ini + $jumlahMasuk, 2);
+            $barang->stok_saat_ini = $stokBaru;
+            $barang->save();
+
+            TransaksiStok::create([
+                'barang_id' => $barang->id,
+                'user_id' => auth()->id(),
+                'tipe' => 'masuk',
+                'jumlah' => $jumlahMasuk,
+                'sisa_stok' => $stokBaru,
+                'keterangan' => $validated['keterangan'] ?: 'Restock barang oleh admin',
+            ]);
+        });
+
+        return back()->with('success', 'Stok bahan habis pakai berhasil ditambahkan.');
+    }
+
+    /**
+     * Ambil Kartu Stok / Riwayat Mutasi Bahan
+     */
+    public function kartuStokJson($id): JsonResponse
+    {
+        $barang = Barang::with('kategori')->findOrFail($id);
+        $riwayat = TransaksiStok::with('user:id,nama,nip')
+            ->where('barang_id', $id)
+            ->latest('id')
+            ->limit(50)
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'tipe' => $t->tipe,
+                    'jumlah' => (float) $t->jumlah,
+                    'sisa_stok' => (float) $t->sisa_stok,
+                    'keterangan' => $t->keterangan ?: '-',
+                    'user_nama' => $t->user?->nama ?? 'Sistem',
+                    'user_nip' => $t->user?->nip ?? '-',
+                    'tanggal' => $t->created_at->format('d M Y H:i'),
+                ];
+            });
+
+        return response()->json([
+            'barang' => [
+                'id' => $barang->id,
+                'nama_barang' => $barang->nama_barang,
+                'kode_barang' => $barang->kode_barang,
+                'satuan' => $barang->satuan,
+                'stok_saat_ini' => (float) $barang->stok_saat_ini,
+                'stok_minimum' => (float) $barang->stok_minimum,
+                'is_low_stock' => $barang->isLowStock(),
+            ],
+            'mutasi' => $riwayat,
+        ]);
     }
 
     public function destroyBarang($id): RedirectResponse
@@ -1522,9 +1634,46 @@ class AdminWebController extends Controller
             ];
         });
 
+        // Ambil pemakaian bahan habis pakai yang menyebabkan stok menipis
+        $stockLogs = TransaksiStok::with(['barang', 'user'])
+            ->where('created_at', '>', $parsedSince)
+            ->where('tipe', 'keluar')
+            ->latest('created_at')
+            ->limit(5)
+            ->get();
+
+        $stockNotifications = $stockLogs->filter(function ($t) {
+            return (float) $t->sisa_stok <= (float) ($t->barang?->stok_minimum ?? 0);
+        })->map(function ($t) {
+            $barangName = $t->barang?->nama_barang ?? 'Barang Habis Pakai';
+            $satuan = $t->barang?->satuan ?? 'unit';
+            $userName = $t->user?->nama ?? 'Pengguna';
+            $sisa = (float) $t->sisa_stok;
+            $min = (float) ($t->barang?->stok_minimum ?? 0);
+
+            return [
+                'id' => 'stok_' . $t->id . '_' . $t->created_at->timestamp,
+                'logbook_id' => null,
+                'type' => 'low_stock',
+                'title' => 'Peringatan: Stok Bahan Menipis!',
+                'user_name' => $userName,
+                'user_nip' => $t->user?->nip ?? '-',
+                'is_guest' => false,
+                'barang_name' => $barangName,
+                'kode_unit' => "Sisa: {$sisa} {$satuan}",
+                'kondisi' => 'menipis',
+                'status_transaksi' => 'stok_menipis',
+                'message' => "Stok {$barangName} tersisa {$sisa} {$satuan} (Batas minimum: {$min} {$satuan}) setelah pemakaian oleh {$userName}.",
+                'time' => $t->created_at->diffForHumans(),
+                'timestamp' => $t->created_at->toIso8601String(),
+            ];
+        });
+
+        $allNotifications = $notifications->concat($stockNotifications)->sortByDesc('timestamp')->values();
+
         return response()->json([
             'server_time' => now()->toIso8601String(),
-            'notifications' => $notifications,
+            'notifications' => $allNotifications,
         ]);
     }
 

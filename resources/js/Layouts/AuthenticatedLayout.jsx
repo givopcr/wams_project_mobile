@@ -42,6 +42,7 @@ export default function AuthenticatedLayout({ title, children }) {
     const navItems = [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
         { name: 'Kalender', href: '/admin/calendar', icon: Calendar },
+        { name: 'Kategori Barang', href: '/admin/kategori', icon: Boxes },
         { name: 'Master Barang', href: '/admin/barang', icon: Package },
         { name: 'Unit Fisik', href: '/admin/unit', icon: Layers },
         { name: 'Logbook', href: '/admin/logbook', icon: BookOpen },

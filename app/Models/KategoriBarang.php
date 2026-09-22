@@ -15,8 +15,17 @@ class KategoriBarang extends Model
 
     protected $fillable = [
         'nama_kategori',
+        'tipe',
         'qr_code',
     ];
+
+    /**
+     * Cek apakah kategori ini adalah barang sekali pakai / habis pakai
+     */
+    public function isHabisPakai(): bool
+    {
+        return $this->tipe === 'habis_pakai';
+    }
 
     /**
      * Relasi ke Barang (kategori_barang 1:N barang)

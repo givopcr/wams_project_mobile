@@ -26,6 +26,7 @@ class KategoriController extends Controller
                 return [
                     'id' => $kat->id,
                     'nama_kategori' => $kat->nama_kategori,
+                    'tipe' => $kat->tipe ?? 'aset',
                     'qr_code' => $kat->qr_code,
                     'total_barang' => $kat->barang_count,
                     'total_unit' => $totalUnits,
@@ -61,6 +62,7 @@ class KategoriController extends Controller
             'data' => [
                 'id' => $kategori->id,
                 'nama_kategori' => $kategori->nama_kategori,
+                'tipe' => $kategori->tipe ?? 'aset',
                 'qr_code' => $kategori->qr_code,
                 'total_barang' => $kategori->barang_count,
                 'total_unit' => $totalUnits,
@@ -95,7 +97,8 @@ class KategoriController extends Controller
             });
         }
 
-        $barang = $query->get()->map(function ($item) {
+        $barang = $query->get()->map(function ($item) use ($kategori) {
+            $isHabisPakai = ($kategori->tipe ?? 'aset') === 'habis_pakai';
             return [
                 'id' => $item->id,
                 'kategori_id' => $item->kategori_id,
@@ -108,6 +111,10 @@ class KategoriController extends Controller
                 'tersedia' => $item->units->where('status', 'tersedia')->count(),
                 'dipinjam' => $item->units->where('status', 'dipinjam')->count(),
                 'maintenance' => $item->units->where('status', 'maintenance')->count(),
+                'satuan' => $item->satuan,
+                'stok_saat_ini' => (float) $item->stok_saat_ini,
+                'stok_minimum' => (float) $item->stok_minimum,
+                'is_low_stock' => $isHabisPakai ? $item->isLowStock() : false,
             ];
         });
 
@@ -116,6 +123,7 @@ class KategoriController extends Controller
             'kategori' => [
                 'id' => $kategori->id,
                 'nama_kategori' => $kategori->nama_kategori,
+                'tipe' => $kategori->tipe ?? 'aset',
                 'qr_code' => $kategori->qr_code,
             ],
             'data' => $barang,

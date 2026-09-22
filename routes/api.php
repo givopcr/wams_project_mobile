@@ -37,15 +37,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
 
-    // Transaksi (Peminjaman, Pengembalian, Riwayat, Pembatalan)
+    // Transaksi Aset (Peminjaman, Pengembalian, Riwayat, Pembatalan)
     Route::post('/peminjaman', [TransaksiController::class, 'pinjam']);
     Route::post('/peminjaman/{id}/batalkan', [TransaksiController::class, 'batalkan']);
     Route::post('/pengembalian', [TransaksiController::class, 'kembali']);
     Route::get('/riwayat', [TransaksiController::class, 'riwayat']);
 
+    // Transaksi Bahan Sekali Pakai / Habis Pakai
+    Route::post('/transaksi-stok/pakai', [\App\Http\Controllers\Api\TransaksiStokController::class, 'pakai']);
+    Route::get('/transaksi-stok/riwayat', [\App\Http\Controllers\Api\TransaksiStokController::class, 'riwayatUser']);
+
     // Admin Dedicated APIs (Protected by EnsureUserIsAdmin)
     Route::middleware('admin')->prefix('admin')->group(function () {
         Route::get('/stats', [AdminApiController::class, 'stats']);
+
+        // Transaksi Stok (Admin Restock & Kartu Stok)
+        Route::post('/transaksi-stok/{id}/restock', [\App\Http\Controllers\Api\TransaksiStokController::class, 'restock']);
+        Route::get('/transaksi-stok/{id}/kartu-stok', [\App\Http\Controllers\Api\TransaksiStokController::class, 'kartuStok']);
 
         // Kategori Management
         Route::post('/kategori', [AdminApiController::class, 'storeKategori']);

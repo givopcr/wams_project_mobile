@@ -25,6 +25,7 @@ class ApiConstants {
   static String get peminjaman => '$baseUrl/peminjaman';
   static String get pengembalian => '$baseUrl/pengembalian';
   static String get riwayat => '$baseUrl/riwayat';
+  static String get transaksiStokPakai => '$baseUrl/transaksi-stok/pakai';
 
   /// Resolve full image URL, fixing localhost / 127.0.0.1 to current active mobile host
   static String? resolveImageUrl(String? url) {
