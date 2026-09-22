@@ -26,6 +26,33 @@ class ApiConstants {
   static String get pengembalian => '$baseUrl/pengembalian';
   static String get riwayat => '$baseUrl/riwayat';
 
+  /// Resolve full image URL, fixing localhost / 127.0.0.1 to current active mobile host
+  static String? resolveImageUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return null;
+    final trimmed = url.trim();
+
+    // If it's a relative storage path (e.g. /storage/... or storage/...)
+    if (trimmed.startsWith('/storage/')) {
+      return '$storageBaseUrl${trimmed.substring(8)}';
+    } else if (trimmed.startsWith('storage/')) {
+      return '$storageBaseUrl${trimmed.substring(7)}';
+    }
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null && (uri.host == 'localhost' || uri.host == '127.0.0.1')) {
+      final activeUri = Uri.tryParse(_host);
+      if (activeUri != null && activeUri.host.isNotEmpty) {
+        return uri.replace(
+          scheme: activeUri.scheme,
+          host: activeUri.host,
+          port: activeUri.port,
+        ).toString();
+      }
+    }
+
+    return trimmed;
+  }
+
   /// Manual override if needed
   static void setHost(String host) {
     _host = host;

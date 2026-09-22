@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../core/theme.dart';
+import '../core/constants.dart';
 import 'skeleton_loader.dart';
 
 class ToolThumbnail extends StatelessWidget {
@@ -33,6 +34,8 @@ class ToolThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final resolvedUrl = ApiConstants.resolveImageUrl(imageUrl);
+
     Widget content = Container(
       width: size,
       height: size,
@@ -43,12 +46,12 @@ class ToolThumbnail extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
-        child: imageUrl != null && imageUrl!.isNotEmpty
+        child: resolvedUrl != null && resolvedUrl.isNotEmpty
             ? CachedNetworkImage(
-                imageUrl: imageUrl!,
+                imageUrl: resolvedUrl,
                 fit: BoxFit.contain,
-                memCacheWidth: (size * 2).toInt(),
-                memCacheHeight: (size * 2).toInt(),
+                memCacheWidth: (size * 3).toInt().clamp(120, 600),
+                memCacheHeight: (size * 3).toInt().clamp(120, 600),
                 placeholder: (context, url) => const WamsShimmer(
                   child: ColoredBox(color: Colors.white),
                 ),

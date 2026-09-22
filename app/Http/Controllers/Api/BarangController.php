@@ -90,7 +90,7 @@ class BarangController extends Controller
     public function units($id): JsonResponse
     {
         $barang = Barang::findOrFail($id);
-        $units = $barang->units()->get();
+        $units = $barang->units()->with('barang')->get();
 
         return response()->json([
             'success' => true,

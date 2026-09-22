@@ -35,8 +35,9 @@ class BarangUnit extends Model
             return asset('storage/' . $this->gambar);
         }
 
-        if ($this->relationLoaded('barang') && $this->barang && $this->barang->gambar) {
-            return asset('storage/' . $this->barang->gambar);
+        $barang = $this->relationLoaded('barang') ? $this->barang : $this->barang;
+        if ($barang && $barang->gambar) {
+            return asset('storage/' . $barang->gambar);
         }
 
         return null;

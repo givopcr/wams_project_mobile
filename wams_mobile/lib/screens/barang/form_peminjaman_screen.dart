@@ -7,6 +7,7 @@ import '../../models/barang_model.dart';
 import '../../models/barang_unit_model.dart';
 import '../../providers/asset_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../widgets/tool_thumbnail.dart';
 import 'peminjaman_berhasil_screen.dart';
 
 class FormPeminjamanScreen extends StatefulWidget {
@@ -234,21 +235,11 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.borderLight),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.handyman,
-                            color: AppTheme.primary,
-                            size: 26,
-                          ),
-                        ),
+                      ToolThumbnail(
+                        imageUrl: widget.barang.gambarUrl,
+                        toolName: widget.barang.namaBarang,
+                        size: 52,
+                        borderRadius: 12,
                       ),
                       const SizedBox(width: 14),
                       Expanded(

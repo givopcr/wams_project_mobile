@@ -5,6 +5,7 @@ import '../../core/theme.dart';
 import '../../models/barang_model.dart';
 import '../../providers/asset_provider.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../widgets/tool_thumbnail.dart';
 import 'form_peminjaman_screen.dart';
 
 class PilihUnitScreen extends StatefulWidget {
@@ -197,7 +198,16 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                                             )
                                           : null,
                                     ),
-                                    const SizedBox(width: 14),
+                                    const SizedBox(width: 12),
+
+                                    // Unit Image Thumbnail
+                                    ToolThumbnail(
+                                      imageUrl: unit.unitGambarUrl ?? unit.gambarUrl ?? widget.barang.gambarUrl,
+                                      toolName: widget.barang.namaBarang,
+                                      size: 42,
+                                      borderRadius: 10,
+                                    ),
+                                    const SizedBox(width: 12),
 
                                     // Unit Code & Condition
                                     Expanded(
