@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
 
 export default function ConfirmModal({
@@ -15,7 +16,7 @@ export default function ConfirmModal({
 }) {
     if (!isOpen) return null;
 
-    return (
+    const modalContent = (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200"
             onClick={onClose}
@@ -89,4 +90,6 @@ export default function ConfirmModal({
             </div>
         </div>
     );
+
+    return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }

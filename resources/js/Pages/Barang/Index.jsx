@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ConfirmModal from '@/Components/ConfirmModal';
@@ -33,6 +34,60 @@ import {
 export default function BarangIndex({ barangList, categories = [], categoryStats = [], filters }) {
     const [search, setSearch] = useState(filters.q || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.kategori_id || '');
+
+    // Tab Filter: 'semua' | 'aset' | 'habis_pakai' (Persist via URL query param ?tipe=...)
+    const [activeTab, setActiveTab] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tipeParam = urlParams.get('tipe');
+            if (tipeParam === 'aset' || tipeParam === 'habis_pakai') {
+                return tipeParam;
+            }
+        }
+        return filters.tipe || 'semua';
+    });
+
+    const [isTableLoading, setIsTableLoading] = useState(false);
+
+    const handleTabChange = (newTab) => {
+        setIsTableLoading(true);
+        setActiveTab(newTab);
+        if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            if (newTab && newTab !== 'semua') {
+                url.searchParams.set('tipe', newTab);
+            } else {
+                url.searchParams.delete('tipe');
+            }
+            window.history.replaceState({}, '', url.toString());
+        }
+        setTimeout(() => {
+            setIsTableLoading(false);
+        }, 180);
+    };
+
+    // Auto trigger skeleton on router start/finish for in-page updates
+    useEffect(() => {
+        const unbindStart = router.on('start', (event) => {
+            const targetUrl = event?.detail?.visit?.url;
+            const path = typeof targetUrl === 'string' ? targetUrl : targetUrl?.pathname || '';
+            if (path.includes('/barang')) {
+                setIsTableLoading(true);
+            }
+        });
+        const unbindFinish = router.on('finish', () => {
+            setIsTableLoading(false);
+        });
+        const unbindError = () => {
+            setIsTableLoading(false);
+        };
+        return () => {
+            unbindStart();
+            unbindFinish();
+            unbindError();
+        };
+    }, []);
+
     const [modalOpen, setModalOpen] = useState(false);
     const [editingBarang, setEditingBarang] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
@@ -99,6 +154,26 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
         mutasi: [],
     });
 
+    // Prevent background scrolling while any modal is open
+    useEffect(() => {
+        const isAnyModalOpen = Boolean(
+            modalOpen ||
+            unitModalOpen ||
+            previewModalImage ||
+            deleteModal?.isOpen ||
+            restockModal?.isOpen ||
+            kartuStokModal?.isOpen
+        );
+        if (isAnyModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [modalOpen, unitModalOpen, previewModalImage, deleteModal.isOpen, restockModal.isOpen, kartuStokModal.isOpen]);
+
     // Form Unit Fisik
     const unitForm = useForm({
         barang_id: '',
@@ -117,11 +192,35 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
         }));
     };
 
-    // Flatten all physical units for 'unit' view mode
+    // Tab Counts (Semua, Aset, Habis Pakai, dan Low Stock Alert)
+    const tabCounts = useMemo(() => {
+        const all = barangList?.data || [];
+        const totalAll = all.length;
+        const totalAset = all.filter((i) => (i.tipe_kategori || 'aset') === 'aset').length;
+        const totalHabisPakai = all.filter((i) => i.tipe_kategori === 'habis_pakai').length;
+        const totalLowStock = all.filter((i) => i.tipe_kategori === 'habis_pakai' && i.is_low_stock).length;
+        return { totalAll, totalAset, totalHabisPakai, totalLowStock };
+    }, [barangList?.data]);
+
+    // Client-side Filtered Master Barang respecting the active tab
+    const filteredBarangList = useMemo(() => {
+        if (!barangList?.data) return [];
+        return barangList.data.filter((item) => {
+            const itemTipe = item.tipe_kategori || 'aset';
+            if (activeTab === 'aset' && itemTipe !== 'aset') return false;
+            if (activeTab === 'habis_pakai' && itemTipe !== 'habis_pakai') return false;
+            return true;
+        });
+    }, [barangList?.data, activeTab]);
+
+    // Flatten physical units respecting active tab
     const allFlatUnits = useMemo(() => {
         const list = [];
+        if (activeTab === 'habis_pakai') return []; // Habis pakai tidak memiliki unit fisik
         if (barangList?.data) {
             barangList.data.forEach((item) => {
+                const itemTipe = item.tipe_kategori || 'aset';
+                if (itemTipe !== 'aset') return;
                 (item.units || []).forEach((u) => {
                     list.push({
                         ...u,
@@ -138,17 +237,32 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             });
         }
         return list;
-    }, [barangList?.data]);
+    }, [barangList?.data, activeTab]);
 
     const handleSearch = (e) => {
         e.preventDefault();
-        router.get('/admin/barang', { q: search, kategori_id: selectedCategory }, { preserveState: true });
+        const params = { q: search };
+        if (selectedCategory) params.kategori_id = selectedCategory;
+        if (activeTab && activeTab !== 'semua') params.tipe = activeTab;
+        setIsTableLoading(true);
+        router.get('/admin/barang', params, {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => setIsTableLoading(false),
+        });
     };
 
     const handleCategoryFilter = (catId) => {
         const newCatId = selectedCategory === String(catId) ? '' : String(catId);
         setSelectedCategory(newCatId);
-        router.get('/admin/barang', { q: search, kategori_id: newCatId }, { preserveState: true });
+        const params = { q: search, kategori_id: newCatId };
+        if (activeTab && activeTab !== 'semua') params.tipe = activeTab;
+        setIsTableLoading(true);
+        router.get('/admin/barang', params, {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => setIsTableLoading(false),
+        });
     };
 
     const openCreateModal = () => {
@@ -469,59 +583,150 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        {categoryStats.map((cat) => {
-                            const isSelected = selectedCategory === String(cat.id);
-                            return (
-                                <div
-                                    key={cat.id}
-                                    onClick={() => handleCategoryFilter(cat.id)}
-                                    className={`bg-white rounded-2xl border p-5 shadow-2xs cursor-pointer transition-all ${
-                                        isSelected
-                                            ? 'border-[#D84040] ring-2 ring-[#D84040]/20 bg-rose-50/10'
-                                            : 'border-[#E0E0E0] hover:border-gray-300'
-                                    }`}
-                                >
+                        {categoryStats.length === 0 ? (
+                            [1, 2, 3].map((i) => (
+                                <div key={i} className="bg-white rounded-2xl border border-[#E0E0E0] p-5 shadow-2xs space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="w-12 h-12 rounded-xl bg-[#EEEEEE] flex items-center justify-center border border-[#E0E0E0]">
-                                            {getCategoryIcon(cat.nama_kategori)}
-                                        </div>
-                                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#EEEEEE] text-[#1D1616]">
-                                            {cat.total_barang} Model Barang
-                                        </span>
+                                        <div className="w-12 h-12 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] shimmer-box" />
+                                        <div className="w-24 h-6 rounded-full shimmer-box opacity-75" />
                                     </div>
-
-                                    <div className="mt-4">
-                                        <h3 className="text-base font-extrabold text-[#1D1616]">
-                                            {cat.nama_kategori}
-                                        </h3>
-                                        <p className="text-xs text-[#6B7280] font-medium mt-0.5">
-                                            Total: <span className="font-bold text-[#1D1616]">{cat.total_unit} Unit Fisik</span>
-                                        </p>
+                                    <div className="space-y-1.5 pt-1">
+                                        <div className="w-32 h-5 rounded-md shimmer-box" />
+                                        <div className="w-24 h-3.5 rounded shimmer-box opacity-60" />
                                     </div>
-
-                                    {/* Breakdown Status Unit */}
                                     <div className="pt-4 mt-4 border-t border-[#E0E0E0] grid grid-cols-3 gap-2 text-center">
-                                        <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
-                                            <span className="text-[10px] uppercase font-bold text-emerald-700 block">Tersedia</span>
-                                            <span className="text-sm font-extrabold text-emerald-700">{cat.tersedia}</span>
+                                        <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0] space-y-1">
+                                            <div className="w-10 h-2 mx-auto rounded shimmer-box opacity-60" />
+                                            <div className="w-6 h-4 mx-auto rounded shimmer-box" />
                                         </div>
-                                        <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
-                                            <span className="text-[10px] uppercase font-bold text-amber-700 block">Dipinjam</span>
-                                            <span className="text-sm font-extrabold text-amber-700">{cat.dipinjam}</span>
+                                        <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0] space-y-1">
+                                            <div className="w-10 h-2 mx-auto rounded shimmer-box opacity-60" />
+                                            <div className="w-6 h-4 mx-auto rounded shimmer-box" />
                                         </div>
-                                        <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
-                                            <span className="text-[10px] uppercase font-bold text-[#D84040] block">Rusak</span>
-                                            <span className="text-sm font-extrabold text-[#D84040]">{cat.maintenance}</span>
+                                        <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0] space-y-1">
+                                            <div className="w-10 h-2 mx-auto rounded shimmer-box opacity-60" />
+                                            <div className="w-6 h-4 mx-auto rounded shimmer-box" />
                                         </div>
                                     </div>
                                 </div>
-                            );
-                        })}
+                            ))
+                        ) : (
+                            categoryStats.map((cat) => {
+                                const isSelected = selectedCategory === String(cat.id);
+                                return (
+                                    <div
+                                        key={cat.id}
+                                        onClick={() => handleCategoryFilter(cat.id)}
+                                        className={`bg-white rounded-2xl border p-5 shadow-2xs cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-lg active:scale-[0.98] ${
+                                            isSelected
+                                                ? 'border-[#D84040] ring-2 ring-[#D84040]/20 bg-rose-50/10'
+                                                : 'border-[#E0E0E0] hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="w-12 h-12 rounded-xl bg-[#EEEEEE] flex items-center justify-center border border-[#E0E0E0]">
+                                                {getCategoryIcon(cat.nama_kategori)}
+                                            </div>
+                                            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#EEEEEE] text-[#1D1616]">
+                                                {cat.total_barang} Model Barang
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-4">
+                                            <h3 className="text-base font-extrabold text-[#1D1616]">
+                                                {cat.nama_kategori}
+                                            </h3>
+                                            <p className="text-xs text-[#6B7280] font-medium mt-0.5">
+                                                Total: <span className="font-bold text-[#1D1616]">{cat.total_unit} Unit Fisik</span>
+                                            </p>
+                                        </div>
+
+                                        {/* Breakdown Status Unit */}
+                                        <div className="pt-4 mt-4 border-t border-[#E0E0E0] grid grid-cols-3 gap-2 text-center">
+                                            <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
+                                                <span className="text-[10px] uppercase font-bold text-emerald-700 block">Tersedia</span>
+                                                <span className="text-sm font-extrabold text-emerald-700">{cat.tersedia}</span>
+                                            </div>
+                                            <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
+                                                <span className="text-[10px] uppercase font-bold text-amber-700 block">Dipinjam</span>
+                                                <span className="text-sm font-extrabold text-amber-700">{cat.dipinjam}</span>
+                                            </div>
+                                            <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
+                                                <span className="text-[10px] uppercase font-bold text-[#D84040] block">Rusak</span>
+                                                <span className="text-sm font-extrabold text-[#D84040]">{cat.maintenance}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 </div>
 
                 {/* 2. FILTER & TABLE MASTER / UNIT BARANG */}
                 <div className="space-y-4">
+                    {/* SEGMENTED TAB FILTER: SEMUA | ASET FISIK | BAHAN HABIS PAKAI */}
+                    <div className="flex flex-wrap items-center gap-2 p-1.5 bg-white border border-[#E0E0E0] rounded-2xl shadow-2xs">
+                        <button
+                            type="button"
+                            onClick={() => handleTabChange('semua')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                activeTab === 'semua'
+                                    ? 'bg-[#1D1616] text-white shadow-xs'
+                                    : 'text-[#6B7280] hover:text-[#1D1616] hover:bg-gray-100'
+                            }`}
+                        >
+                            <Package size={15} />
+                            <span>Semua Barang</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                activeTab === 'semua' ? 'bg-white/20 text-white' : 'bg-gray-100 text-[#6B7280]'
+                            }`}>
+                                {tabCounts.totalAll}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleTabChange('aset')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                activeTab === 'aset'
+                                    ? 'bg-[#D84040] text-white shadow-xs'
+                                    : 'text-[#D84040] hover:text-[#8E1616] hover:bg-rose-50/60'
+                            }`}
+                        >
+                            <span className={`w-2 h-2 rounded-full ${activeTab === 'aset' ? 'bg-white' : 'bg-[#D84040]'}`} />
+                            <span>Aset</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                activeTab === 'aset' ? 'bg-white/20 text-white' : 'bg-rose-50 text-[#D84040] border border-rose-200'
+                            }`}>
+                                {tabCounts.totalAset}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleTabChange('habis_pakai')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                activeTab === 'habis_pakai'
+                                    ? 'bg-amber-600 text-white shadow-xs'
+                                    : 'text-amber-800 hover:text-amber-950 hover:bg-amber-50/60'
+                            }`}
+                        >
+                            <span className={`w-2 h-2 rounded-full ${activeTab === 'habis_pakai' ? 'bg-white' : 'bg-amber-500'}`} />
+                            <span>Habis Pakai</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                activeTab === 'habis_pakai' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-800 border border-amber-200'
+                            }`}>
+                                {tabCounts.totalHabisPakai}
+                            </span>
+                            {tabCounts.totalLowStock > 0 && (
+                                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-red-500 text-white animate-pulse" title="Terdapat bahan yang perlu restock">
+                                    {tabCounts.totalLowStock} Menipis
+                                </span>
+                            )}
+                        </button>
+                    </div>
+
                     <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
                         {/* Search Bar */}
                         <div className="w-full lg:w-auto flex flex-col sm:flex-row items-center gap-3">
@@ -548,16 +753,20 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                     }`}
                                 >
                                     <Package size={14} />
-                                    <span>Master Barang ({barangList.total || barangList.data.length})</span>
+                                    <span>Master Barang ({filteredBarangList.length})</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setViewMode('unit')}
+                                    disabled={activeTab === 'habis_pakai'}
                                     className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                                        viewMode === 'unit'
+                                        activeTab === 'habis_pakai'
+                                            ? 'opacity-40 cursor-not-allowed text-[#8C93A0]'
+                                            : viewMode === 'unit'
                                             ? 'bg-white text-[#1D1616] shadow-xs'
                                             : 'text-[#6B7280] hover:text-[#1D1616]'
                                     }`}
+                                    title={activeTab === 'habis_pakai' ? 'Bahan habis pakai tidak memiliki unit fisik individual' : 'Lihat daftar per unit fisik'}
                                 >
                                     <Layers size={14} />
                                     <span>Tiap Unit Fisik ({allFlatUnits.length})</span>
@@ -567,14 +776,6 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2.5">
-                            <Link
-                                href="/admin/kategori"
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white border border-[#E0E0E0] hover:border-[#D84040] text-[#1D1616] hover:text-[#D84040] text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs"
-                            >
-                                <Boxes size={15} />
-                                <span>Kelola Kategori</span>
-                            </Link>
-
                             <button
                                 onClick={openCreateModal}
                                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
@@ -594,7 +795,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                         <tr>
                                             <th className="p-4">Barang & Unit Fisik</th>
                                             <th className="p-4">Kategori & Lokasi</th>
-                                            <th className="p-4 text-center">Total Unit</th>
+                                            <th className="p-4 text-center">Stok</th>
                                             <th className="p-4 text-center">Tersedia</th>
                                             <th className="p-4 text-center">Dipinjam</th>
                                             <th className="p-4 text-center">Maintenance</th>
@@ -602,18 +803,65 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[#E0E0E0]">
-                                        {barangList.data.length === 0 ? (
+                                        {isTableLoading ? (
+                                            [1, 2, 3, 4, 5].map((idx) => (
+                                                <tr key={`skel-master-${idx}`} className="bg-white">
+                                                    <td className="p-4 max-w-md">
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="w-12 h-12 rounded-xl shimmer-box shrink-0 mt-0.5" />
+                                                            <div className="space-y-2 flex-1 min-w-0">
+                                                                <div className="w-44 h-4 rounded-md shimmer-box" />
+                                                                <div className="w-24 h-3 rounded shimmer-box opacity-60" />
+                                                                <div className="flex items-center gap-1.5 pt-1">
+                                                                    <div className="w-16 h-5 rounded-md shimmer-box opacity-50" />
+                                                                    <div className="w-16 h-5 rounded-md shimmer-box opacity-50" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="space-y-2">
+                                                            <div className="w-24 h-5 rounded-full shimmer-box opacity-75" />
+                                                            <div className="w-28 h-3 rounded shimmer-box opacity-50" />
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <div className="w-10 h-5 mx-auto rounded-md shimmer-box" />
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <div className="w-10 h-5 mx-auto rounded-md shimmer-box bg-emerald-100/50" />
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <div className="w-10 h-5 mx-auto rounded-md shimmer-box bg-amber-100/50" />
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <div className="w-10 h-5 mx-auto rounded-md shimmer-box bg-rose-100/50" />
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            <div className="w-7 h-7 rounded-lg shimmer-box" />
+                                                            <div className="w-7 h-7 rounded-lg shimmer-box" />
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : filteredBarangList.length === 0 ? (
                                             <tr>
                                                 <td colSpan={7} className="p-8 text-center text-[#6B7280] bg-white">
-                                                    Tidak ada data barang ditemukan pada kategori ini.
+                                                    Tidak ada data {activeTab === 'aset' ? 'aset fisik' : activeTab === 'habis_pakai' ? 'bahan habis pakai' : 'barang'} ditemukan.
                                                 </td>
                                             </tr>
                                         ) : (
-                                            barangList.data.map((item) => {
+                                            filteredBarangList.map((item) => {
                                                 const isExpanded = !!expandedRows[item.id];
+                                                const isHabisPakai = item.tipe_kategori === 'habis_pakai';
                                                 return (
                                                     <React.Fragment key={item.id}>
-                                                        <tr className="hover:bg-[#EEEEEE]/40 bg-white transition-colors">
+                                                        <tr className={`transition-colors ${
+                                                            isHabisPakai
+                                                                ? 'bg-amber-50/15 hover:bg-amber-50/30'
+                                                                : 'bg-white hover:bg-rose-50/20'
+                                                        }`}>
                                                             {/* Kolom Barang & List Unit Fisik */}
                                                             <td className="p-4 max-w-md">
                                                                 <div className="flex items-start gap-3">
@@ -650,11 +898,11 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
 
                                                                         {/* DAFTAR KODE UNIT FISIK ATAU STATUS BAHAN HABIS PAKAI */}
                                                                         <div className="mt-2 pt-2 border-t border-[#E0E0E0]/60">
-                                                                            {item.tipe_kategori === 'habis_pakai' ? (
+                                                                            {isHabisPakai ? (
                                                                                 <div className="flex flex-wrap items-center gap-2">
                                                                                     <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
                                                                                         <Boxes size={12} className="text-amber-600" />
-                                                                                        Bahan Habis Pakai
+                                                                                        Bahan Habis Pakai (Monitoring Stok)
                                                                                     </span>
                                                                                     {item.is_low_stock && (
                                                                                         <span className="text-[10px] font-extrabold text-red-700 bg-red-100 border border-red-300 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
@@ -719,9 +967,22 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                 </div>
                                                             </td>
 
-                                                            {/* Kategori & Lokasi */}
+                                                            {/* Kategori & Lokasi dengan Badge Tipe */}
                                                             <td className="p-4 align-top">
-                                                                <div className="font-bold text-[#1D1616]">{item.nama_kategori}</div>
+                                                                <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                                                    <span className="font-bold text-[#1D1616] text-xs">{item.nama_kategori}</span>
+                                                                    {isHabisPakai ? (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                                            Habis Pakai
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-[#D84040] border border-rose-200">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-[#D84040]"></span>
+                                                                            Aset Fisik
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                                 <div className="text-[11px] text-[#6B7280] flex items-center gap-1 mt-0.5 font-medium">
                                                                     <MapPin size={12} className="text-[#D84040]" /> {item.lokasi || 'Lokasi belum diset'}
                                                                 </div>
@@ -729,14 +990,19 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
 
                                                             {/* Total Unit / Sisa Stok Bahan */}
                                                             <td className="p-4 text-center align-top">
-                                                                {item.tipe_kategori === 'habis_pakai' ? (
+                                                                {isHabisPakai ? (
                                                                     <div>
-                                                                        <div className="font-extrabold text-sm text-[#1D1616]">
+                                                                        <div className={`font-extrabold text-sm ${item.is_low_stock ? 'text-red-600' : 'text-[#1D1616]'}`}>
                                                                             {item.stok_saat_ini} <span className="text-xs text-[#6B7280] font-normal">{item.satuan || 'unit'}</span>
                                                                         </div>
                                                                         <div className="text-[10px] text-[#6B7280] mt-0.5">
                                                                             Min: {item.stok_minimum} {item.satuan}
                                                                         </div>
+                                                                        {item.is_low_stock && (
+                                                                            <span className="mt-1 inline-flex items-center gap-0.5 text-[9px] font-extrabold text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                                                                                Perlu Restock
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 ) : (
                                                                     <button
@@ -753,44 +1019,62 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
 
                                                             {/* Status Counts */}
                                                             <td className="p-4 text-center font-bold text-emerald-700 align-top">
-                                                                {item.tipe_kategori === 'habis_pakai' ? `${item.stok_saat_ini} ${item.satuan}` : item.tersedia}
+                                                                {isHabisPakai ? `${item.stok_saat_ini} ${item.satuan}` : item.tersedia}
                                                             </td>
                                                             <td className="p-4 text-center font-bold text-amber-700 align-top">
-                                                                {item.tipe_kategori === 'habis_pakai' ? '-' : item.dipinjam}
+                                                                {isHabisPakai ? '-' : item.dipinjam}
                                                             </td>
                                                             <td className="p-4 text-center font-bold text-[#D84040] align-top">
-                                                                {item.tipe_kategori === 'habis_pakai' ? '-' : item.maintenance}
+                                                                {isHabisPakai ? '-' : item.maintenance}
                                                             </td>
 
-                                                            {/* Aksi Master Barang */}
+                                                            {/* Aksi Kontekstual Sesuai Tipe Barang */}
                                                             <td className="p-4 text-right align-top">
                                                                 <div className="flex items-center justify-end gap-1.5">
-                                                                    {item.tipe_kategori === 'habis_pakai' ? (
+                                                                    {isHabisPakai ? (
                                                                         <>
                                                                             <button
                                                                                 onClick={() => handleOpenRestock(item)}
-                                                                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors shadow-2xs cursor-pointer"
-                                                                                title="Restock Stok Bahan"
+                                                                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                                                                                title="Restock Kuantitas Stok Bahan"
                                                                             >
                                                                                 <Plus size={13} />
                                                                                 <span>Restock</span>
                                                                             </button>
                                                                             <button
                                                                                 onClick={() => handleOpenKartuStok(item)}
-                                                                                className="p-1.5 rounded-lg text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
-                                                                                title="Lihat Kartu Stok & Mutasi"
+                                                                                className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-bold inline-flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                                                                                title="Lihat Kartu Stok & Riwayat Mutasi"
                                                                             >
-                                                                                <Clock size={15} />
+                                                                                <Clock size={13} className="text-amber-700" />
+                                                                                <span>Kartu Stok</span>
                                                                             </button>
                                                                         </>
                                                                     ) : (
-                                                                        <button
-                                                                            onClick={() => openAddUnitModal(item)}
-                                                                            className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
-                                                                            title="Tambah Unit Fisik Baru"
-                                                                        >
-                                                                            <Plus size={16} />
-                                                                        </button>
+                                                                        <>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => toggleExpand(item.id)}
+                                                                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
+                                                                                    isExpanded
+                                                                                        ? 'bg-[#1D1616] text-white border-[#1D1616]'
+                                                                                        : 'bg-white text-[#1D1616] border-[#E0E0E0] hover:bg-gray-50 hover:border-gray-300'
+                                                                                }`}
+                                                                                title="Buka / Tutup Rincian Unit Fisik"
+                                                                            >
+                                                                                <Layers size={13} className={isExpanded ? 'text-white' : 'text-[#D84040]'} />
+                                                                                <span>Detail Unit ({item.units?.length || 0})</span>
+                                                                                {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                                                            </button>
+                                                                            <Link
+                                                                                href={`/admin/qrcode?barang_id=${item.id}`}
+                                                                                className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-gray-50 text-[#1D1616] hover:text-[#D84040] border border-[#E0E0E0] hover:border-[#D84040] text-[11px] font-bold inline-flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                                                                                title="Lihat & Cetak QR Code Unit"
+                                                                            >
+                                                                                <QrCode size={13} className="text-[#D84040]" />
+                                                                                <span>QR Code</span>
+                                                                            </Link>
+                                                                        </>
                                                                     )}
                                                                     <button
                                                                         onClick={() => openEditModal(item)}
@@ -977,7 +1261,42 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[#E0E0E0]">
-                                        {allFlatUnits.length === 0 ? (
+                                        {isTableLoading ? (
+                                            [1, 2, 3, 4, 5].map((idx) => (
+                                                <tr key={`skel-unit-${idx}`} className="bg-white">
+                                                    <td className="p-4">
+                                                        <div className="w-28 h-7 rounded-lg shimmer-box" />
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 rounded-lg shimmer-box shrink-0" />
+                                                            <div className="space-y-1.5 flex-1 min-w-0">
+                                                                <div className="w-40 h-3.5 rounded shimmer-box" />
+                                                                <div className="w-24 h-2.5 rounded shimmer-box opacity-60" />
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="space-y-1.5">
+                                                            <div className="w-24 h-5 rounded-full shimmer-box opacity-75" />
+                                                            <div className="w-28 h-2.5 rounded shimmer-box opacity-50" />
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <div className="w-24 h-6 mx-auto rounded-full shimmer-box" />
+                                                    </td>
+                                                    <td className="p-4 text-center">
+                                                        <div className="w-16 h-6 mx-auto rounded-full shimmer-box" />
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            <div className="w-7 h-7 rounded-lg shimmer-box" />
+                                                            <div className="w-7 h-7 rounded-lg shimmer-box" />
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : allFlatUnits.length === 0 ? (
                                             <tr>
                                                 <td colSpan={6} className="p-8 text-center text-[#6B7280] bg-white">
                                                     Tidak ada unit fisik ditemukan.
@@ -1079,364 +1398,390 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             </div>
 
             {/* Modal Form Tambah / Edit Master Barang */}
-            {modalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/60 overflow-y-auto">
-                    <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-lg w-full p-6 shadow-xl my-8">
-                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E0E0E0]">
-                            <h3 className="text-base font-bold text-[#1D1616]">
-                                {editingBarang ? 'Edit Master Barang' : 'Tambah Master Barang Baru'}
-                            </h3>
-                            <button onClick={() => setModalOpen(false)} className="text-[#6B7280] hover:text-[#1D1616]">
+            {modalOpen && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#1D1616]/60 backdrop-blur-xs overflow-y-auto">
+                    <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-150">
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-[#E0E0E0]">
+                            <div>
+                                <h3 className="text-base font-bold text-[#1D1616]">
+                                    {editingBarang ? 'Edit Master Barang' : 'Tambah Master Barang Baru'}
+                                </h3>
+                                <p className="text-xs text-[#6B7280] mt-0.5">
+                                    {editingBarang ? 'Perbarui informasi dan spesifikasi master barang' : 'Lengkapi formulir untuk mendaftarkan barang baru ke inventaris'}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setModalOpen(false)}
+                                className="p-1.5 text-[#6B7280] hover:text-[#1D1616] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                            >
                                 <X size={18} />
                             </button>
                         </div>
+
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
-                                        Kategori
-                                    </label>
-                                    <select
-                                        value={data.kategori_id}
-                                        onChange={(e) => setData('kategori_id', e.target.value)}
-                                        required
-                                        className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none focus:border-[#D84040]"
-                                    >
-                                        {categories.map((c) => (
-                                             <option key={c.id} value={c.id}>
-                                                {c.nama_kategori}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {errors.kategori_id && <p className="text-[#D84040] text-xs mt-1">{errors.kategori_id}</p>}
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
-                                        Kode Barang Master (Unik)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={data.kode_barang}
-                                        onChange={(e) => setData('kode_barang', e.target.value)}
-                                        placeholder="Contoh: BOR-101"
-                                        required
-                                        className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-mono focus:outline-none focus:border-[#D84040]"
-                                    />
-                                    {errors.kode_barang && <p className="text-[#D84040] text-xs mt-1">{errors.kode_barang}</p>}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
-                                    Nama Barang
-                                </label>
-                                <input
-                                    type="text"
-                                    value={data.nama_barang}
-                                    onChange={(e) => setData('nama_barang', e.target.value)}
-                                    placeholder="Contoh: Mesin Bor Cordless 18V"
-                                    required
-                                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
-                                />
-                                {errors.nama_barang && <p className="text-[#D84040] text-xs mt-1">{errors.nama_barang}</p>}
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
-                                    Lokasi Rak / Lemari
-                                </label>
-                                <input
-                                    type="text"
-                                    value={data.lokasi}
-                                    onChange={(e) => setData('lokasi', e.target.value)}
-                                    placeholder="Contoh: Lemari B-01 / Rak A-02"
-                                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
-                                />
-                            </div>
-
-                            {(() => {
-                                const selectedCat = categories.find((c) => String(c.id) === String(data.kategori_id));
-                                const isHabisPakai = selectedCat?.tipe === 'habis_pakai';
-
-                                if (isHabisPakai) {
-                                    return (
-                                        <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-3">
-                                            <div className="flex items-center gap-2">
-                                                <Boxes size={16} className="text-amber-700" />
-                                                <span className="text-xs font-bold text-amber-900">Pengaturan Bahan Habis Pakai</span>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                <div>
-                                                    <label className="block text-[11px] font-bold text-[#1D1616] mb-1">
-                                                        Satuan Ukuran
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={data.satuan}
-                                                        onChange={(e) => setData('satuan', e.target.value)}
-                                                        placeholder="Contoh: pcs, meter, roll"
-                                                        required
-                                                        className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-amber-600"
-                                                    />
-                                                    {errors.satuan && <p className="text-[#D84040] text-xs mt-1">{errors.satuan}</p>}
-                                                </div>
-                                                {!editingBarang && (
-                                                    <div>
-                                                        <label className="block text-[11px] font-bold text-[#1D1616] mb-1">
-                                                            Stok Awal
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            step="any"
-                                                            min="0"
-                                                            value={data.stok_saat_ini}
-                                                            onChange={(e) => setData('stok_saat_ini', e.target.value)}
-                                                            placeholder="0"
-                                                            className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-bold focus:outline-none focus:border-amber-600"
-                                                        />
-                                                    </div>
-                                                )}
-                                                <div>
-                                                    <label className="block text-[11px] font-bold text-[#1D1616] mb-1">
-                                                        Batas Minimum Alert
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        step="any"
-                                                        min="0"
-                                                        value={data.stok_minimum}
-                                                        onChange={(e) => setData('stok_minimum', e.target.value)}
-                                                        placeholder="5"
-                                                        required
-                                                        className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-bold focus:outline-none focus:border-amber-600"
-                                                    />
-                                                    {errors.stok_minimum && <p className="text-[#D84040] text-xs mt-1">{errors.stok_minimum}</p>}
-                                                </div>
-                                            </div>
-                                            <p className="text-[10.5px] text-amber-800 leading-relaxed">
-                                                Kategori ini melacak kuantitas agregat secara otomatis. Tidak perlu membuat kode unit fisik.
-                                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {/* Kolom Kiri: Informasi Pokok Barang */}
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-[#1D1616] mb-1">
+                                                Kategori
+                                            </label>
+                                            <select
+                                                value={data.kategori_id}
+                                                onChange={(e) => setData('kategori_id', e.target.value)}
+                                                required
+                                                className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none focus:border-[#D84040]"
+                                            >
+                                                {categories.map((c) => (
+                                                     <option key={c.id} value={c.id}>
+                                                        {c.nama_kategori}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {errors.kategori_id && <p className="text-[#D84040] text-xs mt-1">{errors.kategori_id}</p>}
                                         </div>
-                                    );
-                                }
+                                        <div>
+                                            <label className="block text-xs font-bold text-[#1D1616] mb-1">
+                                                Kode Barang Master (Unik)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={data.kode_barang}
+                                                onChange={(e) => setData('kode_barang', e.target.value)}
+                                                placeholder="Contoh: BOR-101"
+                                                required
+                                                className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-mono focus:outline-none focus:border-[#D84040]"
+                                            />
+                                            {errors.kode_barang && <p className="text-[#D84040] text-xs mt-1">{errors.kode_barang}</p>}
+                                        </div>
+                                    </div>
 
-                                return !editingBarang ? (
-                                    <div className="p-3.5 bg-emerald-50/50 border border-emerald-200/80 rounded-xl">
-                                        <label className="block text-xs font-bold text-emerald-900 mb-1 flex items-center justify-between">
-                                            <span>Jumlah Unit Fisik Awal (Batch Generate)</span>
-                                            <span className="text-[11px] font-normal text-emerald-700">Opsional</span>
+                                    <div>
+                                        <label className="block text-xs font-bold text-[#1D1616] mb-1">
+                                            Nama Barang
                                         </label>
                                         <input
-                                            type="number"
-                                            min="0"
-                                            max="50"
-                                            value={data.jumlah_unit}
-                                            onChange={(e) => setData('jumlah_unit', e.target.value)}
-                                            placeholder="Contoh: 1, 3, atau 5 unit"
-                                            className="w-full px-3.5 py-2 bg-white border border-emerald-300 rounded-xl text-xs text-[#1D1616] font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                            type="text"
+                                            value={data.nama_barang}
+                                            onChange={(e) => setData('nama_barang', e.target.value)}
+                                            placeholder="Contoh: Mesin Bor Cordless 18V"
+                                            required
+                                            className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
                                         />
-                                        <p className="text-[11px] text-emerald-700 mt-1.5 leading-relaxed">
-                                            {data.jumlah_unit && parseInt(data.jumlah_unit) > 0 ? (
-                                                <>Sistem akan otomatis membuat <span className="font-bold">{data.jumlah_unit} unit fisik</span>: <span className="font-mono font-bold">{data.kode_barang ? `${data.kode_barang}-01 s/d ${data.kode_barang}-${String(data.jumlah_unit).padStart(2, '0')}` : `KODE-01 s/d KODE-${String(data.jumlah_unit).padStart(2, '0')}`}</span> berstatus siap dipinjam.</>
-                                            ) : (
-                                                <>Kosongkan jika ingin menambahkan nomor seri unit fisik secara terpisah nanti.</>
-                                            )}
-                                        </p>
+                                        {errors.nama_barang && <p className="text-[#D84040] text-xs mt-1">{errors.nama_barang}</p>}
                                     </div>
-                                ) : null;
-                            })()}
 
-                            <div>
-                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
-                                    Detail Spesifikasi Teknis
-                                </label>
-                                <textarea
-                                    value={data.detail_spesifikasi}
-                                    onChange={(e) => setData('detail_spesifikasi', e.target.value)}
-                                    rows={3}
-                                    placeholder="Spesifikasi kelengkapan alat, daya, kapasitas..."
-                                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
-                                />
-                            </div>
-
-                            {/* Upload / Ganti / Hapus Gambar Master Barang */}
-                            <div>
-                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5 flex items-center justify-between">
-                                    <span>Foto / Gambar Barang</span>
-                                    <span className="text-[11px] font-normal text-[#6B7280]">Opsional (Maks. 2MB)</span>
-                                </label>
-
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleFileChange}
-                                    accept="image/jpeg,image/png,image/jpg,image/webp"
-                                    className="hidden"
-                                />
-
-                                {/* Kondisi 1: Preview file baru yang dipilih */}
-                                {imagePreview ? (
-                                    <div className="p-3.5 bg-rose-50/20 border border-rose-200 rounded-xl flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <img
-                                                src={imagePreview}
-                                                alt="Preview Baru"
-                                                className="w-14 h-14 rounded-lg object-cover border border-rose-300 shrink-0 bg-white"
-                                            />
-                                            <div className="min-w-0">
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 mb-1">
-                                                    <CheckCircle2 size={10} /> Gambar Baru Terpilih
-                                                </span>
-                                                <p className="text-xs font-bold text-[#1D1616] truncate">
-                                                    {data.gambar?.name || 'File dipilih'}
-                                                </p>
-                                                <p className="text-[11px] text-[#6B7280]">
-                                                    {data.gambar?.size ? `${(data.gambar.size / 1024).toFixed(1)} KB` : ''}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="px-2.5 py-1.5 text-xs font-bold text-[#1D1616] bg-white border border-[#E0E0E0] rounded-lg hover:bg-gray-50 cursor-pointer transition-colors shadow-2xs"
-                                            >
-                                                Ganti
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={handleRemoveSelectedFile}
-                                                className="p-1.5 text-[#D84040] hover:bg-rose-100 rounded-lg cursor-pointer transition-colors"
-                                                title="Batal pilih gambar"
-                                            >
-                                                <X size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : editingBarang?.gambar_url && !data.hapus_gambar ? (
-                                    /* Kondisi 2: Sedang Edit dan memiliki gambar yang sudah ada */
-                                    <div className="p-3.5 bg-[#EEEEEE]/50 border border-[#E0E0E0] rounded-xl flex items-center justify-between gap-3">
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <img
-                                                src={editingBarang.gambar_url}
-                                                alt={editingBarang.nama_barang}
-                                                className="w-14 h-14 rounded-lg object-cover border border-[#E0E0E0] shrink-0 bg-white"
-                                            />
-                                            <div className="min-w-0">
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 mb-1">
-                                                    <ImageIcon size={10} /> Gambar Saat Ini
-                                                </span>
-                                                <p className="text-xs font-bold text-[#1D1616] truncate">
-                                                    {editingBarang.nama_barang}
-                                                </p>
-                                                <p className="text-[11px] text-[#6B7280]">
-                                                    Klik tombol untuk mengganti atau menghapus
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="px-2.5 py-1.5 text-xs font-bold text-[#1D1616] bg-white border border-[#E0E0E0] rounded-lg hover:bg-gray-50 cursor-pointer transition-colors shadow-2xs flex items-center gap-1"
-                                            >
-                                                <UploadCloud size={13} /> Ganti
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={handleRemoveExistingImage}
-                                                className="p-1.5 text-[#D84040] hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
-                                                title="Hapus foto dari barang ini"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    /* Kondisi 3: Belum ada gambar / gambar dihapus */
                                     <div>
-                                        <div
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="border-2 border-dashed border-[#E0E0E0] hover:border-[#D84040] rounded-xl p-4 text-center cursor-pointer transition-colors bg-gray-50/50 hover:bg-rose-50/10 group"
-                                        >
-                                            <div className="w-10 h-10 mx-auto rounded-full bg-[#EEEEEE] group-hover:bg-rose-50 flex items-center justify-center text-[#6B7280] group-hover:text-[#D84040] transition-colors mb-2">
-                                                <UploadCloud size={20} />
+                                        <label className="block text-xs font-bold text-[#1D1616] mb-1">
+                                            Lokasi Rak / Lemari
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={data.lokasi}
+                                            onChange={(e) => setData('lokasi', e.target.value)}
+                                            placeholder="Contoh: Lemari B-01 / Rak A-02"
+                                            className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-[#1D1616] mb-1">
+                                            Detail Spesifikasi Teknis
+                                        </label>
+                                        <textarea
+                                            value={data.detail_spesifikasi}
+                                            onChange={(e) => setData('detail_spesifikasi', e.target.value)}
+                                            rows={2}
+                                            placeholder="Spesifikasi kelengkapan alat, daya, kapasitas..."
+                                            className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040] resize-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Kolom Kanan: Pengaturan Tipe, Foto & Kebijakan */}
+                                <div className="space-y-3">
+                                    {/* Pengaturan Tipe (Bahan Habis Pakai vs Aset Fisik) */}
+                                    {(() => {
+                                        const selectedCat = categories.find((c) => String(c.id) === String(data.kategori_id));
+                                        const isHabisPakai = selectedCat?.tipe === 'habis_pakai';
+
+                                        if (isHabisPakai) {
+                                            return (
+                                                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Boxes size={15} className="text-amber-700" />
+                                                        <span className="text-xs font-bold text-amber-900">Pengaturan Bahan Habis Pakai</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                                        <div>
+                                                            <label className="block text-[11px] font-bold text-[#1D1616] mb-1">
+                                                                Satuan
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={data.satuan}
+                                                                onChange={(e) => setData('satuan', e.target.value)}
+                                                                placeholder="pcs, roll"
+                                                                required
+                                                                className="w-full px-2.5 py-1.5 bg-white border border-[#E0E0E0] rounded-lg text-xs text-[#1D1616] focus:outline-none focus:border-amber-600"
+                                                            />
+                                                            {errors.satuan && <p className="text-[#D84040] text-[10px] mt-0.5">{errors.satuan}</p>}
+                                                        </div>
+                                                        {!editingBarang && (
+                                                            <div>
+                                                                <label className="block text-[11px] font-bold text-[#1D1616] mb-1">
+                                                                    Stok Awal
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    step="any"
+                                                                    min="0"
+                                                                    value={data.stok_saat_ini}
+                                                                    onChange={(e) => setData('stok_saat_ini', e.target.value)}
+                                                                    placeholder="0"
+                                                                    className="w-full px-2.5 py-1.5 bg-white border border-[#E0E0E0] rounded-lg text-xs text-[#1D1616] font-bold focus:outline-none focus:border-amber-600"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <label className="block text-[11px] font-bold text-[#1D1616] mb-1">
+                                                                Batas Min.
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                step="any"
+                                                                min="0"
+                                                                value={data.stok_minimum}
+                                                                onChange={(e) => setData('stok_minimum', e.target.value)}
+                                                                placeholder="5"
+                                                                required
+                                                                className="w-full px-2.5 py-1.5 bg-white border border-[#E0E0E0] rounded-lg text-xs text-[#1D1616] font-bold focus:outline-none focus:border-amber-600"
+                                                            />
+                                                            {errors.stok_minimum && <p className="text-[#D84040] text-[10px] mt-0.5">{errors.stok_minimum}</p>}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-[10px] text-amber-800 leading-tight">
+                                                        Kuantitas agregat dilacak otomatis tanpa unit fisik.
+                                                    </p>
+                                                </div>
+                                            );
+                                        }
+
+                                        return !editingBarang ? (
+                                            <div className="p-3 bg-emerald-50/50 border border-emerald-200/80 rounded-xl space-y-1.5">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-emerald-900">Jumlah Unit Fisik Awal (Batch Generate)</span>
+                                                    <span className="text-[10px] font-medium text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">Opsional</span>
+                                                </div>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="50"
+                                                    value={data.jumlah_unit}
+                                                    onChange={(e) => setData('jumlah_unit', e.target.value)}
+                                                    placeholder="Contoh: 1, 3, atau 5 unit"
+                                                    className="w-full px-3 py-1.5 bg-white border border-emerald-300 rounded-lg text-xs text-[#1D1616] font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                />
+                                                <p className="text-[10.5px] text-emerald-700 leading-tight">
+                                                    {data.jumlah_unit && parseInt(data.jumlah_unit) > 0 ? (
+                                                        <>Auto-generate <span className="font-bold">{data.jumlah_unit} unit fisik</span>: <span className="font-mono font-bold">{data.kode_barang ? `${data.kode_barang}-01..${data.kode_barang}-${String(data.jumlah_unit).padStart(2, '0')}` : `KODE-01..`}</span></>
+                                                    ) : (
+                                                        <>Kosongkan jika nomor seri unit fisik akan ditambahkan nanti.</>
+                                                    )}
+                                                </p>
                                             </div>
-                                            <p className="text-xs font-bold text-[#1D1616]">
-                                                Klik untuk memilih atau unggah foto barang
-                                            </p>
-                                            <p className="text-[11px] text-[#6B7280] mt-0.5">
-                                                Format file: PNG, JPG, JPEG, WEBP (Maks. 2 MB)
-                                            </p>
+                                        ) : null;
+                                    })()}
+
+                                    {/* Upload / Ganti / Hapus Gambar Master Barang */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-xs font-bold text-[#1D1616]">
+                                                Foto / Gambar Barang
+                                            </label>
+                                            <span className="text-[10px] text-[#6B7280]">Opsional (Maks. 2MB)</span>
                                         </div>
-                                        {data.hapus_gambar && (
-                                            <div className="mt-2 flex items-center justify-between text-xs text-[#D84040] bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-200">
-                                                <span>Foto saat ini akan dihapus saat disimpan.</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setData('hapus_gambar', false)}
-                                                    className="text-xs font-bold underline cursor-pointer text-[#D84040] hover:text-[#8E1616]"
+
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            onChange={handleFileChange}
+                                            accept="image/jpeg,image/png,image/jpg,image/webp"
+                                            className="hidden"
+                                        />
+
+                                        {/* Kondisi 1: Preview file baru yang dipilih */}
+                                        {imagePreview ? (
+                                            <div className="p-2.5 bg-rose-50/20 border border-rose-200 rounded-xl flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <img
+                                                        src={imagePreview}
+                                                        alt="Preview Baru"
+                                                        className="w-12 h-12 rounded-lg object-cover border border-rose-300 shrink-0 bg-white"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 mb-0.5">
+                                                            <CheckCircle2 size={9} /> Gambar Baru Terpilih
+                                                        </span>
+                                                        <p className="text-xs font-bold text-[#1D1616] truncate">
+                                                            {data.gambar?.name || 'File dipilih'}
+                                                        </p>
+                                                        <p className="text-[10px] text-[#6B7280]">
+                                                            {data.gambar?.size ? `${(data.gambar.size / 1024).toFixed(1)} KB` : ''}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="px-2 py-1 text-xs font-bold text-[#1D1616] bg-white border border-[#E0E0E0] rounded-lg hover:bg-gray-50 cursor-pointer transition-colors shadow-2xs"
+                                                    >
+                                                        Ganti
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRemoveSelectedFile}
+                                                        className="p-1 text-[#D84040] hover:bg-rose-100 rounded-lg cursor-pointer transition-colors"
+                                                        title="Batal pilih gambar"
+                                                    >
+                                                        <X size={15} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : editingBarang?.gambar_url && !data.hapus_gambar ? (
+                                            /* Kondisi 2: Sedang Edit dan memiliki gambar yang sudah ada */
+                                            <div className="p-2.5 bg-[#EEEEEE]/50 border border-[#E0E0E0] rounded-xl flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <img
+                                                        src={editingBarang.gambar_url}
+                                                        alt={editingBarang.nama_barang}
+                                                        className="w-12 h-12 rounded-lg object-cover border border-[#E0E0E0] shrink-0 bg-white"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 mb-0.5">
+                                                            <ImageIcon size={9} /> Gambar Saat Ini
+                                                        </span>
+                                                        <p className="text-xs font-bold text-[#1D1616] truncate">
+                                                            {editingBarang.nama_barang}
+                                                        </p>
+                                                        <p className="text-[10px] text-[#6B7280]">
+                                                            Klik untuk mengganti atau menghapus
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="px-2 py-1 text-xs font-bold text-[#1D1616] bg-white border border-[#E0E0E0] rounded-lg hover:bg-gray-50 cursor-pointer transition-colors shadow-2xs flex items-center gap-1"
+                                                    >
+                                                        <UploadCloud size={12} /> Ganti
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRemoveExistingImage}
+                                                        className="p-1 text-[#D84040] hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+                                                        title="Hapus foto dari barang ini"
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            /* Kondisi 3: Belum ada gambar / gambar dihapus */
+                                            <div>
+                                                <div
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="border-2 border-dashed border-[#E0E0E0] hover:border-[#D84040] rounded-xl py-2.5 px-3 text-center cursor-pointer transition-colors bg-gray-50/50 hover:bg-rose-50/10 group flex items-center justify-center gap-3"
                                                 >
-                                                    Batalkan Hapus
-                                                </button>
+                                                    <div className="w-8 h-8 rounded-full bg-[#EEEEEE] group-hover:bg-rose-50 flex items-center justify-center text-[#6B7280] group-hover:text-[#D84040] transition-colors shrink-0">
+                                                        <UploadCloud size={16} />
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <p className="text-xs font-bold text-[#1D1616]">
+                                                            Pilih atau unggah foto barang
+                                                        </p>
+                                                        <p className="text-[10px] text-[#6B7280]">
+                                                            PNG, JPG, JPEG, WEBP (Maks. 2 MB)
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {data.hapus_gambar && (
+                                                    <div className="mt-1.5 flex items-center justify-between text-xs text-[#D84040] bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                                                        <span className="text-[11px]">Foto saat ini akan dihapus saat disimpan.</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setData('hapus_gambar', false)}
+                                                            className="text-xs font-bold underline cursor-pointer text-[#D84040] hover:text-[#8E1616]"
+                                                        >
+                                                            Batalkan
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
-                                    </div>
-                                )}
 
-                                {errors.gambar && (
-                                    <p className="text-[#D84040] text-xs font-bold mt-1.5 flex items-center gap-1">
-                                        <AlertTriangle size={12} /> {errors.gambar}
-                                    </p>
-                                )}
+                                        {errors.gambar && (
+                                            <p className="text-[#D84040] text-xs font-bold mt-1 flex items-center gap-1">
+                                                <AlertTriangle size={12} /> {errors.gambar}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Pengaturan Izin / Approval Admin */}
+                                    <div className="p-3 bg-amber-50/60 border border-amber-200/80 rounded-xl">
+                                        <label className="flex items-start gap-2.5 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={Boolean(data.perlu_persetujuan)}
+                                                onChange={(e) => setData('perlu_persetujuan', e.target.checked)}
+                                                className="mt-0.5 rounded border-amber-300 text-[#D84040] focus:ring-[#D84040] h-4 w-4 cursor-pointer"
+                                            />
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-1.5 text-xs font-bold text-[#1D1616]">
+                                                    <ShieldAlert size={14} className="text-amber-600 shrink-0" />
+                                                    <span>Wajib Izin Langsung Admin (Multi-Step Approval)</span>
+                                                </div>
+                                                <p className="text-[10.5px] text-[#6B7280] mt-0.5 leading-tight">
+                                                    Peminjaman barang ini wajib diverifikasi dan disetujui (approve) oleh Admin di Logbook sebelum dapat diambil.
+                                                </p>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Pengaturan Izin / Approval Admin */}
-                            <div className="p-3.5 bg-amber-50/60 border border-amber-200/80 rounded-xl">
-                                <label className="flex items-start gap-3 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={Boolean(data.perlu_persetujuan)}
-                                        onChange={(e) => setData('perlu_persetujuan', e.target.checked)}
-                                        className="mt-0.5 rounded border-amber-300 text-[#D84040] focus:ring-[#D84040] h-4 w-4 cursor-pointer"
-                                    />
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#1D1616]">
-                                            <ShieldAlert size={14} className="text-amber-600" />
-                                            <span>Wajib Izin Langsung Admin (Multi-Step Approval)</span>
-                                        </div>
-                                        <p className="text-[11px] text-[#6B7280] mt-0.5 leading-relaxed">
-                                            Jika dicentang, peminjaman alat/barang ini tidak akan langsung disetujui otomatis. Peminjaman masuk ke daftar antrean dan harus disetujui (approve) terlebih dahulu oleh Admin di Logbook.
-                                        </p>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-2">
+                            {/* Footer Buttons */}
+                            <div className="flex justify-end gap-2.5 pt-3 border-t border-[#E0E0E0]">
                                 <button
                                     type="button"
                                     onClick={() => setModalOpen(false)}
-                                    className="px-4 py-2 rounded-xl text-xs font-semibold text-[#6B7280] hover:bg-[#EEEEEE]"
+                                    className="px-4 py-2 rounded-xl text-xs font-semibold text-[#6B7280] hover:bg-[#EEEEEE] transition-colors cursor-pointer"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={processing}
-                                    className="px-4 py-2 bg-[#D84040] hover:bg-[#8E1616] text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-colors cursor-pointer"
+                                    className="px-5 py-2 bg-[#D84040] hover:bg-[#8E1616] text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-colors cursor-pointer shadow-sm shadow-red-200"
                                 >
-                                    {processing ? 'Menyimpan...' : 'Simpan Master Barang'}
+                                    {processing ? 'Menyimpan...' : (editingBarang ? 'Simpan Perubahan' : 'Simpan Master Barang')}
                                 </button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Modal Form Tambah / Edit Unit Fisik */}
-            {unitModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/60 overflow-y-auto">
-                    <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-md w-full p-6 shadow-xl my-8">
+            {unitModalOpen && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/60 backdrop-blur-xs overflow-y-auto">
+                    <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-md w-full p-6 shadow-xl my-auto animate-in fade-in zoom-in-95 duration-150">
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E0E0E0]">
                             <div>
                                 <h3 className="text-base font-bold text-[#1D1616]">
@@ -1655,11 +2000,12 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Lightbox / Preview Foto Master Barang */}
-            {previewModalImage && (
+            {previewModalImage && typeof document !== 'undefined' && createPortal(
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/80 backdrop-blur-xs animate-in fade-in duration-150"
                     onClick={() => setPreviewModalImage(null)}
@@ -1709,7 +2055,8 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Pop-up Card Alert Konfirmasi Hapus */}
@@ -1727,7 +2074,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             />
 
             {/* Modal Restock Bahan Habis Pakai */}
-            {restockModal.isOpen && restockModal.barang && (
+            {restockModal.isOpen && restockModal.barang && typeof document !== 'undefined' && createPortal(
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/60 backdrop-blur-none animate-in fade-in duration-150">
                     <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-md w-full p-6 shadow-xl">
                         <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#E0E0E0]">
@@ -1804,17 +2151,18 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Modal Kartu Stok & Riwayat Mutasi */}
-            {kartuStokModal.isOpen && (
+            {kartuStokModal.isOpen && typeof document !== 'undefined' && createPortal(
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/60 backdrop-blur-none animate-in fade-in duration-150">
                     <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-2xl w-full p-6 shadow-xl max-h-[85vh] flex flex-col">
                         <div className="flex items-center justify-between pb-3 border-b border-[#E0E0E0] shrink-0">
                             <div>
                                 <h3 className="text-base font-extrabold text-[#1D1616] flex items-center gap-2">
-                                    <Clock size={18} className="text-blue-600" />
+                                    <Clock size={18} className="text-amber-600" />
                                     Kartu Stok: {kartuStokModal.barang?.nama_barang}
                                 </h3>
                                 <div className="text-xs text-[#6B7280] mt-0.5 flex items-center gap-2">
@@ -1833,8 +2181,17 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
 
                         <div className="overflow-y-auto flex-1 my-4">
                             {kartuStokModal.loading ? (
-                                <div className="p-8 text-center text-xs text-[#6B7280]">
-                                    Memuat kartu stok...
+                                <div className="space-y-2 p-2">
+                                    {[1, 2, 3, 4].map((i) => (
+                                        <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50">
+                                            <div className="w-20 h-3 rounded shimmer-box" />
+                                            <div className="w-14 h-4 rounded shimmer-box" />
+                                            <div className="w-12 h-3 rounded shimmer-box" />
+                                            <div className="w-12 h-3 rounded shimmer-box" />
+                                            <div className="w-16 h-3 rounded shimmer-box" />
+                                            <div className="w-24 h-3 rounded shimmer-box" />
+                                        </div>
+                                    ))}
                                 </div>
                             ) : kartuStokModal.mutasi.length === 0 ? (
                                 <div className="p-8 text-center text-xs text-[#6B7280]">
@@ -1900,7 +2257,8 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </AuthenticatedLayout>
     );

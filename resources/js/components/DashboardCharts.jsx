@@ -239,7 +239,7 @@ export function TopUnitMaintenanceChart({ data = [] }) {
 }
 
 /**
- * 3. Statistik Keterlambatan (Line Chart with Hari / Minggu / Bulan toggle)
+ * 3. Statistik Keterlambatan (Smooth Spline Wave Chart - Full Width Responsive)
  */
 export function OverdueTrendLineChart({ overdueStats = {} }) {
     const [period, setPeriod] = useState('daily'); // 'daily' | 'weekly' | 'monthly'
@@ -248,58 +248,73 @@ export function OverdueTrendLineChart({ overdueStats = {} }) {
     const data = overdueStats[period] || [];
     const values = data.map((d) => d.count || 0);
     const maxVal = Math.max(...values, 5);
-    const minVal = 0;
     const totalCount = values.reduce((sum, v) => sum + v, 0);
     const avgCount = values.length > 0 ? (totalCount / values.length).toFixed(1) : 0;
-    const peakIndex = values.indexOf(Math.max(...values));
 
-    // SVG coordinates setup
-    const svgWidth = 680;
-    const svgHeight = 200;
-    const paddingLeft = 40;
-    const paddingRight = 25;
-    const paddingTop = 25;
-    const paddingBottom = 35;
+    // SVG coordinates setup: Canvas 1000 units with preserveAspectRatio="none"
+    const svgWidth = 1000;
+    const svgHeight = 175;
+    const paddingLeft = 16;
+    const paddingRight = 16;
+    const paddingTop = 22;
+    const paddingBottom = 16;
 
     const chartWidth = svgWidth - paddingLeft - paddingRight;
     const chartHeight = svgHeight - paddingTop - paddingBottom;
+    const baselineY = paddingTop + chartHeight;
 
-    // Compute coordinate points
+    // Compute coordinate points stretching across full width
     const points = data.map((d, i) => {
         const x =
             data.length > 1
                 ? paddingLeft + (i / (data.length - 1)) * chartWidth
                 : paddingLeft + chartWidth / 2;
         const normalizedY = maxVal > 0 ? d.count / maxVal : 0;
-        const y = paddingTop + chartHeight - normalizedY * chartHeight;
-        return { x, y, ...d };
+        const y = baselineY - normalizedY * (chartHeight * 0.85);
+        return { x, y, index: i, ...d };
     });
 
-    // Create smooth Bezier curve SVG path
-    const generateSmoothPath = (pts) => {
-        if (pts.length === 0) return '';
+    // Catmull-Rom Spline to Cubic Bezier curve for fluid, rounded wave crests and troughs
+    const generateSplinePath = (pts, tension = 0.82) => {
+        if (!pts || pts.length === 0) return '';
         if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
 
-        let path = `M ${pts[0].x} ${pts[0].y}`;
-        for (let i = 0; i < pts.length - 1; i++) {
-            const current = pts[i];
-            const next = pts[i + 1];
-            const controlX = (current.x + next.x) / 2;
-            path += ` C ${controlX} ${current.y}, ${controlX} ${next.y}, ${next.x} ${next.y}`;
+        let path = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+        const n = pts.length;
+
+        for (let i = 0; i < n - 1; i++) {
+            const pPrev = i > 0 ? pts[i - 1] : { x: pts[0].x - (pts[1].x - pts[0].x) * 0.5, y: pts[0].y };
+            const pCurr = pts[i];
+            const pNext = pts[i + 1];
+            const pAfter = i + 2 < n ? pts[i + 2] : { x: pNext.x + (pNext.x - pCurr.x) * 0.5, y: pNext.y };
+
+            const c1x = pCurr.x + (pNext.x - pPrev.x) * (tension / 6);
+            let c1y = pCurr.y + (pNext.y - pPrev.y) * (tension / 6);
+
+            const c2x = pNext.x - (pAfter.x - pCurr.x) * (tension / 6);
+            let c2y = pNext.y - (pAfter.y - pCurr.y) * (tension / 6);
+
+            // Clamp so control points don't dip below baseline or overshoot upper bounds
+            c1y = Math.min(baselineY, Math.max(paddingTop - 15, c1y));
+            c2y = Math.min(baselineY, Math.max(paddingTop - 15, c2y));
+
+            path += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${pNext.x.toFixed(2)} ${pNext.y.toFixed(2)}`;
         }
         return path;
     };
 
-    const linePath = generateSmoothPath(points);
+    const linePath = generateSplinePath(points);
 
-    // Area path closing at the bottom
+    // Area path closed cleanly at the bottom baseline
     const areaPath =
         points.length > 0
-            ? `${linePath} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${points[0].x} ${paddingTop + chartHeight
-            } Z`
+            ? `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${baselineY} L ${points[0].x.toFixed(1)} ${baselineY} Z`
             : '';
 
-    const activePoint = hoveredIndex !== null ? points[hoveredIndex] : points[peakIndex];
+    // Guideline threshold line Y (around 72% height of chart)
+    const thresholdY = paddingTop + chartHeight * 0.28;
+
+    const activePoint = hoveredIndex !== null ? points[hoveredIndex] : null;
 
     return (
         <div className="bg-white rounded-2xl border border-[#E0E0E0] p-6 shadow-2xs hover:shadow-sm transition-all">
@@ -315,11 +330,11 @@ export function OverdueTrendLineChart({ overdueStats = {} }) {
                                 Statistik & Tren Keterlambatan
                             </h3>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-[#D84040] border border-rose-200">
-                                Melebihi 24 Jam
+                                Monitoring 24 Jam
                             </span>
                         </div>
                         <p className="text-[11px] font-semibold text-[#6B7280] mt-0.5">
-                            Grafik tren keterlambatan pengembalian unit workshop berdasarkan rentang waktu
+                            Grafik tren fluktuasi keterlambatan pengembalian unit workshop berdasarkan rentang waktu
                         </p>
                     </div>
                 </div>
@@ -329,30 +344,33 @@ export function OverdueTrendLineChart({ overdueStats = {} }) {
                     <button
                         type="button"
                         onClick={() => setPeriod('daily')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === 'daily'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            period === 'daily'
                                 ? 'bg-white text-[#D84040] shadow-2xs'
                                 : 'text-[#6B7280] hover:text-[#1D1616]'
-                            }`}
+                        }`}
                     >
                         Harian (7 Hari)
                     </button>
                     <button
                         type="button"
                         onClick={() => setPeriod('weekly')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === 'weekly'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            period === 'weekly'
                                 ? 'bg-white text-[#D84040] shadow-2xs'
                                 : 'text-[#6B7280] hover:text-[#1D1616]'
-                            }`}
+                        }`}
                     >
                         Mingguan (4 Minggu)
                     </button>
                     <button
                         type="button"
                         onClick={() => setPeriod('monthly')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period === 'monthly'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            period === 'monthly'
                                 ? 'bg-white text-[#D84040] shadow-2xs'
                                 : 'text-[#6B7280] hover:text-[#1D1616]'
-                            }`}
+                        }`}
                     >
                         Bulanan (6 Bulan)
                     </button>
@@ -360,7 +378,7 @@ export function OverdueTrendLineChart({ overdueStats = {} }) {
             </div>
 
             {/* Metric KPI Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 mb-3">
                 <div className="bg-[#EEEEEE]/50 border border-[#E0E0E0]/80 rounded-xl p-3">
                     <span className="text-[10px] font-bold uppercase text-[#6B7280] block">
                         TOTAL TERLAMBAT
@@ -396,17 +414,24 @@ export function OverdueTrendLineChart({ overdueStats = {} }) {
                 </div>
             </div>
 
-            {/* Line Chart Area */}
+            {/* Line Chart Area - Full Width with Zero Side Wastage */}
             <div className="relative w-full pt-4 select-none">
                 {/* Floating Tooltip */}
                 {activePoint && (
                     <div
-                        className="absolute -top-3 transform -translate-x-1/2 bg-white border border-[#E0E0E0] shadow-md rounded-xl px-3 py-1.5 z-20 pointer-events-none transition-all duration-150 whitespace-nowrap text-left"
+                        className="absolute -top-3 bg-white border border-rose-200 shadow-lg shadow-rose-500/10 rounded-xl px-3 py-1.5 z-20 pointer-events-none transition-all duration-150 whitespace-nowrap text-left"
                         style={{
                             left: `${(activePoint.x / svgWidth) * 100}%`,
+                            transform:
+                                hoveredIndex === 0
+                                    ? 'translateX(0%)'
+                                    : hoveredIndex === points.length - 1
+                                    ? 'translateX(-100%)'
+                                    : 'translateX(-50%)',
                         }}
                     >
-                        <div className="text-xs font-black text-[#D84040]">
+                        <div className="text-xs font-black text-[#D84040] flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#D84040]" />
                             {activePoint.count} Keterlambatan
                         </div>
                         <div className="text-[10px] font-medium text-[#6B7280]">
@@ -415,53 +440,38 @@ export function OverdueTrendLineChart({ overdueStats = {} }) {
                     </div>
                 )}
 
-                {/* SVG Graph */}
-                <div className="w-full overflow-hidden">
+                {/* SVG Graph stretching edge-to-edge with preserveAspectRatio="none" */}
+                <div className="w-full">
                     <svg
                         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                        className="w-full h-48 sm:h-56 overflow-visible"
+                        preserveAspectRatio="none"
+                        className="w-full h-44 sm:h-52 overflow-visible"
                     >
                         <defs>
-                            {/* Gradient Area Fill */}
+                            {/* Smooth Coral Red Gradient Area Fill matching WAMS palette */}
                             <linearGradient id="overdueAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#D84040" stopOpacity="0.30" />
-                                <stop offset="85%" stopColor="#D84040" stopOpacity="0.02" />
+                                <stop offset="0%" stopColor="#D84040" stopOpacity="0.32" />
+                                <stop offset="45%" stopColor="#D84040" stopOpacity="0.12" />
+                                <stop offset="98%" stopColor="#D84040" stopOpacity="0.00" />
                             </linearGradient>
                         </defs>
 
-                        {/* Horizontal Dashed Grid Lines */}
-                        {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
-                            const y = paddingTop + chartHeight * (1 - ratio);
-                            const val = Math.round(maxVal * ratio);
-                            return (
-                                <g key={i}>
-                                    <line
-                                        x1={paddingLeft}
-                                        y1={y}
-                                        x2={svgWidth - paddingRight}
-                                        y2={y}
-                                        stroke="#E5E7EB"
-                                        strokeDasharray="4 4"
-                                        strokeWidth="1"
-                                    />
-                                    <text
-                                        x={paddingLeft - 8}
-                                        y={y + 3.5}
-                                        fill="#9CA3AF"
-                                        fontSize="10"
-                                        fontWeight="600"
-                                        textAnchor="end"
-                                    >
-                                        {val}
-                                    </text>
-                                </g>
-                            );
-                        })}
+                        {/* Single Horizontal Dashed Guideline running edge-to-edge */}
+                        <line
+                            x1={0}
+                            y1={thresholdY}
+                            x2={svgWidth}
+                            y2={thresholdY}
+                            stroke="#CBD5E1"
+                            strokeDasharray="5 5"
+                            strokeWidth="1.2"
+                            vectorEffect="non-scaling-stroke"
+                        />
 
                         {/* Area Fill */}
                         {areaPath && <path d={areaPath} fill="url(#overdueAreaGrad)" />}
 
-                        {/* Smooth Line Curve */}
+                        {/* Smooth Red Spline Curve Line */}
                         {linePath && (
                             <path
                                 d={linePath}
@@ -470,13 +480,15 @@ export function OverdueTrendLineChart({ overdueStats = {} }) {
                                 strokeWidth="3"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
+                                vectorEffect="non-scaling-stroke"
                             />
                         )}
 
-                        {/* Data Points (Circles) */}
+                        {/* Interactive Hover Columns & Active Indicator */}
                         {points.map((pt, i) => {
                             const isHovered = hoveredIndex === i;
-                            const isPeak = i === peakIndex;
+                            const colWidth = svgWidth / points.length;
+                            const colX = i === 0 ? 0 : pt.x - colWidth / 2;
 
                             return (
                                 <g
@@ -485,35 +497,72 @@ export function OverdueTrendLineChart({ overdueStats = {} }) {
                                     onMouseEnter={() => setHoveredIndex(i)}
                                     onMouseLeave={() => setHoveredIndex(null)}
                                 >
-                                    {/* Invisible larger hover target */}
-                                    <circle cx={pt.x} cy={pt.y} r="14" fill="transparent" />
-
-                                    {/* Visible Data Point */}
-                                    <circle
-                                        cx={pt.x}
-                                        cy={pt.y}
-                                        r={isHovered ? 6 : isPeak ? 4.5 : 3.5}
-                                        fill="#FFFFFF"
-                                        stroke={isHovered ? '#8E1616' : '#D84040'}
-                                        strokeWidth={isHovered ? 3 : 2.5}
-                                        className="transition-all duration-150"
+                                    {/* Invisible wide hover column target */}
+                                    <rect
+                                        x={colX}
+                                        y={0}
+                                        width={colWidth}
+                                        height={svgHeight}
+                                        fill="transparent"
                                     />
 
-                                    {/* X-Axis Label */}
-                                    <text
-                                        x={pt.x}
-                                        y={paddingTop + chartHeight + 20}
-                                        fill={isHovered ? '#1D1616' : '#6B7280'}
-                                        fontSize="11"
-                                        fontWeight={isHovered ? '700' : '600'}
-                                        textAnchor="middle"
-                                    >
-                                        {pt.label}
-                                    </text>
+                                    {/* Vertical dashed guide line on hover */}
+                                    {isHovered && (
+                                        <line
+                                            x1={pt.x}
+                                            y1={pt.y}
+                                            x2={pt.x}
+                                            y2={baselineY}
+                                            stroke="#FCA5A5"
+                                            strokeDasharray="3 3"
+                                            strokeWidth="1.5"
+                                            vectorEffect="non-scaling-stroke"
+                                        />
+                                    )}
+
+                                    {/* Active Point Halo & Circle on Hover */}
+                                    {isHovered && (
+                                        <>
+                                            <circle
+                                                cx={pt.x}
+                                                cy={pt.y}
+                                                r="12"
+                                                fill="#D84040"
+                                                fillOpacity="0.22"
+                                            />
+                                            <circle
+                                                cx={pt.x}
+                                                cy={pt.y}
+                                                r="5"
+                                                fill="#D84040"
+                                                stroke="#FFFFFF"
+                                                strokeWidth="2.5"
+                                            />
+                                        </>
+                                    )}
                                 </g>
                             );
                         })}
                     </svg>
+
+                    {/* Clean X-Axis Labels Row Aligned Full Width */}
+                    <div className="flex justify-between items-center pt-3 px-2 sm:px-3 select-none">
+                        {points.map((pt, i) => (
+                            <button
+                                key={i}
+                                type="button"
+                                onMouseEnter={() => setHoveredIndex(i)}
+                                onMouseLeave={() => setHoveredIndex(null)}
+                                className={`text-xs font-semibold transition-all cursor-pointer ${
+                                    hoveredIndex === i
+                                        ? 'text-[#D84040] font-bold scale-105'
+                                        : 'text-[#6B7280] hover:text-[#1D1616]'
+                                }`}
+                            >
+                                {pt.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

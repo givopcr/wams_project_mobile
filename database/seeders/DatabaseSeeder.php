@@ -28,22 +28,12 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 2. Create Regular Users
-        $user1 = User::firstOrCreate(
-            ['email' => 'teknisi1@wams.test'],
+        // 2. Create Regular User
+        $userGivo = User::firstOrCreate(
+            ['email' => 'givo@gmail.com'],
             [
-                'nama' => 'Budi Pratama',
-                'nip' => '199503152020011002',
-                'password' => Hash::make('password'),
-                'role' => 'user',
-            ]
-        );
-
-        $user2 = User::firstOrCreate(
-            ['email' => 'teknisi2@wams.test'],
-            [
-                'nama' => 'Siti Nurhaliza',
-                'nip' => '199607202021022003',
+                'nama' => 'givofadlillah',
+                'nip' => '2457301063',
                 'password' => Hash::make('password'),
                 'role' => 'user',
             ]
@@ -183,7 +173,7 @@ class DatabaseSeeder extends Seeder
 
         // 6. Create Logbook Transaksi
         Logbook::create([
-            'user_id' => $user1->id,
+            'user_id' => $userGivo->id,
             'barang_unit_id' => $unit2->id,
             'tanggal_pinjam' => now()->subHours(4),
             'tanggal_kembali' => null,
@@ -192,7 +182,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Logbook::create([
-            'user_id' => $user2->id,
+            'user_id' => $userGivo->id,
             'barang_unit_id' => $unit6->id,
             'tanggal_pinjam' => now()->subHours(2),
             'tanggal_kembali' => null,
@@ -201,7 +191,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Logbook::create([
-            'user_id' => $user1->id,
+            'user_id' => $userGivo->id,
             'barang_unit_id' => $unit9->id,
             'tanggal_pinjam' => now()->subDay(),
             'tanggal_kembali' => null,
@@ -210,7 +200,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Logbook::create([
-            'user_id' => $user2->id,
+            'user_id' => $userGivo->id,
             'barang_unit_id' => $unit18->id,
             'tanggal_pinjam' => now()->subHours(5),
             'tanggal_kembali' => null,
@@ -219,7 +209,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Logbook::create([
-            'user_id' => $user1->id,
+            'user_id' => $userGivo->id,
             'barang_unit_id' => $unit1->id,
             'tanggal_pinjam' => now()->subDays(3),
             'tanggal_kembali' => now()->subDays(2),
@@ -228,7 +218,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         Logbook::create([
-            'user_id' => $user2->id,
+            'user_id' => $userGivo->id,
             'barang_unit_id' => $unit4->id,
             'tanggal_pinjam' => now()->subDays(5),
             'tanggal_kembali' => now()->subDays(4),

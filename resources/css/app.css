@@ -51,3 +51,62 @@ body {
         rgba(248, 250, 252, 0.9) 12px
     );
 }
+
+/* Page Transition Keyframe Animations */
+@keyframes pageFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    100% {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes titleSlideFade {
+    0% {
+        opacity: 0;
+        transform: translateX(-6px);
+    }
+    100% {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.animate-page-enter {
+    animation: pageFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-title-enter {
+    animation: titleSlideFade 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Shimmer Loading Animation for Skeleton */
+@keyframes shimmerWave {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.shimmer-box {
+    background: linear-gradient(90deg, #eef0f3 25%, #dedfe4 50%, #eef0f3 75%);
+    background-size: 200% 100%;
+    animation: shimmerWave 1.5s infinite ease-in-out;
+}
+
+/* Completely suppress Inertia default blue progress bar */
+#nprogress,
+.nprogress-busy,
+#nprogress .bar,
+#nprogress .peg,
+#nprogress .spinner {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}

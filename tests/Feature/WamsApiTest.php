@@ -25,7 +25,7 @@ class WamsApiTest extends TestCase
     {
         // Login by email
         $responseEmail = $this->postJson('/api/login', [
-            'login' => 'teknisi1@wams.test',
+            'login' => 'givo@gmail.com',
             'password' => 'password',
         ]);
 
@@ -37,7 +37,7 @@ class WamsApiTest extends TestCase
 
         // Login by NIP
         $responseNip = $this->postJson('/api/login', [
-            'login' => '199503152020011002',
+            'login' => '2457301063',
             'password' => 'password',
         ]);
 
@@ -57,7 +57,7 @@ class WamsApiTest extends TestCase
 
     public function test_user_can_borrow_available_unit(): void
     {
-        $user = User::where('email', 'teknisi1@wams.test')->first();
+        $user = User::where('email', 'givo@gmail.com')->first();
         $barang = Barang::first();
 
         $response = $this->actingAs($user, 'sanctum')
@@ -76,7 +76,7 @@ class WamsApiTest extends TestCase
 
     public function test_user_can_return_borrowed_unit_as_damaged_and_triggers_maintenance(): void
     {
-        $user = User::where('email', 'teknisi1@wams.test')->first();
+        $user = User::where('email', 'givo@gmail.com')->first();
         $logbook = Logbook::where('user_id', $user->id)->where('status_transaksi', 'dipinjam')->first();
         $unitId = $logbook->barang_unit_id;
 
@@ -106,7 +106,7 @@ class WamsApiTest extends TestCase
 
     public function test_regular_user_cannot_access_admin_api(): void
     {
-        $user = User::where('email', 'teknisi1@wams.test')->first();
+        $user = User::where('email', 'givo@gmail.com')->first();
 
         $response = $this->actingAs($user, 'sanctum')
             ->getJson('/api/admin/stats');

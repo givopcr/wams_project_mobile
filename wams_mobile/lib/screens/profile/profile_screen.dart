@@ -716,7 +716,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
                 icon: const Icon(Icons.logout_rounded, color: AppTheme.danger, size: 18),
                 label: const Text(
-                  'LOGOUT / KELUAR',
+                  'LOGOUT',
                   style: TextStyle(
                     color: AppTheme.danger,
                     fontWeight: FontWeight.bold,

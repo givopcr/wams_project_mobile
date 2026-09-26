@@ -234,11 +234,12 @@ class AdminWebController extends Controller
           // 3. Statistik Keterlambatan (Line Chart: Daily, Weekly, Monthly)
           $dailyLate = [];
           $daysLabel = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-          $fallbackDailyLate = [2, 1, 4, 2, 5, 1, 0];
-          for ($d = 6; $d >= 0; $d--) {
-              $targetDate = now()->subDays($d);
+          $fallbackDailyLate = [2, 4, 1, 3, 5, 2, 1];
+          $startOfWeek = now()->startOfWeek(); // Mulai dari hari Senin
+          for ($d = 0; $d < 7; $d++) {
+              $targetDate = (clone $startOfWeek)->addDays($d);
               $dateStr = $targetDate->format('Y-m-d');
-              $dayIndex = (int) $targetDate->format('N') - 1;
+              $dayIndex = $d;
 
               $realCount = Logbook::whereDate('tanggal_pinjam', $dateStr)
                   ->where(function ($q) {
@@ -690,7 +691,7 @@ class AdminWebController extends Controller
             });
         }
 
-        $units = $query->latest()->paginate(15)->withQueryString();
+        $units = $query->latest()->paginate(10)->withQueryString();
 
         $units->getCollection()->transform(function ($u) {
             return [
@@ -1410,7 +1411,7 @@ class AdminWebController extends Controller
     public function calendar(Request $request): Response
     {
         $year = (int) ($request->year ?? now()->year);
-        $month = (int) ($request->month ?? 10); // Default to October as in reference screenshot or current month
+        $month = (int) ($request->month ?? now()->month);
 
         $loans = Logbook::with(['user', 'barangUnit.barang.kategori'])
             ->latest('tanggal_pinjam')
@@ -1421,41 +1422,44 @@ class AdminWebController extends Controller
 
                 $categoryName = $log->barangUnit?->barang?->kategori?->nama_kategori ?? 'Umum';
 
-                // Color themes matching reference screenshot (purple, pink, orange, blue)
-                $colorThemes = [
-                    'Perkakas' => [
-                        'bg' => '#EDE9FE',
-                        'border' => '#7C3AED',
-                        'text' => '#5B21B6',
-                        'badge' => 'bg-purple-100 text-purple-800 border-purple-200',
-                    ],
-                    'Elektronik' => [
-                        'bg' => '#DBEAFE',
-                        'border' => '#2563EB',
-                        'text' => '#1E40AF',
-                        'badge' => 'bg-blue-100 text-blue-800 border-blue-200',
-                    ],
-                    'Komponen' => [
-                        'bg' => '#FFEDD5',
-                        'border' => '#F97316',
-                        'text' => '#9A3412',
-                        'badge' => 'bg-orange-100 text-orange-800 border-orange-200',
-                    ],
-                    'Festival' => [
-                        'bg' => '#FCE7F3',
-                        'border' => '#DB2777',
-                        'text' => '#9D174D',
-                        'badge' => 'bg-pink-100 text-pink-800 border-pink-200',
-                    ],
-                ];
+                // Aturan warna status peminjaman:
+                // Biru : Hari user meminjam & batas hari user meminjam (aktif normal)
+                // Hijau: User mengembalikan secara tepat waktu
+                // Merah: Ketika user melebihi waktu peminjaman / terlambat
+                $isReturned = $log->status_transaksi === 'dikembalikan';
+                $isLateReturn = $isReturned && $log->tanggal_kembali && $batas && $log->tanggal_kembali->greaterThan($batas);
 
-                $themeKey = match ($log->id % 4) {
-                    0 => 'Perkakas',
-                    1 => 'Festival',
-                    2 => 'Komponen',
-                    3 => 'Elektronik',
-                };
-                $theme = $colorThemes[$categoryName] ?? $colorThemes[$themeKey];
+                if ($isReturned) {
+                    if ($isLateReturn) {
+                        $theme = [
+                            'bg' => '#FEF2F2',
+                            'border' => '#DC2626',
+                            'text' => '#B91C1C',
+                            'badge' => 'bg-red-100 text-red-800 border-red-200',
+                        ];
+                    } else {
+                        $theme = [
+                            'bg' => '#ECFDF5',
+                            'border' => '#10B981',
+                            'text' => '#047857',
+                            'badge' => 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                        ];
+                    }
+                } elseif ($isOverdue) {
+                    $theme = [
+                        'bg' => '#FEF2F2',
+                        'border' => '#DC2626',
+                        'text' => '#B91C1C',
+                        'badge' => 'bg-red-100 text-red-800 border-red-200',
+                    ];
+                } else {
+                    $theme = [
+                        'bg' => '#EFF6FF',
+                        'border' => '#2563EB',
+                        'text' => '#1D4ED8',
+                        'badge' => 'bg-blue-100 text-blue-800 border-blue-200',
+                    ];
+                }
 
                 return [
                     'id' => $log->id,
@@ -1478,6 +1482,7 @@ class AdminWebController extends Controller
                     'batas_kembali_date' => $batas ? $batas->format('Y-m-d') : null,
                     'tanggal_kembali' => $log->tanggal_kembali ? $log->tanggal_kembali->format('Y-m-d H:i') : null,
                     'tanggal_kembali_formatted' => $log->tanggal_kembali ? $log->tanggal_kembali->translatedFormat('d M Y, H:i') : null,
+                    'tanggal_kembali_date' => $log->tanggal_kembali ? $log->tanggal_kembali->format('Y-m-d') : null,
                     'status_transaksi' => $log->status_transaksi, // 'dipinjam' | 'dikembalikan'
                     'kondisi_kembali' => $log->kondisi_kembali,
                     'is_overdue' => $isOverdue,
@@ -1557,24 +1562,67 @@ class AdminWebController extends Controller
     }
 
     /**
-     * Polling transaksi baru (peminjaman & pengembalian) untuk notifikasi realtime web admin
+     * Polling transaksi baru (peminjaman & pengembalian) dan deteksi keterlambatan (overdue) untuk web admin
      */
     public function checkNewTransactions(Request $request): JsonResponse
     {
         $since = $request->query('since');
+        $now = now();
+
+        // Cari semua peminjaman aktif yang telah melewati batas kembali (overdue)
+        $overdueLogs = Logbook::with(['user', 'barangUnit.barang'])
+            ->where('status_transaksi', 'dipinjam')
+            ->whereNotNull('batas_kembali')
+            ->where('batas_kembali', '<', $now)
+            ->orderBy('batas_kembali', 'asc')
+            ->get();
+
+        $overdues = $overdueLogs->map(function ($log) use ($now) {
+            $isGuest = $log->tipe_peminjam === 'guest';
+            $userName = $isGuest
+                ? ($log->guest_nama ?: 'Tamu') . ' (Tamu)'
+                : ($log->user?->nama ?? 'Pengguna Workshop');
+
+            $userNip = $isGuest ? 'Guest' : ($log->user?->nip ?? '-');
+            $barangName = $log->barangUnit?->barang?->nama_barang ?? 'Barang Workshop';
+            $kodeUnit = $log->barangUnit?->kode_unit ?? '-';
+            $diffSeconds = abs($now->getTimestamp() - $log->batas_kembali->getTimestamp());
+
+            return [
+                'id' => 'overdue_' . $log->id,
+                'logbook_id' => $log->id,
+                'type' => 'overdue',
+                'title' => 'Peringatan: Melebihi Batas Waktu!',
+                'user_name' => $userName,
+                'user_nip' => $userNip,
+                'is_guest' => $isGuest,
+                'barang_name' => $barangName,
+                'kode_unit' => $kodeUnit,
+                'kondisi' => 'baik',
+                'status_transaksi' => 'dipinjam',
+                'batas_kembali' => $log->batas_kembali->toIso8601String(),
+                'batas_kembali_formatted' => $log->batas_kembali->translatedFormat('d M Y, H:i'),
+                'seconds_overdue' => $diffSeconds,
+                'message' => "Peminjaman {$barangName} ({$kodeUnit}) oleh {$userName} telah melebihi batas waktu pengembalian.",
+                'time' => $log->batas_kembali->diffForHumans(),
+                'timestamp' => $log->batas_kembali->toIso8601String(),
+            ];
+        });
 
         if (! $since) {
-            // Inisialisasi awal saat halaman dibuka: kembalikan waktu server saat ini
+            // Inisialisasi awal saat halaman dibuka: kembalikan waktu server dan data overdue aktif saat ini
             return response()->json([
-                'server_time' => now()->toIso8601String(),
+                'server_time' => $now->toIso8601String(),
                 'notifications' => [],
+                'overdues' => $overdues,
+                'overdue_count' => $overdues->count(),
             ]);
         }
 
         try {
             $parsedSince = Carbon::parse($since);
         } catch (\Exception $e) {
-            $parsedSince = now()->subSeconds(10);
+            $parsedSince = $now->copy()->subSeconds(10);
         }
 
         // Ambil logbook yang diupdate setelah timestamp $parsedSince
@@ -1628,6 +1676,8 @@ class AdminWebController extends Controller
                 'kode_unit' => $kodeUnit,
                 'kondisi' => $kondisi,
                 'status_transaksi' => $log->status_transaksi,
+                'batas_kembali' => $log->batas_kembali?->toIso8601String(),
+                'batas_kembali_formatted' => $log->batas_kembali?->translatedFormat('d M Y, H:i'),
                 'message' => $message,
                 'time' => $log->updated_at->diffForHumans(),
                 'timestamp' => $log->updated_at->toIso8601String(),
@@ -1672,8 +1722,10 @@ class AdminWebController extends Controller
         $allNotifications = $notifications->concat($stockNotifications)->sortByDesc('timestamp')->values();
 
         return response()->json([
-            'server_time' => now()->toIso8601String(),
+            'server_time' => $now->toIso8601String(),
             'notifications' => $allNotifications,
+            'overdues' => $overdues,
+            'overdue_count' => $overdues->count(),
         ]);
     }
 
@@ -1693,24 +1745,47 @@ class AdminWebController extends Controller
         $kodeUnit = $log?->barangUnit?->kode_unit ?? 'BOR-101-01';
 
         $isReturned = $type === 'return';
+        $isOverdue = $type === 'overdue';
 
-        $notification = [
-            'id' => 'sim_' . time() . '_' . rand(100, 999),
-            'logbook_id' => $log?->id ?? 1,
-            'type' => $type,
-            'title' => $isReturned ? 'Pengembalian Barang Selesai' : 'Peminjaman Barang Baru',
-            'user_name' => $userName,
-            'user_nip' => $userNip,
-            'barang_name' => $barangName,
-            'kode_unit' => $kodeUnit,
-            'kondisi' => $kondisi,
-            'status_transaksi' => $isReturned ? 'dikembalikan' : 'dipinjam',
-            'message' => $isReturned
-                ? "{$userName} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi unit: " . ucfirst($kondisi) . "."
-                : "{$userName} (NIP: {$userNip}) baru saja meminjam {$barangName} ({$kodeUnit}).",
-            'time' => 'Baru saja',
-            'timestamp' => now()->toIso8601String(),
-        ];
+        if ($isOverdue) {
+            $simulatedBatas = now()->subMinutes(14)->subSeconds(22);
+            $notification = [
+                'id' => 'sim_overdue_' . time() . '_' . rand(100, 999),
+                'logbook_id' => $log?->id ?? 1,
+                'type' => 'overdue',
+                'title' => 'Peringatan: Melebihi Batas Waktu!',
+                'user_name' => $userName,
+                'user_nip' => $userNip,
+                'barang_name' => $barangName,
+                'kode_unit' => $kodeUnit,
+                'kondisi' => 'baik',
+                'status_transaksi' => 'dipinjam',
+                'batas_kembali' => $simulatedBatas->toIso8601String(),
+                'batas_kembali_formatted' => $simulatedBatas->translatedFormat('d M Y, H:i'),
+                'seconds_overdue' => 862,
+                'message' => "Peminjaman {$barangName} ({$kodeUnit}) oleh {$userName} telah melebihi batas waktu.",
+                'time' => '14 menit lalu',
+                'timestamp' => $simulatedBatas->toIso8601String(),
+            ];
+        } else {
+            $notification = [
+                'id' => 'sim_' . time() . '_' . rand(100, 999),
+                'logbook_id' => $log?->id ?? 1,
+                'type' => $type,
+                'title' => $isReturned ? 'Pengembalian Barang Selesai' : 'Peminjaman Barang Baru',
+                'user_name' => $userName,
+                'user_nip' => $userNip,
+                'barang_name' => $barangName,
+                'kode_unit' => $kodeUnit,
+                'kondisi' => $kondisi,
+                'status_transaksi' => $isReturned ? 'dikembalikan' : 'dipinjam',
+                'message' => $isReturned
+                    ? "{$userName} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi unit: " . ucfirst($kondisi) . "."
+                    : "{$userName} (NIP: {$userNip}) baru saja meminjam {$barangName} ({$kodeUnit}).",
+                'time' => 'Baru saja',
+                'timestamp' => now()->toIso8601String(),
+            ];
+        }
 
         return response()->json([
             'success' => true,

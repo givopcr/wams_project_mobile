@@ -294,13 +294,17 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
                               color: Color(0xFF2563EB),
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              u.kodeUnit,
-                              style: const TextStyle(
-                                color: Color(0xFF1D4ED8),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                                fontFamily: 'monospace',
+                            Flexible(
+                              child: Text(
+                                u.kodeUnit,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF1D4ED8),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                ),
                               ),
                             ),
                           ],

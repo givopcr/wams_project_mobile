@@ -201,8 +201,8 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
                     </div>
                 )}
 
-                {/* Page Content Viewport */}
-                <main className="flex-1 pb-24 px-4 pt-4">
+                {/* Page Content Viewport with key={url} to trigger page transition animation */}
+                <main key={url || window.location.pathname} className="flex-1 pb-24 px-4 pt-4 animate-page-enter">
                     {children}
                 </main>
 

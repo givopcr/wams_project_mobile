@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ConfirmModal from '@/Components/ConfirmModal';
 import {
@@ -333,6 +333,29 @@ export default function UnitIndex({ units, barangList, filters }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination */}
+                {units.links && units.links.length > 3 && (
+                    <div className="p-4 border-t border-[#E0E0E0] flex items-center justify-end gap-3 bg-white">
+                        <div className="flex items-center gap-1 flex-wrap">
+                            {units.links.map((link, idx) => (
+                                <Link
+                                    key={idx}
+                                    href={link.url || '#'}
+                                    preserveState
+                                    className={`px-3 py-1 text-xs rounded-lg font-bold transition-colors ${
+                                        link.active
+                                            ? 'bg-[#D84040] text-white'
+                                            : link.url
+                                            ? 'text-[#1D1616] hover:bg-[#EEEEEE]'
+                                            : 'text-gray-300 pointer-events-none'
+                                    }`}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Modal Form Unit */}

@@ -215,7 +215,7 @@ export default function QrCodeIndex({ categories = [], units = [] }) {
                             }`}
                         >
                             <Smartphone size={15} />
-                            <span>QR Unit Fisik (Khusus Tamu / Web Mobile)</span>
+                            <span>QR Unit</span>
                             <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#D84040] text-white">
                                 {units.length}
                             </span>
@@ -231,7 +231,7 @@ export default function QrCodeIndex({ categories = [], units = [] }) {
                             }`}
                         >
                             <Boxes size={15} />
-                            <span>QR Kategori (Rak Workshop / Aplikasi Mobile)</span>
+                            <span>QR Kategori</span>
                             <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#EEEEEE] text-[#1D1616] border border-[#E0E0E0]">
                                 {categories.length}
                             </span>

@@ -138,8 +138,8 @@ export default function KategoriIndex({ categories, filters }) {
                                                         Habis Pakai
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-[#D84040] border border-rose-200">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-[#D84040]"></span>
                                                         Aset Peminjaman
                                                     </span>
                                                 )}

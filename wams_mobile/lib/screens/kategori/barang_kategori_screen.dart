@@ -50,7 +50,7 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
     );
   }
 
-  void _showPakaiBahanBottomSheet(BuildContext context, BarangModel item) {
+  void _showPakaiBahanBottomSheet(BarangModel item) {
     final qtyController = TextEditingController(text: '1');
     final noteController = TextEditingController();
     bool isSubmitting = false;
@@ -60,7 +60,7 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setSheetState) {
+        builder: (sheetContext, setSheetState) {
           final sisaStok = item.stokSaatIni;
           final satuan = item.satuan ?? 'unit';
 
@@ -69,7 +69,7 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
               left: 20,
               right: 20,
               top: 20,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
             ),
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -189,15 +189,19 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                     onPressed: isSubmitting
                         ? null
                         : () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final assetProvider = context.read<AssetProvider>();
+                            final navigator = Navigator.of(ctx);
+
                             final qty = double.tryParse(qtyController.text) ?? 0;
                             if (qty <= 0) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              messenger.showSnackBar(
                                 const SnackBar(content: Text('Jumlah pemakaian harus lebih dari 0')),
                               );
                               return;
                             }
                             if (qty > sisaStok) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              messenger.showSnackBar(
                                 SnackBar(content: Text('Sisa stok tidak mencukupi (sisa: $sisaStok $satuan)')),
                               );
                               return;
@@ -210,19 +214,19 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                                 jumlah: qty,
                                 keterangan: noteController.text.trim(),
                               );
-                              if (mounted) {
-                                Navigator.pop(ctx);
-                                context.read<AssetProvider>().fetchBarangByKategori(widget.kategoriId);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: const Color(0xFF10B981),
-                                    content: Text('Berhasil mencatat pemakaian $qty $satuan ${item.namaBarang}'),
-                                  ),
-                                );
-                              }
+                              navigator.pop();
+                              assetProvider.fetchBarangByKategori(widget.kategoriId);
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  backgroundColor: const Color(0xFF10B981),
+                                  content: Text('Berhasil mencatat pemakaian $qty $satuan ${item.namaBarang}'),
+                                ),
+                              );
                             } catch (e) {
-                              setSheetState(() => isSubmitting = false);
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              if (mounted) {
+                                setSheetState(() => isSubmitting = false);
+                              }
+                              messenger.showSnackBar(
                                 SnackBar(
                                   backgroundColor: Colors.red,
                                   content: Text(e.toString().replaceAll('Exception: ', '')),
@@ -447,7 +451,7 @@ class _BarangKategoriScreenState extends State<BarangKategoriScreen> {
                                       Row(
                                         children: [
                                           Text(
-                                            'Stok: ${item.stokSaatIni % 1 == 0 ? item.stokSaatIni.toInt().toString() : item.stokSaatIni.toString()} ${item.satuan.isNotEmpty ? item.satuan : 'Unit'}',
+                                            'Stok: ${item.stokSaatIni % 1 == 0 ? item.stokSaatIni.toInt().toString() : item.stokSaatIni.toString()} ${(item.satuan != null && item.satuan!.isNotEmpty) ? item.satuan! : 'Unit'}',
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w600,
