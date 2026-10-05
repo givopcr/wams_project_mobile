@@ -115,6 +115,30 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleGoogleLogin() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.loginWithGoogle();
+
+    if (!mounted) return;
+    if (success) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavigation()),
+      );
+    } else if (authProvider.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage!),
+          backgroundColor: AppTheme.danger,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
+  }
+
   Future<void> _handleRegister() async {
     if (!_registerFormKey.currentState!.validate()) return;
 
@@ -847,6 +871,67 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: Colors.white,
                       ),
                     ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Divider "atau"
+          Row(
+            children: const [
+              Expanded(child: Divider(color: Color(0xFFCBD5E1), thickness: 1)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'atau',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ),
+              Expanded(child: Divider(color: Color(0xFFCBD5E1), thickness: 1)),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Google Sign-In Outlined Button
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: OutlinedButton(
+              onPressed: authProvider.isLoading ? null : _handleGoogleLogin,
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/icons/google_logo.png',
+                    width: 22,
+                    height: 22,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Masuk dengan Google',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0F172A),
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

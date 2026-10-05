@@ -23,6 +23,10 @@ Route::post('/login', [AuthWebController::class, 'login'])->name('login.post');
 Route::get('/admin/login', fn () => redirect()->route('login'));
 Route::post('/admin/login', [AuthWebController::class, 'login']);
 
+// Google OAuth Web Routes
+Route::get('/auth/google', [AuthWebController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('/auth/google/callback', [AuthWebController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+
 // Universal Logout (Bisa diakses oleh role admin maupun user tanpa terblokir middleware)
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');

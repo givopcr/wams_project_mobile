@@ -49,6 +49,35 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> loginWithGoogle(String idToken) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse(ApiConstants.authGoogle),
+            headers: _headers(null),
+            body: jsonEncode({'id_token': idToken}),
+          )
+          .timeout(const Duration(seconds: 12));
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final token = data['data']['token'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_token', token);
+        return data;
+      } else {
+        throw Exception(data['message'] ?? 'Login Google gagal diverifikasi.');
+      }
+    } on TimeoutException {
+      throw Exception('Koneksi timeout ke ${ApiConstants.baseUrl}. Pastikan backend Laravel aktif.');
+    } on SocketException {
+      throw Exception('Gagal menghubungi server WAMS. Periksa jaringan Anda.');
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Terjadi kesalahan: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> register({
     required String nama,
     required String email,

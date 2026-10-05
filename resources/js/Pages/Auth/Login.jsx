@@ -4,6 +4,7 @@ import { User, Lock, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 
 export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
+    const [isGoogleRedirecting, setIsGoogleRedirecting] = useState(false);
 
     const { data, setData, post, processing, errors } = useForm({
         login: '',
@@ -14,6 +15,11 @@ export default function Login() {
     const submit = (e) => {
         e.preventDefault();
         post('/login');
+    };
+
+    const handleGoogleLogin = () => {
+        setIsGoogleRedirecting(true);
+        window.location.href = '/auth/google';
     };
 
     return (
@@ -116,6 +122,44 @@ export default function Login() {
                                     className="w-full py-3.5 bg-gradient-to-r from-[#D84040] to-[#8E1616] hover:from-[#c93636] hover:to-[#771111] text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-[#D84040]/30 hover:shadow-xl hover:shadow-[#D84040]/40 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
                                 >
                                     {processing ? 'Memproses...' : 'Masuk ke Sistem'}
+                                </button>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="relative my-4 flex items-center justify-center">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-slate-200" />
+                                </div>
+                                <div className="relative bg-white px-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                    atau masuk dengan
+                                </div>
+                            </div>
+
+                            {/* Google Sign-In Button */}
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={handleGoogleLogin}
+                                    disabled={isGoogleRedirecting || processing}
+                                    className="w-full h-12 px-4 bg-white hover:bg-slate-50/80 border border-slate-300 hover:border-slate-400 active:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-2xl transition-all shadow-xs hover:shadow-sm flex items-center justify-center gap-3 active:scale-[0.99] cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed group"
+                                >
+                                    {isGoogleRedirecting ? (
+                                        <div className="flex items-center gap-2.5">
+                                            <span className="w-4 h-4 border-2 border-[#D84040] border-t-transparent rounded-full animate-spin" />
+                                            <span className="text-slate-600 text-xs font-semibold">Mengarahkan ke Google...</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <img
+                                                src="/images/google_logo.png"
+                                                alt="Google"
+                                                className="w-5 h-5 object-contain shrink-0 transition-transform duration-200 group-hover:scale-105"
+                                            />
+                                            <span className="font-semibold text-[14px] text-slate-800 tracking-tight">
+                                                Masuk dengan Google
+                                            </span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
 

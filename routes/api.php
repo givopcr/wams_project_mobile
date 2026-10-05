@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 // Public Authentication
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/auth/google', [AuthController::class, 'loginWithGoogle']);
 
 // Public/Browsing Data (Bisa diakses untuk scan atau katalog)
 Route::get('/kategori', [KategoriController::class, 'index']);

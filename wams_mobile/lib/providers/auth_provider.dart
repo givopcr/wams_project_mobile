@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 
@@ -50,6 +52,52 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final response = await _apiService.login(loginInput, password);
+      final userData = response['data']['user'];
+      _user = UserModel.fromJson(userData);
+      await fetchProfile();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> loginWithGoogle() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final googleSignIn = GoogleSignIn(
+        serverClientId: ApiConstants.googleServerClientId,
+        scopes: ['email', 'profile'],
+      );
+
+      // Pastikan sesi sebelumnya di-sign out agar user bisa memilih akun
+      await googleSignIn.signOut();
+
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        // Pengguna membatalkan login
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception(
+          'Tidak dapat memvalidasi token Google. Pastikan Client ID & SHA-1 telah terkonfigurasi di Google Cloud Console.',
+        );
+      }
+
+      final response = await _apiService.loginWithGoogle(idToken);
       final userData = response['data']['user'];
       _user = UserModel.fromJson(userData);
       await fetchProfile();

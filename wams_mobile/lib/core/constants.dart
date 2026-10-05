@@ -15,9 +15,14 @@ class ApiConstants {
   // Auth endpoints
   static String get login => '$baseUrl/login';
   static String get register => '$baseUrl/register';
+  static String get authGoogle => '$baseUrl/auth/google';
   static String get logout => '$baseUrl/logout';
   static String get me => '$baseUrl/me';
   static String get profile => '$baseUrl/profile';
+
+  // Google OAuth Server Client ID (Web Client ID dari Google Cloud Console)
+  static const String googleServerClientId =
+      '790986978514-sftg4a1fp0mpn5pf66e1ckab42bvnboe.apps.googleusercontent.com';
 
   // Asset endpoints
   static String get kategori => '$baseUrl/kategori';
