@@ -300,7 +300,7 @@ class TransaksiController extends Controller
                 'alasan_penolakan' => $log->alasan_penolakan,
                 'tanggal_approval' => $log->tanggal_approval ? $log->tanggal_approval->toIso8601String() : null,
                 'nama_approver' => $log->approver?->nama,
-                'gambar_url' => ($barang && $barang->gambar) ? asset('storage/'.$barang->gambar) : null,
+                'gambar_url' => $unit?->gambar_url ?? ($barang?->gambar_url),
             ];
         });
 

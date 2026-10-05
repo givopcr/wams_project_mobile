@@ -523,7 +523,7 @@ class AdminWebController extends Controller
                     'keterangan' => 'Stok awal saat pendaftaran barang',
                 ]);
             }
-            return back()->with('success', "Master barang habis pakai {$barang->nama_barang} berhasil dibuat.");
+            return back()->with('success', "Barang habis pakai {$barang->nama_barang} berhasil dibuat.");
         }
 
         $jumlahUnit = (int) $request->input('jumlah_unit', 0);
@@ -537,10 +537,10 @@ class AdminWebController extends Controller
                     'kondisi' => 'baik',
                 ]);
             }
-            return back()->with('success', "Master barang berhasil dibuat beserta {$jumlahUnit} unit fisik siap pakai.");
+            return back()->with('success', "Barang berhasil dibuat beserta {$jumlahUnit} unit fisik siap pakai.");
         }
 
-        return back()->with('success', 'Master barang berhasil dibuat.');
+        return back()->with('success', 'Barang berhasil dibuat.');
     }
 
     public function updateBarang(Request $request, $id): RedirectResponse
@@ -577,7 +577,7 @@ class AdminWebController extends Controller
 
         $barang->update($validated);
 
-        return back()->with('success', 'Master barang berhasil diperbarui.');
+        return back()->with('success', 'Barang berhasil diperbarui.');
     }
 
     /**
@@ -661,7 +661,7 @@ class AdminWebController extends Controller
         }
         $barang->delete();
 
-        return back()->with('success', 'Master barang berhasil dihapus.');
+        return back()->with('success', 'Barang berhasil dihapus.');
     }
 
     /**
@@ -1609,32 +1609,17 @@ class AdminWebController extends Controller
             ];
         });
 
-        if (! $since) {
-            // Inisialisasi awal saat halaman dibuka: kembalikan waktu server dan data overdue aktif saat ini
-            return response()->json([
-                'server_time' => $now->toIso8601String(),
-                'notifications' => [],
-                'overdues' => $overdues,
-                'overdue_count' => $overdues->count(),
-            ]);
-        }
-
-        try {
-            $parsedSince = Carbon::parse($since);
-        } catch (\Exception $e) {
-            $parsedSince = $now->copy()->subSeconds(10);
-        }
-
-        // Ambil logbook yang diupdate setelah timestamp $parsedSince
-        $logs = Logbook::with(['user', 'barangUnit.barang'])
-            ->where('updated_at', '>', $parsedSince)
+        // Ambil riwayat logbook terbaru (15 transaksi terakhir) untuk ditampilkan pada dropdown bel
+        $recentLogs = Logbook::with(['user', 'barangUnit.barang'])
+            ->whereIn('status_transaksi', ['dipinjam', 'dikembalikan', 'menunggu_persetujuan', 'dibatalkan'])
             ->latest('updated_at')
-            ->limit(5)
+            ->limit(15)
             ->get();
 
-        $notifications = $logs->map(function ($log) {
+        $formatLog = function ($log) {
             $isReturned = $log->status_transaksi === 'dikembalikan';
             $isApproval = $log->status_transaksi === 'menunggu_persetujuan';
+            $isDibatalkan = $log->status_transaksi === 'dibatalkan';
             $isGuest = $log->tipe_peminjam === 'guest';
 
             $userName = $isGuest
@@ -1653,9 +1638,14 @@ class AdminWebController extends Controller
             } elseif ($isReturned) {
                 $type = 'return';
                 $title = $isGuest ? 'Pengembalian Barang (Tamu)' : 'Pengembalian Barang Selesai';
+                $kondisiText = strtolower($kondisi) === 'rusak' ? 'Rusak' : 'Baik';
                 $message = $isGuest
-                    ? "Tamu {$log->guest_nama} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi: " . ucfirst($kondisi) . "."
-                    : "{$userName} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi: " . ucfirst($kondisi) . ".";
+                    ? "Tamu {$log->guest_nama} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi: {$kondisiText}."
+                    : "{$userName} telah mengembalikan {$barangName} ({$kodeUnit}). Kondisi: {$kondisiText}.";
+            } elseif ($isDibatalkan) {
+                $type = 'cancel';
+                $title = 'Peminjaman Dibatalkan';
+                $message = "{$userName} membatalkan pengajuan peminjaman {$barangName} ({$kodeUnit}).";
             } else {
                 $type = 'borrow';
                 $title = $isGuest ? 'Peminjaman Barang Baru (Tamu)' : 'Peminjaman Barang Baru';
@@ -1665,7 +1655,7 @@ class AdminWebController extends Controller
             }
 
             return [
-                'id' => $log->id . '_' . $log->status_transaksi . '_' . $log->updated_at->timestamp,
+                'id' => 'log_' . $log->id . '_' . $log->status_transaksi . '_' . $log->updated_at->timestamp,
                 'logbook_id' => $log->id,
                 'type' => $type,
                 'title' => $title,
@@ -1682,16 +1672,50 @@ class AdminWebController extends Controller
                 'time' => $log->updated_at->diffForHumans(),
                 'timestamp' => $log->updated_at->toIso8601String(),
             ];
-        });
+        };
+
+        $historyNotifications = $recentLogs->map($formatLog);
+
+        if (! $since) {
+            // Pada saat halaman admin dibuka / di-refresh, tampilkan toast untuk transaksi yang baru terjadi (< 60 detik lalu)
+            $recentThreshold = $now->copy()->subSeconds(60);
+            $newLogs = $recentLogs->filter(function ($log) use ($recentThreshold) {
+                return $log->updated_at >= $recentThreshold;
+            });
+
+            $stockLogs = TransaksiStok::with(['barang', 'user'])
+                ->where('created_at', '>=', $recentThreshold)
+                ->where('tipe', 'keluar')
+                ->latest('created_at')
+                ->get();
+        } else {
+            try {
+                $parsedSince = Carbon::parse($since);
+            } catch (\Exception $e) {
+                $parsedSince = $now->copy()->subSeconds(10);
+            }
+
+            // Gunakan buffer mundur 5 detik untuk mengatasi perbedaan jam client/server & resolusi detik MySQL
+            $bufferedSince = $parsedSince->copy()->subSeconds(5);
+
+            $newLogs = Logbook::with(['user', 'barangUnit.barang'])
+                ->where('updated_at', '>=', $bufferedSince)
+                ->whereIn('status_transaksi', ['dipinjam', 'dikembalikan', 'menunggu_persetujuan', 'dibatalkan'])
+                ->latest('updated_at')
+                ->limit(10)
+                ->get();
+
+            $stockLogs = TransaksiStok::with(['barang', 'user'])
+                ->where('created_at', '>=', $bufferedSince)
+                ->where('tipe', 'keluar')
+                ->latest('created_at')
+                ->limit(5)
+                ->get();
+        }
+
+        $notifications = $newLogs->map($formatLog);
 
         // Ambil pemakaian bahan habis pakai yang menyebabkan stok menipis
-        $stockLogs = TransaksiStok::with(['barang', 'user'])
-            ->where('created_at', '>', $parsedSince)
-            ->where('tipe', 'keluar')
-            ->latest('created_at')
-            ->limit(5)
-            ->get();
-
         $stockNotifications = $stockLogs->filter(function ($t) {
             return (float) $t->sisa_stok <= (float) ($t->barang?->stok_minimum ?? 0);
         })->map(function ($t) {
@@ -1720,10 +1744,12 @@ class AdminWebController extends Controller
         });
 
         $allNotifications = $notifications->concat($stockNotifications)->sortByDesc('timestamp')->values();
+        $allHistory = $historyNotifications->concat($stockNotifications)->sortByDesc('timestamp')->take(15)->values();
 
         return response()->json([
             'server_time' => $now->toIso8601String(),
             'notifications' => $allNotifications,
+            'history' => $allHistory,
             'overdues' => $overdues,
             'overdue_count' => $overdues->count(),
         ]);

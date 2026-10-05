@@ -112,106 +112,106 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-        decoration: const BoxDecoration(
-          color: AppTheme.cardLight,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Handle Bar
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppTheme.borderLight,
-                  borderRadius: BorderRadius.circular(2),
+      builder: (ctx) => Material(
+        color: AppTheme.cardLight,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Handle Bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.borderLight,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const Text(
-              'Ganti Foto Profil',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Option 1: Kamera
-            ListTile(
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.camera);
-              },
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+              const Text(
+                'Ganti Foto Profil',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
                 ),
-                child: const Icon(Icons.photo_camera_rounded, color: AppTheme.primary, size: 22),
               ),
-              title: const Text(
-                'Ambil Foto dari Kamera',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            ),
-            const Divider(color: AppTheme.borderLight, height: 1),
+              const SizedBox(height: 16),
 
-            // Option 2: Galeri
-            ListTile(
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickImage(ImageSource.gallery);
-              },
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.photo_library_rounded, color: Colors.blue, size: 22),
-              ),
-              title: const Text(
-                'Pilih dari Galeri',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            ),
-
-            // Option 3: Hapus Foto (jika ada foto tersimpan)
-            if (_avatarPath != null) ...[
-              const Divider(color: AppTheme.borderLight, height: 1),
+              // Option 1: Kamera
               ListTile(
                 onTap: () {
                   Navigator.pop(ctx);
-                  _removePhoto();
+                  _pickImage(ImageSource.camera);
                 },
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppTheme.danger.withValues(alpha: 0.1),
+                    color: AppTheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger, size: 22),
+                  child: const Icon(Icons.photo_camera_rounded, color: AppTheme.primary, size: 22),
                 ),
                 title: const Text(
-                  'Hapus Foto Profil',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.danger),
+                  'Ambil Foto dari Kamera',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               ),
+              const Divider(color: AppTheme.borderLight, height: 1),
+
+              // Option 2: Galeri
+              ListTile(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.gallery);
+                },
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: Colors.blue, size: 22),
+                ),
+                title: const Text(
+                  'Pilih dari Galeri',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              ),
+
+              // Option 3: Hapus Foto (jika ada foto tersimpan)
+              if (_avatarPath != null) ...[
+                const Divider(color: AppTheme.borderLight, height: 1),
+                ListTile(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _removePhoto();
+                  },
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.danger.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger, size: 22),
+                  ),
+                  title: const Text(
+                    'Hapus Foto Profil',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.danger),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -346,29 +346,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Nama Pengguna + Badge Verified
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            user?.nama ?? 'Teknisi Workshop',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.verified_rounded,
-                          size: 17,
-                          color: AppTheme.success,
-                        ),
-                      ],
+                    // Nama Pengguna
+                    Text(
+                      user?.nama ?? 'Teknisi Workshop',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 4),
 
@@ -550,29 +536,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-                child: ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+                child: Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.badge_outlined, color: AppTheme.primary, size: 20),
                     ),
-                    child: const Icon(Icons.badge_outlined, color: AppTheme.primary, size: 20),
-                  ),
-                  title: const Text(
-                    'NIP Pegawai',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                  ),
-                  trailing: Text(
-                    user?.nip ?? '2457301063',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
-                      color: AppTheme.textPrimary,
+                    title: const Text(
+                      'NIP Pegawai',
+                      style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
                     ),
+                    trailing: Text(
+                      user?.nip ?? '-',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 ),
               ).animate(delay: 160.ms).fadeIn(duration: 350.ms).slideY(begin: 0.04, end: 0),
 
@@ -605,66 +593,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-                child: Column(
-                  children: [
-                    // Edit Profil & Password
-                    ListTile(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-                        );
-                      },
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
+                child: Material(
+                  color: Colors.transparent,
+                  child: Column(
+                    children: [
+                      // Edit Profil & Password
+                      ListTile(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                          );
+                        },
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.manage_accounts_outlined, color: AppTheme.primary, size: 20),
                         ),
-                        child: const Icon(Icons.manage_accounts_outlined, color: AppTheme.primary, size: 20),
-                      ),
-                      title: const Text(
-                        'Edit Profil & Password',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
+                        title: const Text(
+                          'Edit Profil & Password',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
                         ),
+                        subtitle: const Text(
+                          'Perbarui data akun',
+                          style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                        ),
+                        trailing: const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF), size: 20),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       ),
-                      subtitle: const Text(
-                        'Perbarui data akun',
-                        style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                      ),
-                      trailing: const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF), size: 20),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    ),
-                    const Divider(color: AppTheme.borderLight, height: 1),
+                      const Divider(color: AppTheme.borderLight, height: 1),
 
-                    // Info Versi
-                    ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.darkSlate.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(10),
+                      // Info Versi
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.darkSlate.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.info_outline, color: AppTheme.textMuted, size: 20),
                         ),
-                        child: const Icon(Icons.info_outline, color: AppTheme.textMuted, size: 20),
-                      ),
-                      title: const Text(
-                        'Versi Aplikasi',
-                        style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                      ),
-                      trailing: const Text(
-                        'v1.0.0 (WAMS)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textMuted,
+                        title: const Text(
+                          'Versi Aplikasi',
+                          style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
                         ),
+                        trailing: const Text(
+                          'v1.0.0 (WAMS)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textMuted,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 

@@ -399,8 +399,8 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             isOpen: true,
             type: 'barang',
             id: item.id,
-            title: 'Hapus Master Barang',
-            message: 'Yakin ingin menghapus master barang ini? Seluruh unit fisik dan riwayat logbook terkait juga akan dihapus secara permanen.',
+            title: 'Hapus Barang',
+            message: 'Yakin ingin menghapus barang ini? Seluruh unit fisik dan riwayat logbook terkait juga akan dihapus secara permanen.',
             itemBadge: `${item.kode_barang} • ${item.nama_barang}`,
         });
     };
@@ -532,7 +532,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
     const getCategoryIcon = (name = '') => {
         const lower = name.toLowerCase();
         if (lower.includes('perkakas')) return <Wrench size={22} className="text-[#D84040]" />;
-        if (lower.includes('elektronik')) return <Cpu size={22} className="text-blue-600" />;
+        if (lower.includes('elektronik')) return <Cpu size={22} className="text-amber-600" />;
         if (lower.includes('komponen')) return <Layers size={22} className="text-emerald-600" />;
         return <Package size={22} className="text-[#D84040]" />;
     };
@@ -563,7 +563,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
 
     return (
         <AuthenticatedLayout title="Manajemen Barang">
-            <Head title="Manajemen Master Barang & Unit - WAMS" />
+            <Head title="Manajemen Barang - WAMS" />
 
             <div className="space-y-6 max-w-7xl mx-auto">
                 {/* 1. STATISTIK KATEGORI CARDS */}
@@ -753,7 +753,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                     }`}
                                 >
                                     <Package size={14} />
-                                    <span>Master Barang ({filteredBarangList.length})</span>
+                                    <span>Barang ({filteredBarangList.length})</span>
                                 </button>
                                 <button
                                     type="button"
@@ -781,7 +781,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
                             >
                                 <Plus size={16} />
-                                <span>Tambah Master Barang</span>
+                                <span className="font-bold">Tambah Barang</span>
                             </button>
                         </div>
                     </div>
@@ -1079,14 +1079,14 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                     <button
                                                                         onClick={() => openEditModal(item)}
                                                                         className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1D1616] hover:bg-[#EEEEEE] transition-colors cursor-pointer"
-                                                                        title="Edit Master Barang"
+                                                                        title="Edit Barang"
                                                                     >
                                                                         <Edit2 size={15} />
                                                                     </button>
                                                                     <button
                                                                         onClick={() => openDeleteModal(item)}
                                                                         className="p-1.5 rounded-lg text-[#D84040] hover:bg-[#D84040]/10 transition-colors cursor-pointer"
-                                                                        title="Hapus Master Barang"
+                                                                        title="Hapus Barang"
                                                                     >
                                                                         <Trash2 size={15} />
                                                                     </button>
@@ -1135,7 +1135,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                                                         <div
                                                                                                             onClick={() => u.gambar_url && setPreviewModalImage({ url: u.gambar_url, nama: item.nama_barang, kode: u.kode_unit, kategori: item.nama_kategori })}
                                                                                                             className={`w-9 h-9 rounded-lg bg-[#EEEEEE] border border-[#E0E0E0] overflow-hidden flex items-center justify-center shrink-0 relative group ${u.gambar_url ? 'cursor-pointer hover:ring-2 hover:ring-[#D84040]/50' : ''}`}
-                                                                                                            title={u.unit_gambar_url ? 'Foto khusus unit fisik (Klik untuk perbesar)' : u.gambar_url ? 'Foto master barang (Klik untuk perbesar)' : 'Belum ada foto'}
+                                                                                                            title={u.unit_gambar_url ? 'Foto khusus unit fisik (Klik untuk perbesar)' : u.gambar_url ? 'Foto barang (Klik untuk perbesar)' : 'Belum ada foto'}
                                                                                                         >
                                                                                                             {u.gambar_url ? (
                                                                                                                 <>
@@ -1223,7 +1223,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                     <span className="text-xs text-[#6B7280]">
                                         Menampilkan <span className="font-bold text-[#1D1616]">{barangList.from || 0}</span> sampai{' '}
                                         <span className="font-bold text-[#1D1616]">{barangList.to || 0}</span> dari{' '}
-                                        <span className="font-bold text-[#1D1616]">{barangList.total || 0}</span> master barang
+                                        <span className="font-bold text-[#1D1616]">{barangList.total || 0}</span> barang
                                     </span>
                                     <div className="flex items-center gap-1 flex-wrap">
                                         {barangList.links.map((link, idx) => (
@@ -1253,7 +1253,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                     <thead className="bg-[#EEEEEE] border-b border-[#E0E0E0] text-[#1D1616] uppercase tracking-wider font-bold">
                                         <tr>
                                             <th className="p-4">Kode Unit Fisik</th>
-                                            <th className="p-4">Nama Master Barang</th>
+                                            <th className="p-4">Nama Barang</th>
                                             <th className="p-4">Kategori & Lokasi</th>
                                             <th className="p-4 text-center">Status Unit</th>
                                             <th className="p-4 text-center">Kondisi</th>
@@ -1405,10 +1405,10 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                         <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-[#E0E0E0]">
                             <div>
                                 <h3 className="text-base font-bold text-[#1D1616]">
-                                    {editingBarang ? 'Edit Master Barang' : 'Tambah Master Barang Baru'}
+                                    {editingBarang ? 'Edit Barang' : 'Tambah Barang Baru'}
                                 </h3>
                                 <p className="text-xs text-[#6B7280] mt-0.5">
-                                    {editingBarang ? 'Perbarui informasi dan spesifikasi master barang' : 'Lengkapi formulir untuk mendaftarkan barang baru ke inventaris'}
+                                    {editingBarang ? 'Perbarui informasi dan spesifikasi barang' : 'Lengkapi formulir untuk mendaftarkan barang baru ke inventaris'}
                                 </p>
                             </div>
                             <button
@@ -1769,7 +1769,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                     disabled={processing}
                                     className="px-5 py-2 bg-[#D84040] hover:bg-[#8E1616] text-white rounded-xl text-xs font-bold disabled:opacity-50 transition-colors cursor-pointer shadow-sm shadow-red-200"
                                 >
-                                    {processing ? 'Menyimpan...' : (editingBarang ? 'Simpan Perubahan' : 'Simpan Master Barang')}
+                                    {processing ? 'Menyimpan...' : (editingBarang ? 'Simpan Perubahan' : 'Simpan Barang')}
                                 </button>
                             </div>
                         </form>
@@ -1951,7 +1951,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                     type="button"
                                                     onClick={handleRemoveExistingUnitImage}
                                                     className="p-1.5 text-[#D84040] hover:bg-rose-50 rounded-lg cursor-pointer"
-                                                    title="Hapus foto khusus unit ini (akan ikut foto master barang)"
+                                                    title="Hapus foto khusus unit ini (akan ikut foto barang)"
                                                 >
                                                     <Trash2 size={15} />
                                                 </button>
@@ -1971,7 +1971,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                     Klik untuk unggah foto khusus unit
                                                 </p>
                                                 <p className="text-[10.5px] text-[#6B7280] mt-0.5">
-                                                    Jika dikosongkan, unit akan otomatis menggunakan foto Master Barang
+                                                    Jika dikosongkan, unit akan otomatis menggunakan foto Barang
                                                 </p>
                                             </div>
                                         </div>

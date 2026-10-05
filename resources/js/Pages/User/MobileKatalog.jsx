@@ -55,8 +55,8 @@ export default function MobileKatalog({
         if (lower.includes('elektronik')) {
             return {
                 icon: Cpu,
-                badge: 'bg-blue-50 text-blue-600 border-blue-200',
-                activeBg: 'bg-blue-600 text-white',
+                badge: 'bg-amber-50 text-amber-700 border-amber-200',
+                activeBg: 'bg-amber-500 text-white',
             };
         }
         return {
@@ -94,11 +94,10 @@ export default function MobileKatalog({
                     <button
                         type="button"
                         onClick={() => handleCategoryClick('')}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs ${
-                            selectedCategory === ''
+                        className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs ${selectedCategory === ''
                                 ? 'bg-[#D84040] text-white border-[#D84040]'
                                 : 'bg-white text-[#1D1616] border-[#E0E0E0] hover:border-[#D84040]'
-                        }`}
+                            }`}
                     >
                         Semua ({barangs.length})
                     </button>
@@ -111,11 +110,10 @@ export default function MobileKatalog({
                                 key={kat.id}
                                 type="button"
                                 onClick={() => handleCategoryClick(kat.id)}
-                                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs ${
-                                    isSelected
+                                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shrink-0 cursor-pointer shadow-2xs ${isSelected
                                         ? 'bg-[#D84040] text-white border-[#D84040]'
                                         : 'bg-white text-[#1D1616] border-[#E0E0E0] hover:border-[#D84040]'
-                                }`}
+                                    }`}
                             >
                                 {kat.nama_kategori}
                             </button>
@@ -167,23 +165,21 @@ export default function MobileKatalog({
                                             {/* Stock Availability Pill */}
                                             {item.is_habis_pakai ? (
                                                 <span
-                                                    className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
-                                                        item.stok_saat_ini > 0
+                                                    className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${item.stok_saat_ini > 0
                                                             ? item.is_low_stock
                                                                 ? 'bg-amber-100 text-amber-800 border-amber-300'
                                                                 : 'bg-emerald-100 text-emerald-800 border-emerald-200'
                                                             : 'bg-rose-100 text-rose-800 border-rose-200'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {item.stok_saat_ini > 0 ? `Stok: ${item.stok_saat_ini} ${item.satuan || ''}` : 'Stok Habis'}
                                                 </span>
                                             ) : (
                                                 <span
-                                                    className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
-                                                        isAvailable
+                                                    className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${isAvailable
                                                             ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
                                                             : 'bg-rose-100 text-rose-800 border-rose-200'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {isAvailable ? `${item.available_units} Tersedia` : 'Habis'}
                                                 </span>

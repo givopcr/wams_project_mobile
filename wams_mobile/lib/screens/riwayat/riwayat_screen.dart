@@ -19,6 +19,44 @@ class RiwayatScreen extends StatefulWidget {
 class _RiwayatScreenState extends State<RiwayatScreen> {
   final List<String> _tabs = ['Semua', 'Aktif', 'Selesai', 'Terlambat'];
 
+  Color _getTabPillColor(String tab) {
+    final lower = tab.toLowerCase();
+    switch (lower) {
+      case 'aktif':
+        return const Color(0xFFDC2626); // Merah
+      case 'selesai':
+        return const Color(0xFF16A34A); // Hijau
+      case 'terlambat':
+        return const Color(0xFFF59E0B); // Kuning / Amber
+      default:
+        return Colors.white; // 'Semua' default
+    }
+  }
+
+  Color _getTabShadowColor(String tab) {
+    final lower = tab.toLowerCase();
+    switch (lower) {
+      case 'aktif':
+        return const Color(0xFFDC2626).withValues(alpha: 0.35);
+      case 'selesai':
+        return const Color(0xFF16A34A).withValues(alpha: 0.35);
+      case 'terlambat':
+        return const Color(0xFFF59E0B).withValues(alpha: 0.35);
+      default:
+        return Colors.black.withValues(alpha: 0.07);
+    }
+  }
+
+  Color _getTabTextColor(String tab, bool isSelected) {
+    if (!isSelected) {
+      return const Color(0xFF64748B);
+    }
+    if (tab.toLowerCase() == 'semua') {
+      return const Color(0xFF0F172A);
+    }
+    return Colors.white;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -105,7 +143,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                   ),
                   child: Stack(
                     children: [
-                      // Smooth Sliding White Pill Indicator
+                      // Smooth Sliding Dynamic Pill Indicator
                       AnimatedPositioned(
                         duration: const Duration(milliseconds: 260),
                         curve: Curves.easeInOutCubic,
@@ -113,13 +151,15 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                         top: 0,
                         bottom: 0,
                         width: tabWidth,
-                        child: Container(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeInOutCubic,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: _getTabPillColor(_tabs[selectedIndex]),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.07),
+                                color: _getTabShadowColor(_tabs[selectedIndex]),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -146,12 +186,9 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                                 child: AnimatedDefaultTextStyle(
                                   duration: const Duration(milliseconds: 200),
                                   style: TextStyle(
-                                    fontFamily: 'Inter',
                                     fontSize: 13,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                    color: isSelected
-                                        ? AppTheme.textPrimary
-                                        : const Color(0xFF4B5563),
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                    color: _getTabTextColor(tab, isSelected),
                                   ),
                                   child: Text(tab),
                                 ),

@@ -50,8 +50,8 @@ export default function MobileDashboard({
         if (lower.includes('elektronik')) {
             return {
                 icon: Cpu,
-                badge: 'bg-blue-50 text-blue-600 border-blue-200',
-                activeBg: 'bg-blue-600 text-white',
+                badge: 'bg-amber-50 text-amber-700 border-amber-200',
+                activeBg: 'bg-amber-500 text-white',
             };
         }
         return {
@@ -178,11 +178,10 @@ export default function MobileDashboard({
                                                     {loan.kode_unit}
                                                 </span>
                                                 <span
-                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                                        loan.status_transaksi === 'dipinjam'
+                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${loan.status_transaksi === 'dipinjam'
                                                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                                             : 'bg-amber-50 text-amber-700 border-amber-200'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {loan.status_transaksi === 'dipinjam'
                                                         ? 'Sedang Dipinjam'
@@ -208,11 +207,10 @@ export default function MobileDashboard({
                                         </div>
                                         {loan.status_transaksi === 'dipinjam' && (
                                             <span
-                                                className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
-                                                    loan.is_overdue
+                                                className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${loan.is_overdue
                                                         ? 'bg-rose-100 text-rose-700'
                                                         : 'bg-amber-100 text-amber-800'
-                                                }`}
+                                                    }`}
                                             >
                                                 {loan.remaining_text}
                                             </span>

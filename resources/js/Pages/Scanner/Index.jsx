@@ -95,7 +95,7 @@ export default function ScannerIndex() {
                                 <h2 className="text-lg font-bold text-[#1D1616] mt-0.5">{categoryData.nama_kategori}</h2>
                             </div>
                             <span className="px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-full flex items-center gap-1">
-                                <CheckCircle2 size={13} /> {itemList.length} Master Barang
+                                <CheckCircle2 size={13} /> {itemList.length} Barang
                             </span>
                         </div>
 

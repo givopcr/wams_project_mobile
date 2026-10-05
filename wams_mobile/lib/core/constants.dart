@@ -4,7 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConstants {
   // Default fallback host
-  static String _host = 'http://127.0.0.1:8000';
+  static String _host = defaultTargetPlatform == TargetPlatform.android
+      ? 'http://10.0.2.2:8000'
+      : 'http://127.0.0.1:8000';
 
   static String get host => _host;
   static String get baseUrl => '$_host/api';
@@ -55,8 +57,10 @@ class ApiConstants {
   }
 
   /// Manual override if needed
-  static void setHost(String host) {
-    _host = host;
+  static Future<void> setHost(String host) async {
+    _host = host.trim().replaceAll(RegExp(r'/+$'), '');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('active_api_host', _host);
   }
 
   /// Initialize host detection from cache or probe network
@@ -75,24 +79,30 @@ class ApiConstants {
 
     // 1. If cached host still responds quickly, keep using it
     final cached = prefs.getString('active_api_host');
-    if (cached != null && await _testHost(cached)) {
+    if (cached != null && await testHost(cached)) {
       _host = cached;
       debugPrint('[ApiConstants] Using verified cached host: $_host');
       return _host;
     }
 
     // 2. Candidate hosts in priority order:
-    // - 127.0.0.1: Physical device via USB adb reverse or Desktop
     // - 10.0.2.2: Android Studio Emulator loopback
-    // - 10.21.243.101: Current local Wi-Fi LAN
+    // - 127.0.0.1: Physical device via USB adb reverse or Desktop
+    // - 10.21.243.167: Current local Wi-Fi LAN
     final candidates = [
-      'http://127.0.0.1:8000',
-      'http://10.0.2.2:8000',
+      if (defaultTargetPlatform == TargetPlatform.android) ...[
+        'http://10.0.2.2:8000',
+        'http://127.0.0.1:8000',
+      ] else ...[
+        'http://127.0.0.1:8000',
+        'http://10.0.2.2:8000',
+      ],
+      'http://10.21.243.167:8000',
       'http://10.21.243.101:8000',
     ];
 
     for (final candidate in candidates) {
-      if (await _testHost(candidate)) {
+      if (await testHost(candidate)) {
         _host = candidate;
         await prefs.setString('active_api_host', candidate);
         debugPrint('[ApiConstants] Auto-detected active host: $_host');
@@ -104,12 +114,13 @@ class ApiConstants {
     return _host;
   }
 
-  static Future<bool> _testHost(String candidateHost) async {
+  static Future<bool> testHost(String candidateHost) async {
     try {
       final client = http.Client();
+      final url = candidateHost.trim().replaceAll(RegExp(r'/+$'), '');
       final response = await client
-          .get(Uri.parse('$candidateHost/api/kategori'))
-          .timeout(const Duration(milliseconds: 650));
+          .get(Uri.parse('$url/api/kategori'))
+          .timeout(const Duration(milliseconds: 1500));
       client.close();
       return response.statusCode >= 200 && response.statusCode < 500;
     } catch (_) {

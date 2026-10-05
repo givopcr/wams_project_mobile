@@ -141,7 +141,6 @@ class _FormPengembalianScreenState extends State<FormPengembalianScreen> {
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.textMuted,
-                            fontFamily: 'monospace',
                           ),
                         ),
                       ],

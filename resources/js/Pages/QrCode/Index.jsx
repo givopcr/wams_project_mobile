@@ -183,7 +183,7 @@ export default function QrCodeIndex({ categories = [], units = [] }) {
 
             ctx.fillStyle = '#6B7280';
             ctx.font = '18px sans-serif';
-            ctx.fillText(`${kat.total_barang} Master Barang • ${kat.total_unit} Total Unit`, width / 2, 715);
+            ctx.fillText(`${kat.total_barang} Barang • ${kat.total_unit} Total Unit`, width / 2, 715);
 
             const pngFile = canvas.toDataURL('image/png');
             const downloadLink = document.createElement('a');
@@ -412,7 +412,7 @@ export default function QrCodeIndex({ categories = [], units = [] }) {
                                     </div>
 
                                     <div className="w-full pt-3 border-t border-[#E0E0E0] flex items-center justify-between text-xs text-[#6B7280]">
-                                        <span>{kat.total_barang} Master Barang</span>
+                                        <span>{kat.total_barang} Barang</span>
                                         <span className="font-bold text-[#1D1616]">
                                             {kat.total_unit} Total Unit
                                         </span>

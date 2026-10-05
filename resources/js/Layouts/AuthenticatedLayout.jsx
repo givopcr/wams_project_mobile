@@ -35,13 +35,18 @@ import PageSkeleton from '@/Components/PageSkeleton';
 let globalHasAlertedOverdue = false;
 let globalBellClicked = false;
 const globalAlertedOverdueIds = new Set();
+const globalAlertedToastIds = new Set();
+let globalLastCheckedTime = null;
+let globalNotificationHistory = [];
+let globalUnreadCount = 0;
 
 export default function AuthenticatedLayout({ title, children }) {
     const { auth, flash, url } = usePage().props;
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [toasts, setToasts] = useState([]);
     const [overdueLoans, setOverdueLoans] = useState([]);
-    const [notificationHistory, setNotificationHistory] = useState([]);
+    const [notificationHistory, setNotificationHistory] = useState(globalNotificationHistory);
+    const [unreadCount, setUnreadCount] = useState(globalUnreadCount);
     const [showNotifDropdown, setShowNotifDropdown] = useState(false);
     const [bellClicked, setBellClicked] = useState(globalBellClicked);
     const [isTesting, setIsTesting] = useState(false);
@@ -50,7 +55,6 @@ export default function AuthenticatedLayout({ title, children }) {
     const [loadingPath, setLoadingPath] = useState('');
 
     const user = auth?.user;
-    const lastCheckedTimeRef = useRef(new Date().toISOString());
     const dropdownRef = useRef(null);
 
     // Listen to Inertia page transitions to show skeleton loading
@@ -109,8 +113,7 @@ export default function AuthenticatedLayout({ title, children }) {
     const navItems = [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
         { name: 'Kalender', href: '/admin/calendar', icon: Calendar },
-        { name: 'Master Barang', href: '/admin/barang', icon: Package },
-        { name: 'Unit Fisik', href: '/admin/unit', icon: Layers },
+        { name: 'Barang', href: '/admin/barang', icon: Package },
         { name: 'Logbook', href: '/admin/logbook', icon: BookOpen },
         { name: 'Generate QR', href: '/admin/qrcode', icon: QrCode },
         { name: 'Manajemen User', href: '/admin/users', icon: Users },
@@ -207,21 +210,42 @@ export default function AuthenticatedLayout({ title, children }) {
         setToasts((prev) => prev.filter((t) => t.id !== id));
     };
 
+    // Unlock AudioContext on first user interaction to satisfy browser autoplay policies
+    useEffect(() => {
+        const unlockAudio = () => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    const ctx = new AudioContext();
+                    ctx.resume().then(() => ctx.close());
+                }
+            } catch (e) {}
+            window.removeEventListener('click', unlockAudio);
+            window.removeEventListener('keydown', unlockAudio);
+        };
+        window.addEventListener('click', unlockAudio);
+        window.addEventListener('keydown', unlockAudio);
+        return () => {
+            window.removeEventListener('click', unlockAudio);
+            window.removeEventListener('keydown', unlockAudio);
+        };
+    }, []);
+
     // Live Polling for transactions (Peminjaman & Pengembalian) & Active Overdues
     useEffect(() => {
         let isMounted = true;
 
         const pollTransactions = async () => {
             try {
-                const res = await fetch(
-                    `/admin/notifications/check?since=${encodeURIComponent(lastCheckedTimeRef.current)}`,
-                    {
-                        headers: {
-                            Accept: 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                    }
-                );
+                const sinceParam = globalLastCheckedTime
+                    ? `?since=${encodeURIComponent(globalLastCheckedTime)}`
+                    : '';
+                const res = await fetch(`/admin/notifications/check${sinceParam}`, {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
 
                 if (!res.ok) return;
                 const data = await res.json();
@@ -229,7 +253,7 @@ export default function AuthenticatedLayout({ title, children }) {
                 if (!isMounted) return;
 
                 if (data.server_time) {
-                    lastCheckedTimeRef.current = data.server_time;
+                    globalLastCheckedTime = data.server_time;
                 }
 
                 // Update daftar peminjaman terlambat (overdue)
@@ -265,12 +289,33 @@ export default function AuthenticatedLayout({ title, children }) {
                     }
                 }
 
+                // Update riwayat notifikasi lengkap di dropdown bel
+                if (data.history && data.history.length > 0) {
+                    globalNotificationHistory = data.history;
+                    setNotificationHistory(data.history);
+                }
+
+                // Proses notifikasi popup toast langsung (Peminjaman & Pengembalian Real-Time)
                 if (data.notifications && data.notifications.length > 0) {
-                    globalBellClicked = false;
-                    setBellClicked(false);
-                    playNotificationSound();
-                    setToasts((prev) => [...data.notifications, ...prev].slice(0, 6));
-                    setNotificationHistory((prev) => [...data.notifications, ...prev].slice(0, 15));
+                    const freshNotifications = data.notifications.filter(
+                        (n) => !globalAlertedToastIds.has(n.id)
+                    );
+
+                    if (freshNotifications.length > 0) {
+                        freshNotifications.forEach((n) => globalAlertedToastIds.add(n.id));
+
+                        globalBellClicked = false;
+                        setBellClicked(false);
+                        globalUnreadCount += freshNotifications.length;
+                        setUnreadCount(globalUnreadCount);
+
+                        playNotificationSound();
+
+                        setToasts((prev) => [
+                            ...freshNotifications,
+                            ...prev.filter((t) => !freshNotifications.some((f) => f.id === t.id)),
+                        ].slice(0, 6));
+                    }
                 }
             } catch (err) {
                 // Ignore transient network errors
@@ -280,8 +325,8 @@ export default function AuthenticatedLayout({ title, children }) {
         // Initial setup poll
         pollTransactions();
 
-        // Interval poll every 4.5 seconds
-        const intervalId = setInterval(pollTransactions, 4500);
+        // Interval poll every 3.5 seconds
+        const intervalId = setInterval(pollTransactions, 3500);
 
         return () => {
             isMounted = false;
@@ -304,10 +349,15 @@ export default function AuthenticatedLayout({ title, children }) {
     const handleBellClick = () => {
         globalBellClicked = true;
         setBellClicked(true);
+        globalUnreadCount = 0;
+        setUnreadCount(0);
         setShowNotifDropdown((prev) => !prev);
     };
 
-    const hasUnreadAlert = !bellClicked && (toasts.length > 0 || overdueLoans.length > 0);
+    const hasUnreadAlert = !bellClicked && (unreadCount > 0 || toasts.length > 0 || overdueLoans.length > 0);
+    const badgeCount = unreadCount > 0
+        ? unreadCount
+        : (toasts.length > 0 ? toasts.length : overdueLoans.length);
 
     // Trigger test simulated notification
     const handleTriggerTest = async (type = 'borrow', kondisi = 'baik') => {
@@ -331,7 +381,9 @@ export default function AuthenticatedLayout({ title, children }) {
                     } else {
                         playNotificationSound();
                         setNotificationHistory((prev) => [data.notification, ...prev].slice(0, 15));
+                        globalNotificationHistory = [data.notification, ...globalNotificationHistory].slice(0, 15);
                     }
+                    globalAlertedToastIds.add(data.notification.id);
                     setToasts((prev) => [data.notification, ...prev.filter((t) => t.id !== data.notification.id)].slice(0, 6));
                     globalAlertedOverdueIds.add(data.notification.id);
                     setIsTesting(false);
@@ -422,9 +474,11 @@ export default function AuthenticatedLayout({ title, children }) {
                 {/* Brand Header */}
                 <div className="h-20 flex items-center justify-between px-7 border-b border-[#E0E0E0]">
                     <Link href="/admin/dashboard" className="flex items-center gap-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-[#D84040] flex items-center justify-center font-black text-white shadow-xs">
-                            <span className="text-xl tracking-tighter">W</span>
-                        </div>
+                        <img
+                            src="/images/wams_logo.png"
+                            alt="WAMS Logo"
+                            className="w-10 h-10 object-contain drop-shadow-xs"
+                        />
                         <div>
                             <span className="font-extrabold text-[22px] tracking-tight text-[#1D1616] block leading-none">
                                 WAMS
@@ -547,7 +601,7 @@ export default function AuthenticatedLayout({ title, children }) {
                                 />
                                 {hasUnreadAlert && (
                                     <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-[#D84040] text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-xs animate-pulse">
-                                        {toasts.length > 0 ? toasts.length : overdueLoans.length}
+                                        {badgeCount}
                                     </span>
                                 )}
                             </button>

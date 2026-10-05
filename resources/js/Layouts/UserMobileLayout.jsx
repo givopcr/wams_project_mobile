@@ -88,11 +88,10 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
         <div className="min-h-screen bg-[#E5E7EB] text-[#1D1616] font-['Inter',ui-sans-serif,system-ui,sans-serif] antialiased selection:bg-[#D84040] selection:text-white flex flex-col justify-between">
             {/* Main Mobile App Viewport Container */}
             <div
-                className={`w-full mx-auto min-h-screen bg-[#EEEEEE] flex flex-col transition-all duration-200 relative ${
-                    isFullWidth
+                className={`w-full mx-auto min-h-screen bg-[#EEEEEE] flex flex-col transition-all duration-200 relative ${isFullWidth
                         ? 'max-w-3xl'
                         : 'max-w-[440px] shadow-2xl sm:border-x sm:border-[#E0E0E0]'
-                }`}
+                    }`}
             >
                 {/* Admin Mode Banner (If Admin is previewing user mode) */}
                 {user?.role === 'admin' && (
@@ -124,9 +123,11 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
                             </button>
                         ) : (
                             <Link href="/user/dashboard" className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-[#D84040] flex items-center justify-center font-black text-white shadow-xs">
-                                    <span className="text-base tracking-tighter">W</span>
-                                </div>
+                                <img
+                                    src="/images/wams_logo.png"
+                                    alt="WAMS Logo"
+                                    className="w-8 h-8 object-contain drop-shadow-xs"
+                                />
                                 <div>
                                     <span className="font-black text-lg tracking-tight text-[#1D1616] leading-none block">
                                         WAMS
@@ -176,11 +177,10 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
                 {toastMessage && (
                     <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[400px] animate-in fade-in slide-in-from-top-4 duration-200 pointer-events-none">
                         <div
-                            className={`p-3.5 rounded-2xl shadow-xl flex items-center gap-3 border pointer-events-auto ${
-                                toastMessage.type === 'success'
+                            className={`p-3.5 rounded-2xl shadow-xl flex items-center gap-3 border pointer-events-auto ${toastMessage.type === 'success'
                                     ? 'bg-emerald-900/95 border-emerald-700 text-white'
                                     : 'bg-rose-900/95 border-rose-700 text-white'
-                            }`}
+                                }`}
                         >
                             {toastMessage.type === 'success' ? (
                                 <CheckCircle2 size={20} className="text-emerald-300 shrink-0" />
@@ -209,9 +209,8 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
                 {/* Bottom Navigation Dock (Fixed at bottom) */}
                 <nav className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
                     <div
-                        className={`mx-auto w-full transition-all duration-200 pointer-events-auto ${
-                            isFullWidth ? 'max-w-3xl' : 'max-w-[440px]'
-                        }`}
+                        className={`mx-auto w-full transition-all duration-200 pointer-events-auto ${isFullWidth ? 'max-w-3xl' : 'max-w-[440px]'
+                            }`}
                     >
                         <div className="bg-white/95 backdrop-blur-md border-t border-[#E0E0E0] px-2 py-1.5 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] flex items-center justify-around sm:rounded-t-2xl">
                             {navItems.map((item) => {
@@ -225,18 +224,16 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
                                             className="relative -top-5 flex flex-col items-center group cursor-pointer"
                                         >
                                             <div
-                                                className={`w-13 h-13 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg active:scale-95 ${
-                                                    item.active
+                                                className={`w-13 h-13 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg active:scale-95 ${item.active
                                                         ? 'bg-gradient-to-tr from-[#8E1616] to-[#D84040] shadow-[#D84040]/40 ring-4 ring-white'
                                                         : 'bg-gradient-to-tr from-[#D84040] to-[#E55353] shadow-[#D84040]/35 ring-4 ring-white group-hover:scale-105'
-                                                }`}
+                                                    }`}
                                             >
                                                 <Icon size={24} className="animate-pulse" />
                                             </div>
                                             <span
-                                                className={`text-[10px] font-extrabold mt-1 tracking-tight ${
-                                                    item.active ? 'text-[#D84040]' : 'text-[#6B7280]'
-                                                }`}
+                                                className={`text-[10px] font-extrabold mt-1 tracking-tight ${item.active ? 'text-[#D84040]' : 'text-[#6B7280]'
+                                                    }`}
                                             >
                                                 {item.name}
                                             </span>
@@ -248,11 +245,10 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
                                     <Link
                                         key={item.name}
                                         href={item.href}
-                                        className={`flex flex-col items-center py-1 px-3 rounded-xl transition-all ${
-                                            item.active
+                                        className={`flex flex-col items-center py-1 px-3 rounded-xl transition-all ${item.active
                                                 ? 'text-[#D84040]'
                                                 : 'text-[#6B7280] hover:text-[#1D1616]'
-                                        }`}
+                                            }`}
                                     >
                                         <div className="relative">
                                             <Icon
@@ -264,9 +260,8 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
                                             )}
                                         </div>
                                         <span
-                                            className={`text-[10px] tracking-tight mt-1 ${
-                                                item.active ? 'font-black' : 'font-medium'
-                                            }`}
+                                            className={`text-[10px] tracking-tight mt-1 ${item.active ? 'font-black' : 'font-medium'
+                                                }`}
                                         >
                                             {item.name}
                                         </span>

@@ -35,6 +35,34 @@ class Barang extends Model
         ];
     }
 
+    protected $appends = [
+        'gambar_url',
+    ];
+
+    /**
+     * URL Foto Master Barang (fallback ke foto unit pertama yang memiliki gambar)
+     */
+    public function getGambarUrlAttribute(): ?string
+    {
+        if ($this->gambar) {
+            return asset('storage/' . $this->gambar);
+        }
+
+        if ($this->relationLoaded('units')) {
+            $unitWithImage = $this->units->first(fn($u) => !empty($u->gambar));
+            if ($unitWithImage && $unitWithImage->gambar) {
+                return asset('storage/' . $unitWithImage->gambar);
+            }
+        } else {
+            $unitWithImage = $this->units()->whereNotNull('gambar')->where('gambar', '!=', '')->first();
+            if ($unitWithImage && $unitWithImage->gambar) {
+                return asset('storage/' . $unitWithImage->gambar);
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Relasi ke Kategori (barang N:1 kategori_barang)
      */

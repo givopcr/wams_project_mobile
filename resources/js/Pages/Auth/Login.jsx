@@ -26,7 +26,12 @@ export default function Login() {
                     <div className="w-full max-w-[380px] mx-auto text-center">
 
                         {/* Title & Subtitle */}
-                        <div className="mb-8">
+                        <div className="mb-8 flex flex-col items-center">
+                            <img
+                                src="/images/wams_logo.png"
+                                alt="WAMS Logo"
+                                className="w-16 h-16 object-contain mb-3 drop-shadow-sm"
+                            />
                             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-[#1D1616] mb-2">
                                 WAMS
                             </h1>

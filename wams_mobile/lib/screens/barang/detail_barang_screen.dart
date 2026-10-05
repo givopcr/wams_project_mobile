@@ -260,7 +260,6 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontFamily: 'monospace',
                                         fontWeight: FontWeight.bold,
                                         fontSize: 13,
                                         color: AppTheme.textPrimary,
@@ -429,7 +428,6 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                             kodeUnit,
                             style: const TextStyle(
                               fontSize: 12,
-                              fontFamily: 'monospace',
                               color: AppTheme.textMuted,
                             ),
                           ),

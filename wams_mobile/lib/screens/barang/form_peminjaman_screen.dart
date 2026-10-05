@@ -303,7 +303,6 @@ class _FormPeminjamanScreenState extends State<FormPeminjamanScreen> {
                                   color: Color(0xFF1D4ED8),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 11,
-                                  fontFamily: 'monospace',
                                 ),
                               ),
                             ),

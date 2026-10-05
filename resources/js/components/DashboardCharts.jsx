@@ -43,7 +43,7 @@ export function TopBarangHorizontalChart({ data = [] }) {
                     <Link
                         href="/admin/barang"
                         className="text-xs font-bold text-[#D84040] hover:text-[#8E1616] inline-flex items-center gap-1 transition-colors"
-                        title="Lihat Master Barang"
+                        title="Lihat Barang"
                     >
                         Semua
                         <ChevronRight size={14} />
@@ -154,9 +154,9 @@ export function TopUnitMaintenanceChart({ data = [] }) {
                         </div>
                     </div>
                     <Link
-                        href="/admin/unit"
+                        href="/admin/barang"
                         className="text-xs font-bold text-amber-700 hover:text-amber-800 inline-flex items-center gap-1 transition-colors"
-                        title="Lihat Semua Unit"
+                        title="Lihat Semua Barang"
                     >
                         Semua
                         <ChevronRight size={14} />

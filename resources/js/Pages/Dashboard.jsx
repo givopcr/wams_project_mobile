@@ -188,11 +188,11 @@ export default function Dashboard({
         },
         Elektronik: {
             icon: Cpu,
-            color: '#2563EB',
-            badgeBg: 'bg-blue-50',
-            badgeBorder: 'border-blue-200',
-            badgeText: 'text-blue-600',
-            iconBg: 'bg-blue-500/10 text-blue-600',
+            color: '#D97706',
+            badgeBg: 'bg-amber-50',
+            badgeBorder: 'border-amber-200',
+            badgeText: 'text-amber-700',
+            iconBg: 'bg-amber-500/10 text-amber-600',
             gradientId: 'grad-elektronik',
         },
         Komponen: {

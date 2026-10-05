@@ -106,7 +106,7 @@ class KategoriController extends Controller
                 'kode_barang' => $item->kode_barang,
                 'detail_spesifikasi' => $item->detail_spesifikasi,
                 'lokasi' => $item->lokasi,
-                'gambar_url' => $item->gambar ? asset('storage/'.$item->gambar) : null,
+                'gambar_url' => $item->gambar_url,
                 'total_unit' => $item->units->count(),
                 'tersedia' => $item->units->where('status', 'tersedia')->count(),
                 'dipinjam' => $item->units->where('status', 'dipinjam')->count(),

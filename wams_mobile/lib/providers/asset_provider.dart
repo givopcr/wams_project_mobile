@@ -10,6 +10,9 @@ class AssetProvider extends ChangeNotifier {
 
   List<KategoriModel> _categories = [];
   List<BarangModel> _categoryItems = [];
+  List<BarangModel> _katalogItems = [];
+  int _totalKatalogCount = 0;
+  int? _activeKategoriFilter;
   KategoriModel? _selectedCategory;
   BarangModel? _detailBarang;
   List<BarangUnitModel> _barangUnits = [];
@@ -18,6 +21,9 @@ class AssetProvider extends ChangeNotifier {
 
   List<KategoriModel> get categories => _categories;
   List<BarangModel> get categoryItems => _categoryItems;
+  List<BarangModel> get katalogItems => _katalogItems;
+  int get totalKatalogCount => _totalKatalogCount;
+  int? get activeKategoriFilter => _activeKategoriFilter;
   KategoriModel? get selectedCategory => _selectedCategory;
   BarangModel? get detailBarang => _detailBarang;
   List<BarangUnitModel> get barangUnits => _barangUnits;
@@ -32,6 +38,33 @@ class AssetProvider extends ChangeNotifier {
     try {
       final data = await _apiService.getKategori();
       _categories = data.map((json) => KategoriModel.fromJson(json)).toList();
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchKatalog({int? kategoriId, String? query}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _activeKategoriFilter = kategoriId;
+    notifyListeners();
+
+    try {
+      final res = await _apiService.getBarangList(
+        kategoriId: kategoriId,
+        query: query,
+        perPage: 100,
+      );
+      final dynamic rawData = res['data'];
+      final List list = (rawData is Map ? rawData['data'] : rawData) ?? [];
+      _katalogItems = list.map((json) => BarangModel.fromJson(json)).toList();
+      if (kategoriId == null || kategoriId == 0) {
+        _totalKatalogCount = rawData is Map ? (rawData['total'] ?? _katalogItems.length) : _katalogItems.length;
+      }
       _isLoading = false;
       notifyListeners();
     } catch (e) {

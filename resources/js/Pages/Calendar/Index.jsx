@@ -379,25 +379,8 @@ export default function CalendarIndex({
                     <div className="bg-white rounded-2xl border border-[#E0E0E0] p-6 shadow-2xs flex-1 w-full overflow-hidden">
                         {/* 1. Header Controls Bar */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-                            {/* Left: Hari Ini Button & Live Indicator */}
-                            <div className="flex items-center gap-2.5">
-                                <button
-                                    type="button"
-                                    onClick={handleToday}
-                                    className="px-3.5 py-1.5 text-xs font-bold text-[#1D1616] bg-white hover:bg-gray-100 rounded-lg border border-[#E0E0E0] transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
-                                >
-                                    <Clock size={13} className="text-[#3B82F6]" />
-                                    <span>Hari Ini</span>
-                                </button>
-
-                                <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200/80 rounded-lg text-emerald-800 text-[11px] font-semibold">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                                    <span>Real-Time: {new Date(currentTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} WIB</span>
-                                </div>
-                            </div>
-
-                            {/* Center: < Navigation > */}
-                            <div className="flex items-center gap-4 self-center">
+                            {/* Navigation: < Month Year > */}
+                            <div className="flex items-center gap-4">
                                 <button
                                     type="button"
                                     onClick={() => {

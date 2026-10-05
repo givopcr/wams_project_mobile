@@ -222,7 +222,6 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                                               color: isAvailable
                                                   ? AppTheme.textPrimary
                                                   : const Color(0xFF9CA3AF),
-                                              fontFamily: 'monospace',
                                             ),
                                           ),
                                           const SizedBox(height: 4),

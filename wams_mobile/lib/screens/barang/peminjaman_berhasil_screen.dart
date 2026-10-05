@@ -128,7 +128,6 @@ class PeminjamanBerhasilScreen extends StatelessWidget {
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: AppTheme.textMuted,
-                                  fontFamily: 'monospace',
                                 ),
                               ),
                             ],

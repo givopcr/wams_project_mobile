@@ -130,7 +130,7 @@ class AdminApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Master barang berhasil dibuat',
+            'message' => 'Barang berhasil dibuat',
             'data' => $barang,
         ], 201);
     }
@@ -167,7 +167,7 @@ class AdminApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Master barang berhasil diperbarui',
+            'message' => 'Barang berhasil diperbarui',
             'data' => $barang,
         ]);
     }
@@ -187,7 +187,7 @@ class AdminApiController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Master barang berhasil dihapus',
+            'message' => 'Barang berhasil dihapus',
         ]);
     }
 

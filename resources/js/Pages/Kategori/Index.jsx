@@ -108,7 +108,7 @@ export default function KategoriIndex({ categories, filters }) {
                                     <th className="p-4">Nama Kategori</th>
                                     <th className="p-4">Tipe</th>
                                     <th className="p-4">QR Code String</th>
-                                    <th className="p-4 text-center">Master Barang</th>
+                                    <th className="p-4 text-center">Barang</th>
                                     <th className="p-4 text-center">Unit / Mode Stok</th>
                                     <th className="p-4 text-center">Status Unit (T / D / M)</th>
                                     <th className="p-4 text-right">Aksi</th>
@@ -382,7 +382,7 @@ export default function KategoriIndex({ categories, filters }) {
                 onClose={() => setDeleteModal({ isOpen: false, kategori: null })}
                 onConfirm={handleConfirmDelete}
                 title="Hapus Kategori Barang"
-                message="Yakin ingin menghapus kategori ini? Seluruh master barang di dalamnya juga akan terhapus."
+                message="Yakin ingin menghapus kategori ini? Seluruh barang di dalamnya juga akan terhapus."
                 itemBadge={deleteModal.kategori ? deleteModal.kategori.nama_kategori : null}
                 confirmText="Hapus"
             />

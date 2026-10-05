@@ -16,6 +16,7 @@ export function ToastItem({ notification, onDismiss }) {
     const isOverdue = notification.type === 'overdue';
     const isApproval = notification.type === 'approval' || notification.status_transaksi === 'menunggu_persetujuan';
     const isReturn = notification.type === 'return' || notification.status_transaksi === 'dikembalikan';
+    const isCancel = notification.type === 'cancel' || notification.status_transaksi === 'dibatalkan';
     const isRusak = isReturn && notification.kondisi?.toLowerCase() === 'rusak';
     const isBaik = isReturn && !isRusak;
 
@@ -29,8 +30,8 @@ export function ToastItem({ notification, onDismiss }) {
     useEffect(() => {
         if (isHovered) return;
 
-        // Overdue gives a bit more time (15s), others 10s
-        const autoDismissTime = isOverdue ? 15000 : 10000;
+        // Overdue gives a bit more time (15s), others 12s
+        const autoDismissTime = isOverdue ? 15000 : 12000;
         const timer = setTimeout(() => {
             onDismiss(notification.id);
         }, autoDismissTime);
@@ -82,6 +83,11 @@ export function ToastItem({ notification, onDismiss }) {
         outerRingClass = 'bg-red-50/90 border-red-100';
         middleRingClass = 'bg-red-100/80 border-red-200';
         innerCircleClass = 'border-[#D84040] text-[#D84040]';
+    } else if (isCancel) {
+        // Pembatalan pengajuan -> Abu-abu
+        outerRingClass = 'bg-gray-100/90 border-gray-200';
+        middleRingClass = 'bg-gray-200/80 border-gray-300';
+        innerCircleClass = 'border-gray-500 text-gray-500';
     } else {
         // Peminjaman -> Hitam
         outerRingClass = 'bg-gray-100/70 border-gray-200/80';
@@ -121,7 +127,9 @@ export function ToastItem({ notification, onDismiss }) {
                 <div className="flex-1 min-w-0 pr-1">
                     <div className="flex items-start justify-between gap-2">
                         {/* Red / Amber Title */}
-                        <h4 className={`text-sm sm:text-[15px] font-bold tracking-tight leading-tight ${isApproval ? 'text-amber-700' : 'text-[#D84040]'}`}>
+                        <h4 className={`text-sm sm:text-[15px] font-bold tracking-tight leading-tight ${
+                            isApproval ? 'text-amber-700' : isCancel ? 'text-gray-700' : 'text-[#D84040]'
+                        }`}>
                             {notification.title}
                         </h4>
                         <button

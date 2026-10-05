@@ -48,8 +48,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::post('/barang/{id}/restock', [AdminWebController::class, 'restockBarang'])->name('admin.barang.restock');
     Route::get('/barang/{id}/kartu-stok', [AdminWebController::class, 'kartuStokJson'])->name('admin.barang.kartu_stok');
 
-    // Unit Fisik
-    Route::get('/unit', [AdminWebController::class, 'unit'])->name('admin.unit');
+    // Unit Fisik (Diarahkan ke Manajemen Barang karena terintegrasi)
+    Route::get('/unit', fn () => redirect()->route('admin.barang'))->name('admin.unit');
     Route::post('/unit', [AdminWebController::class, 'storeUnit'])->name('admin.unit.store');
     Route::match(['put', 'post'], '/unit/{id}', [AdminWebController::class, 'updateUnit'])->name('admin.unit.update');
     Route::delete('/unit/{id}', [AdminWebController::class, 'destroyUnit'])->name('admin.unit.destroy');

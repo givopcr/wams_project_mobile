@@ -40,9 +40,9 @@ class ApiService {
         throw Exception(data['message'] ?? 'Login gagal. Periksa data Anda.');
       }
     } on TimeoutException {
-      throw Exception('Koneksi timeout ke ${ApiConstants.baseUrl}. Pastikan server aktif.');
+      throw Exception('Koneksi timeout ke ${ApiConstants.baseUrl}. Pastikan backend Laravel aktif (jalankan: php artisan serve).');
     } on SocketException {
-      throw Exception('Gagal menghubungi ${ApiConstants.baseUrl}. Periksa jaringan Anda.');
+      throw Exception('Gagal menghubungi ${ApiConstants.baseUrl}.\nPastikan backend Laravel aktif (jalankan: php artisan serve --host=0.0.0.0).');
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Terjadi kesalahan: $e');
@@ -81,9 +81,9 @@ class ApiService {
         throw Exception(data['message'] ?? 'Registrasi gagal.');
       }
     } on TimeoutException {
-      throw Exception('Koneksi timeout ke ${ApiConstants.baseUrl}. Pastikan server aktif.');
+      throw Exception('Koneksi timeout ke ${ApiConstants.baseUrl}. Pastikan backend Laravel aktif (jalankan: php artisan serve).');
     } on SocketException {
-      throw Exception('Gagal menghubungi ${ApiConstants.baseUrl}. Periksa jaringan Anda.');
+      throw Exception('Gagal menghubungi ${ApiConstants.baseUrl}.\nPastikan backend Laravel aktif (jalankan: php artisan serve --host=0.0.0.0).');
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Terjadi kesalahan: $e');
@@ -160,6 +160,29 @@ class ApiService {
       return data['data'];
     } else {
       throw Exception(data['message'] ?? 'Gagal memuat kategori');
+    }
+  }
+
+  Future<Map<String, dynamic>> getBarangList({int? kategoriId, String? query, int perPage = 100}) async {
+    final token = await _getToken();
+    var url = '${ApiConstants.barang}?per_page=$perPage';
+    if (kategoriId != null && kategoriId > 0) {
+      url += '&kategori_id=$kategoriId';
+    }
+    if (query != null && query.isNotEmpty) {
+      url += '&q=${Uri.encodeComponent(query)}';
+    }
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: _headers(token),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Gagal memuat katalog barang');
     }
   }
 
@@ -327,7 +350,10 @@ class ApiService {
 
     final data = jsonDecode(response.body);
     if (response.statusCode == 200 && data['success'] == true) {
-      return data['data']['data'] ?? [];
+      final inner = data['data'];
+      if (inner is List) return inner;
+      if (inner is Map && inner['data'] is List) return inner['data'];
+      return [];
     } else {
       throw Exception(data['message'] ?? 'Gagal memuat riwayat');
     }

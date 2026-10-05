@@ -19,6 +19,15 @@ class TransactionProvider extends ChangeNotifier {
   List<RiwayatModel> get activeBorrows =>
       _riwayatList.where((item) => item.statusTransaksi == 'dipinjam').toList();
 
+  int get countDipinjam =>
+      _riwayatList.where((item) => item.statusTransaksi == 'dipinjam').length;
+
+  int get countMenunggu =>
+      _riwayatList.where((item) => item.statusTransaksi == 'menunggu_persetujuan').length;
+
+  int get countSelesai =>
+      _riwayatList.where((item) => item.statusTransaksi == 'dikembalikan').length;
+
   void setFilter(String filter) {
     _selectedFilter = filter;
     fetchRiwayat();

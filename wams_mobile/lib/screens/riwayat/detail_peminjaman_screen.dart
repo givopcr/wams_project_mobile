@@ -284,10 +284,11 @@ class DetailPeminjamanScreen extends StatelessWidget {
                           ),
                           child: Text(
                             item.kodeUnit,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              fontFamily: 'monospace',
                               color: AppTheme.textPrimary,
                             ),
                           ),
@@ -320,28 +321,41 @@ class DetailPeminjamanScreen extends StatelessWidget {
                   _buildRow('Tanggal Pengajuan', _formatDate(item.tanggalPinjam)),
                   const Divider(color: AppTheme.borderLight, height: 24),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Batas Waktu Kembali',
-                        style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _formatDate(item.batasKembali ?? item.tanggalKembali),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimary,
-                            ),
+                      const Expanded(
+                        flex: 5,
+                        child: Text(
+                          'Batas Waktu Kembali',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.textMuted,
                           ),
-                          if (item.isDipinjam) ...[
-                            const SizedBox(width: 8),
-                            CountdownBadge(batasKembali: item.batasKembali, compact: true),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 6,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              _formatDate(item.batasKembali ?? item.tanggalKembali),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            if (item.isDipinjam) ...[
+                              const SizedBox(height: 5),
+                              CountdownBadge(
+                                batasKembali: item.batasKembali,
+                                compact: true,
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ],
                   ),
@@ -439,18 +453,21 @@ class DetailPeminjamanScreen extends StatelessWidget {
 
   Widget _buildRow(String label, String value, {Color? valueColor}) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            color: AppTheme.textMuted,
+        Expanded(
+          flex: 5,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.textMuted,
+            ),
           ),
         ),
-        const SizedBox(width: 16),
-        Flexible(
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 6,
           child: Text(
             value,
             textAlign: TextAlign.end,

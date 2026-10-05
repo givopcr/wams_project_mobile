@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../main_navigation.dart';
@@ -147,6 +148,168 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showServerConfigDialog() {
+    final controller = TextEditingController(text: ApiConstants.host);
+    bool testing = false;
+    String? statusMessage;
+    bool isSuccess = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.dns_rounded, color: Color(0xFFD84040)),
+              SizedBox(width: 10),
+              Text(
+                'Pengaturan Server',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'URL Host Backend Laravel:',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    labelText: 'Host URL',
+                    hintText: 'http://10.0.2.2:8000',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Preset Cepat:',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black54),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    ActionChip(
+                      label: const Text('10.0.2.2:8000 (Emulator)', style: TextStyle(fontSize: 11)),
+                      onPressed: () => setDialogState(() => controller.text = 'http://10.0.2.2:8000'),
+                    ),
+                    ActionChip(
+                      label: const Text('127.0.0.1:8000 (ADB/Local)', style: TextStyle(fontSize: 11)),
+                      onPressed: () => setDialogState(() => controller.text = 'http://127.0.0.1:8000'),
+                    ),
+                    ActionChip(
+                      label: const Text('10.21.243.167:8000 (LAN)', style: TextStyle(fontSize: 11)),
+                      onPressed: () => setDialogState(() => controller.text = 'http://10.21.243.167:8000'),
+                    ),
+                  ],
+                ),
+                if (testing) ...[
+                  const SizedBox(height: 16),
+                  const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD84040)),
+                    ),
+                  ),
+                ] else if (statusMessage != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSuccess ? Colors.green.shade50 : Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSuccess ? Colors.green.shade300 : Colors.red.shade300,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isSuccess ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                          color: isSuccess ? Colors.green.shade700 : Colors.red.shade700,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            statusMessage!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isSuccess ? Colors.green.shade800 : Colors.red.shade800,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
+            OutlinedButton(
+              onPressed: testing
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        testing = true;
+                        statusMessage = null;
+                      });
+                      final ok = await ApiConstants.testHost(controller.text.trim());
+                      setDialogState(() {
+                        testing = false;
+                        isSuccess = ok;
+                        statusMessage = ok
+                            ? 'Berhasil terhubung ke server!'
+                            : 'Gagal terhubung. Pastikan backend aktif (php artisan serve).';
+                      });
+                    },
+              child: const Text('Cek Koneksi'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD84040),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                final target = controller.text.trim();
+                final messenger = ScaffoldMessenger.of(context);
+                if (target.isNotEmpty) {
+                  await ApiConstants.setHost(target);
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Host API aktif: ${ApiConstants.host}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   InputDecoration _fieldDecoration({
     required String hintText,
     Widget? suffixIcon,
@@ -266,11 +429,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       Row(
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 34,
+                            height: 34,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD84040),
-                              borderRadius: BorderRadius.circular(9),
+                              color: Colors.white,
+                              shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.25),
@@ -279,16 +442,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ],
                             ),
-                            child: const Center(
-                              child: Text(
-                                'W',
-                                style: TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  height: 1.0,
-                                  letterSpacing: -0.5,
-                                ),
+                            padding: const EdgeInsets.all(2.0),
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/images/wams_logo.png',
+                                fit: BoxFit.contain,
                               ),
                             ),
                           ),
@@ -301,6 +459,17 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: Colors.white,
                               letterSpacing: -0.5,
                             ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.dns_rounded,
+                              color: Colors.white70,
+                              size: 22,
+                            ),
+                            tooltip: 'Pengaturan Server',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: _showServerConfigDialog,
                           ),
                         ],
                       ).animate().fadeIn(duration: 400.ms),

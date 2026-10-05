@@ -53,11 +53,11 @@ class CountdownBadge extends StatelessWidget {
 
   _DeadlineInfo _calculateDeadline(String? raw) {
     if (raw == null || raw.isEmpty) {
-      return _DeadlineInfo(
+      return const _DeadlineInfo(
         label: 'Aktif',
-        textColor: AppTheme.primary,
-        backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-        borderColor: AppTheme.primary.withValues(alpha: 0.2),
+        textColor: Color(0xFFDC2626),
+        backgroundColor: Color(0xFFFEF2F2),
+        borderColor: Color(0xFFFECACA),
         icon: Icons.schedule_rounded,
       );
     }
@@ -72,33 +72,29 @@ class CountdownBadge extends StatelessWidget {
         final hours = -diff.inHours;
         final text = days > 0 ? '$days hari terlambat' : '$hours jam terlambat';
 
-        return _DeadlineInfo(
-          label: text,
-          textColor: AppTheme.danger,
-          backgroundColor: const Color(0xFFFEE2E2),
-          borderColor: const Color(0xFFFCA5A5),
-          icon: Icons.warning_amber_rounded,
-        );
-      } else if (diff.inHours <= 12) {
-        final hours = diff.inHours;
-        final text = hours <= 1
-            ? (diff.inMinutes <= 0 ? 'Segera kembali' : '${diff.inMinutes}m lagi')
-            : '$hours jam lagi';
-
+        // Terlambat: Kuning / Amber
         return _DeadlineInfo(
           label: text,
           textColor: const Color(0xFFD97706),
           backgroundColor: const Color(0xFFFEF3C7),
           borderColor: const Color(0xFFFCD34D),
-          icon: Icons.access_time_rounded,
+          icon: Icons.warning_amber_rounded,
         );
       } else {
-        final days = diff.inDays == 0 ? 1 : diff.inDays;
+        // Aktif: Merah
+        final days = diff.inDays;
+        final hours = diff.inHours;
+        final text = days > 0
+            ? '$days hari lagi'
+            : hours > 0
+                ? '$hours jam lagi'
+                : (diff.inMinutes <= 0 ? 'Segera kembali' : '${diff.inMinutes}m lagi');
+
         return _DeadlineInfo(
-          label: '$days hari lagi',
-          textColor: const Color(0xFF3B82F6),
-          backgroundColor: const Color(0xFFEFF6FF),
-          borderColor: const Color(0xFFBFDBFE),
+          label: text,
+          textColor: const Color(0xFFDC2626),
+          backgroundColor: const Color(0xFFFEF2F2),
+          borderColor: const Color(0xFFFECACA),
           icon: Icons.schedule_rounded,
         );
       }
