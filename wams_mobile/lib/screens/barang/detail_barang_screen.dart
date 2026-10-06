@@ -271,18 +271,23 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                                         Icon(
                                           u.kondisi == 'baik'
                                               ? Icons.check_circle_outline
-                                              : Icons.warning_amber_rounded,
+                                              : u.kondisi == 'rusak'
+                                                  ? Icons.error_outline
+                                                  : Icons.warning_amber_rounded,
                                           size: 12,
                                           color: u.kondisi == 'baik'
                                               ? AppTheme.success
-                                              : const Color(0xFFD97706),
+                                              : u.kondisi == 'rusak'
+                                                  ? AppTheme.danger
+                                                  : const Color(0xFFD97706),
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          'Kondisi: ${u.kondisi == "baik" ? "Baik" : "Perlu Cek"}',
-                                          style: const TextStyle(
+                                          'Kondisi: ${u.kondisi == "baik" ? "Baik" : (u.kondisi == "rusak" ? "Rusak" : "Perlu Cek")}',
+                                          style: TextStyle(
                                             fontSize: 11,
-                                            color: AppTheme.textMuted,
+                                            fontWeight: u.kondisi == 'rusak' ? FontWeight.w600 : FontWeight.normal,
+                                            color: u.kondisi == 'rusak' ? AppTheme.danger : AppTheme.textMuted,
                                           ),
                                         ),
                                       ],
@@ -298,15 +303,23 @@ class _DetailBarangScreenState extends State<DetailBarangScreen> {
                                 decoration: BoxDecoration(
                                   color: u.isTersedia
                                       ? const Color(0xFFD1FAE5)
-                                      : const Color(0xFFFEF3C7),
+                                      : u.isMaintenance
+                                          ? const Color(0xFFFEE2E2)
+                                          : const Color(0xFFFEF3C7),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
-                                  u.isTersedia ? 'Tersedia' : 'Dipinjam',
+                                  u.isTersedia
+                                      ? 'Tersedia'
+                                      : u.isMaintenance
+                                          ? 'Maintenance'
+                                          : 'Dipinjam',
                                   style: TextStyle(
                                     color: u.isTersedia
                                         ? AppTheme.success
-                                        : const Color(0xFFD97706),
+                                        : u.isMaintenance
+                                            ? AppTheme.danger
+                                            : const Color(0xFFD97706),
                                     fontWeight: FontWeight.bold,
                                     fontSize: 11,
                                   ),

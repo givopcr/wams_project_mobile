@@ -226,12 +226,15 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            'Kondisi: ${unit.kondisi == "baik" ? "Baik" : "Perlu Cek"}',
+                                            'Kondisi: ${unit.kondisi == "baik" ? "Baik" : (unit.kondisi == "rusak" ? "Rusak" : "Perlu Cek")}',
                                             style: TextStyle(
                                               fontSize: 12,
+                                              fontWeight: unit.kondisi == 'rusak' ? FontWeight.w600 : FontWeight.normal,
                                               color: isAvailable
                                                   ? AppTheme.textMuted
-                                                  : const Color(0xFF9CA3AF),
+                                                  : (unit.isMaintenance
+                                                      ? AppTheme.danger
+                                                      : const Color(0xFF9CA3AF)),
                                             ),
                                           ),
                                         ],
@@ -242,19 +245,27 @@ class _PilihUnitScreenState extends State<PilihUnitScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: isAvailable
+                                        color: unit.isTersedia
                                             ? const Color(0xFFD1FAE5) // light green
-                                            : const Color(0xFFFEF3C7), // light amber
+                                            : unit.isMaintenance
+                                                ? const Color(0xFFFEE2E2) // light red
+                                                : const Color(0xFFFEF3C7), // light amber
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
-                                        isAvailable ? 'Tersedia' : 'Dipinjam',
+                                        unit.isTersedia
+                                            ? 'Tersedia'
+                                            : unit.isMaintenance
+                                                ? 'Maintenance'
+                                                : 'Dipinjam',
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
-                                          color: isAvailable
+                                          color: unit.isTersedia
                                               ? AppTheme.success
-                                              : const Color(0xFFD97706),
+                                              : unit.isMaintenance
+                                                  ? AppTheme.danger
+                                                  : const Color(0xFFD97706),
                                         ),
                                       ),
                                     ),

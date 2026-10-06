@@ -115,8 +115,8 @@ export default function AuthenticatedLayout({ title, children }) {
         { name: 'Kalender', href: '/admin/calendar', icon: Calendar },
         { name: 'Barang', href: '/admin/barang', icon: Package },
         { name: 'Logbook', href: '/admin/logbook', icon: BookOpen },
-        { name: 'Generate QR', href: '/admin/qrcode', icon: QrCode },
-        { name: 'Manajemen User', href: '/admin/users', icon: Users },
+        { name: 'QR Code', href: '/admin/qrcode', icon: QrCode },
+        { name: 'Users', href: '/admin/users', icon: Users },
         { name: 'Laporan', href: '/admin/reports', icon: BarChart3 },
     ];
 
