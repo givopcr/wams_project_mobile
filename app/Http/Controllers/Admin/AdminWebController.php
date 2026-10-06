@@ -1818,4 +1818,109 @@ class AdminWebController extends Controller
             'notification' => $notification,
         ]);
     }
+
+    /**
+     * Tampilan Pengaturan Profil & Akun Administrator
+     */
+    public function profile(): Response
+    {
+        $user = auth()->user();
+
+        // Statistik singkat aktivitas admin
+        $stats = [
+            'total_approval' => Logbook::where('disetujui_oleh', $user->id)->count(),
+            'total_users' => User::count(),
+            'created_at_formatted' => $user->created_at ? $user->created_at->translatedFormat('d F Y, H:i') : '-',
+        ];
+
+        return Inertia::render('Admin/Profile', [
+            'profile' => [
+                'id' => $user->id,
+                'nama' => $user->nama,
+                'email' => $user->email,
+                'nip' => $user->nip,
+                'role' => $user->role,
+                'avatar_url' => $user->avatar_url,
+                'has_google' => !empty($user->google_id),
+                'has_password' => !empty($user->password),
+                'created_at' => $user->created_at?->format('d M Y'),
+            ],
+            'stats' => $stats,
+        ]);
+    }
+
+    /**
+     * Perbarui Informasi Profil Administrator
+     */
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'nama' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'nip' => ['nullable', 'string', 'max:50', 'unique:users,nip,' . $user->id],
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'remove_avatar' => ['nullable', 'boolean'],
+        ], [
+            'nama.required' => 'Nama administrator wajib diisi.',
+            'email.required' => 'Alamat email wajib diisi.',
+            'email.unique' => 'Email ini sudah terdaftar oleh pengguna lain.',
+            'nip.unique' => 'NIP ini sudah terdaftar oleh pengguna lain.',
+            'avatar.image' => 'File avatar harus berupa gambar.',
+            'avatar.max' => 'Ukuran file avatar maksimal 2MB.',
+        ]);
+
+        if ($request->boolean('remove_avatar')) {
+            if ($user->avatar && !str_starts_with($user->avatar, 'http') && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $user->avatar = null;
+        } elseif ($request->hasFile('avatar')) {
+            if ($user->avatar && !str_starts_with($user->avatar, 'http') && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $user->avatar = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        $user->nama = $validated['nama'];
+        $user->email = $validated['email'];
+        $user->nip = $validated['nip'] ?? $user->nip;
+        $user->save();
+
+        return back()->with('success', 'Profil administrator berhasil diperbarui.');
+    }
+
+    /**
+     * Perbarui Password Akun Administrator
+     */
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $user = auth()->user();
+
+        $rules = [
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ];
+
+        // Jika user memiliki password (bukan akun murni OAuth), validasi current_password
+        if (!empty($user->password)) {
+            $rules['current_password'] = ['required', 'current_password'];
+        }
+
+        $messages = [
+            'current_password.required' => 'Password saat ini wajib diisi.',
+            'current_password.current_password' => 'Password saat ini yang Anda masukkan salah.',
+            'password.required' => 'Password baru wajib diisi.',
+            'password.min' => 'Password baru minimal 8 karakter.',
+            'password.confirmed' => 'Konfirmasi password baru tidak cocok.',
+        ];
+
+        $request->validate($rules, $messages);
+
+        $user->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return back()->with('success', 'Password administrator berhasil diubah.');
+    }
 }

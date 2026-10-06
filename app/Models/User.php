@@ -68,4 +68,20 @@ class User extends Authenticatable
     {
         return $this->role === 'user';
     }
+
+    /**
+     * Get avatar URL attribute
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (!$this->avatar) {
+            return null;
+        }
+
+        if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://')) {
+            return $this->avatar;
+        }
+
+        return asset('storage/' . $this->avatar);
+    }
 }

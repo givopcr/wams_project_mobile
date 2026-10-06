@@ -524,22 +524,30 @@ export default function AuthenticatedLayout({ title, children }) {
                 {/* User Profile info in Sidebar bottom */}
                 <div className="p-4 mx-3 mb-4 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0]">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-[#D84040] flex items-center justify-center font-bold text-sm text-white shrink-0">
-                                {user?.nama?.charAt(0) || 'A'}
+                        <Link
+                            href="/admin/profile"
+                            title="Buka Pengaturan Akun"
+                            className="flex items-center gap-3 min-w-0 group hover:opacity-85 transition-opacity"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-[#D84040] overflow-hidden flex items-center justify-center font-bold text-sm text-white shrink-0 border border-white/20">
+                                {user?.avatar ? (
+                                    <img src={user.avatar} alt={user.nama} className="w-full h-full object-cover" />
+                                ) : (
+                                    user?.nama?.charAt(0) || 'A'
+                                )}
                             </div>
                             <div className="min-w-0">
-                                <p className="text-xs font-bold text-[#1D1616] truncate">{user?.nama}</p>
+                                <p className="text-xs font-bold text-[#1D1616] truncate group-hover:text-[#D84040] transition-colors">{user?.nama}</p>
                                 <span className="inline-flex items-center gap-1 text-[10px] text-[#6B7280] font-medium">
                                     <Shield size={10} className="text-[#D84040]" />
                                     {user?.role?.toUpperCase()}
                                 </span>
                             </div>
-                        </div>
+                        </Link>
                         <button
                             onClick={handleLogout}
                             title="Logout"
-                            className="p-2 text-[#6B7280] hover:text-[#D84040] hover:bg-white rounded-lg transition-colors"
+                            className="p-2 text-[#6B7280] hover:text-[#D84040] hover:bg-white rounded-lg transition-colors cursor-pointer"
                         >
                             <LogOut size={16} />
                         </button>
@@ -576,9 +584,13 @@ export default function AuthenticatedLayout({ title, children }) {
 
                         {/* Setting Icon Button */}
                         <Link
-                            href="/admin/users"
-                            title="Pengaturan Akun"
-                            className="w-10 h-10 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] hover:bg-[#E5E5E5] text-[#525866] hover:text-[#1D1616] flex items-center justify-center transition-colors"
+                            href="/admin/profile"
+                            title="Pengaturan Akun Administrator"
+                            className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
+                                (url || window.location.pathname) === '/admin/profile'
+                                    ? 'bg-[#D84040] border-[#D84040] text-white'
+                                    : 'bg-[#EEEEEE] border-[#E0E0E0] hover:bg-[#E5E5E5] text-[#525866] hover:text-[#1D1616]'
+                            }`}
                         >
                             <Settings size={18} />
                         </Link>

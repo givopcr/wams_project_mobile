@@ -85,6 +85,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // Live Notifications (Peminjaman & Pengembalian)
     Route::get('/notifications/check', [AdminWebController::class, 'checkNewTransactions'])->name('admin.notifications.check');
     Route::match(['get', 'post'], '/notifications/test', [AdminWebController::class, 'testNotification'])->name('admin.notifications.test');
+
+    // Pengaturan Akun Administrator
+    Route::get('/profile', [AdminWebController::class, 'profile'])->name('admin.profile');
+    Route::post('/profile', [AdminWebController::class, 'updateProfile'])->name('admin.profile.update');
+    Route::put('/profile/password', [AdminWebController::class, 'updatePassword'])->name('admin.profile.password');
 });
 
 /*

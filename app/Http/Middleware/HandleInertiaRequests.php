@@ -44,6 +44,9 @@ class HandleInertiaRequests extends Middleware
                     'email' => $request->user()->email,
                     'nip' => $request->user()->nip,
                     'role' => $request->user()->role,
+                    'avatar' => $request->user()->avatar_url,
+                    'has_google' => !empty($request->user()->google_id),
+                    'has_password' => !empty($request->user()->password),
                 ] : null,
             ],
             'flash' => [
