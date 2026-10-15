@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, router, usePoll } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
     Users,
@@ -20,6 +20,10 @@ export default function UserIndex({ users, filters }) {
     const [selectedRole, setSelectedRole] = useState(filters.role || '');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+
+    // Auto-refresh daftar user agar akun baru (mis. login via Google dari mobile/web)
+    // langsung muncul tanpa perlu refresh halaman manual.
+    usePoll(10000, { only: ['users'] });
 
     const { data, setData, post, put, processing, reset, errors } = useForm({
         nama: '',
@@ -156,11 +160,28 @@ export default function UserIndex({ users, filters }) {
                                         <tr key={u.id} className="hover:bg-[#EEEEEE]/50 bg-white transition-colors">
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] flex items-center justify-center font-bold text-[#D84040] text-sm shrink-0">
-                                                        {u.nama.charAt(0)}
-                                                    </div>
+                                                    {u.avatar && /^https?:\/\//.test(u.avatar) ? (
+                                                        <img
+                                                            src={u.avatar}
+                                                            alt={u.nama}
+                                                            referrerPolicy="no-referrer"
+                                                            className="w-9 h-9 rounded-xl border border-[#E0E0E0] object-cover shrink-0"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-9 h-9 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] flex items-center justify-center font-bold text-[#D84040] text-sm shrink-0">
+                                                            {u.nama.charAt(0)}
+                                                        </div>
+                                                    )}
                                                     <div>
-                                                        <div className="font-bold text-[#1D1616] text-sm">{u.nama}</div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-bold text-[#1D1616] text-sm">{u.nama}</span>
+                                                            {u.google_id && (
+                                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#EEEEEE] border border-[#E0E0E0] text-[10px] font-bold text-[#1D1616]">
+                                                                    <img src="/images/google_logo.png" alt="" className="w-2.5 h-2.5" />
+                                                                    Google
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <div className="text-[11px] text-[#6B7280]">{u.email}</div>
                                                     </div>
                                                 </div>

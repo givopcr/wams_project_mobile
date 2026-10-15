@@ -20,6 +20,15 @@ class ApiConstants {
   static String get me => '$baseUrl/me';
   static String get profile => '$baseUrl/profile';
 
+  // Forgot password & OTP endpoints
+  static String get forgotPasswordSendOtp => '$baseUrl/auth/forgot-password/send-otp';
+  static String get forgotPasswordVerifyOtp => '$baseUrl/auth/forgot-password/verify-otp';
+  static String get forgotPasswordReset => '$baseUrl/auth/forgot-password/reset';
+
+  // Profile Change Email endpoints
+  static String get changeEmailSendOtp => '$baseUrl/profile/change-email/send-otp';
+  static String get changeEmailVerifyOtp => '$baseUrl/profile/change-email/verify-otp';
+
   // Google OAuth Server Client ID (Web Client ID dari Google Cloud Console)
   static const String googleServerClientId =
       '790986978514-sftg4a1fp0mpn5pf66e1ckab42bvnboe.apps.googleusercontent.com';

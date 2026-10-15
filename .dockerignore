@@ -1,0 +1,6 @@
+.git
+wams_mobile
+node_modules
+vendor
+storage/logs
+.phpunit.result.cache

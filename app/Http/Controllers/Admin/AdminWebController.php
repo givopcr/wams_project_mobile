@@ -917,7 +917,10 @@ class AdminWebController extends Controller
      */
     public function users(Request $request): Response
     {
-        $query = User::query();
+        $query = User::query()->withCount([
+            'logbooks as total_transaksi',
+            'logbooks as transaksi_aktif' => fn ($q) => $q->where('status_transaksi', 'dipinjam'),
+        ]);
 
         if ($request->filled('role')) {
             $query->where('role', $request->role);
@@ -932,7 +935,7 @@ class AdminWebController extends Controller
             });
         }
 
-        $users = $query->latest()->paginate(15)->withQueryString();
+        $users = $query->latest()->latest('id')->paginate(15)->withQueryString();
 
         return Inertia::render('User/Index', [
             'users' => $users,

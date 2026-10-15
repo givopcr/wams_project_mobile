@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\AdminApiController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\BarangController;
 use App\Http\Controllers\Api\KategoriController;
 use App\Http\Controllers\Api\ProfileController;
@@ -19,6 +20,13 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/auth/google', [AuthController::class, 'loginWithGoogle']);
 
+// Forgot / Reset Password via OTP
+Route::prefix('auth/forgot-password')->group(function () {
+    Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp']);
+    Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
+    Route::post('/reset', [ForgotPasswordController::class, 'resetPassword']);
+});
+
 // Public/Browsing Data (Bisa diakses untuk scan atau katalog)
 Route::get('/kategori', [KategoriController::class, 'index']);
 Route::get('/kategori/{id}', [KategoriController::class, 'show']);
@@ -34,9 +42,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
-    // Profile
+    // Profile & Change Email via OTP
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/change-email/send-otp', [ProfileController::class, 'sendChangeEmailOtp']);
+    Route::post('/profile/change-email/verify-otp', [ProfileController::class, 'verifyChangeEmailOtp']);
 
     // Transaksi Aset (Peminjaman, Pengembalian, Riwayat, Pembatalan)
     Route::post('/peminjaman', [TransaksiController::class, 'pinjam']);

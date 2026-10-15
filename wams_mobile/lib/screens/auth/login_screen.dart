@@ -7,6 +7,7 @@ import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../main_navigation.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final bool initialIsLogin;
@@ -811,19 +812,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Lupa Password
               GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text(
-                        'Silakan hubungi administrator lab untuk reset password Anda.',
-                      ),
-                      backgroundColor: const Color(0xFF1D1616),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                onTap: () async {
+                  final emailInput = _loginController.text.trim();
+                  final initialEmail =
+                      emailInput.contains('@') ? emailInput : null;
+                  final result = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ForgotPasswordScreen(initialEmail: initialEmail),
                     ),
                   );
+                  if (result == true && mounted) {
+                    _passwordController.clear();
+                  }
                 },
                 child: const Text(
                   'Lupa Password?',

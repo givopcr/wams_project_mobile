@@ -52,7 +52,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const dayLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum'];
     for (int i = 0; i < 5; i++) {
       final date = monday.add(Duration(days: i));
-      final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+      final isToday =
+          date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day;
       days.add({
         'day': dayLabels[i],
         'date': date.day.toString(),
@@ -65,8 +68,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _formatIndonesianDate(DateTime d) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     return '${d.day} ${months[d.month - 1]}';
   }
@@ -104,9 +117,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           // 1. Subtle Workshop Blueprint Graph Paper Grid
           Positioned.fill(
-            child: CustomPaint(
-              painter: _GridBackgroundPainter(),
-            ),
+            child: CustomPaint(painter: _GridBackgroundPainter()),
           ),
 
           // 2. Main Scrollable Dashboard Content
@@ -173,11 +184,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF991B1B),
-            Color(0xFF8E1616),
-            Color(0xFF7F1D1D),
-          ],
+          colors: [Color(0xFF991B1B), Color(0xFF8E1616), Color(0xFF7F1D1D)],
         ),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
         boxShadow: [
@@ -222,17 +229,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             fit: BoxFit.contain,
                           ),
                         ),
-                      ).animate().scale(duration: 350.ms, curve: Curves.easeOutBack),
+                      ).animate().scale(
+                        duration: 350.ms,
+                        curve: Curves.easeOutBack,
+                      ),
                       const SizedBox(width: 10),
                       const Text(
-                        'WAMS',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ).animate().fadeIn(duration: 300.ms).slideX(begin: -0.08, end: 0),
+                            'WAMS',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          )
+                          .animate()
+                          .fadeIn(duration: 300.ms)
+                          .slideX(begin: -0.08, end: 0),
                     ],
                   ),
                   Stack(
@@ -282,7 +295,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(8),
@@ -344,7 +360,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (b.batasKembali == null) return false;
             final dt = DateTime.tryParse(b.batasKembali.toString());
             if (dt == null) return false;
-            return dt.year == fullDate.year && dt.month == fullDate.month && dt.day == fullDate.day;
+            return dt.year == fullDate.year &&
+                dt.month == fullDate.month &&
+                dt.day == fullDate.day;
           }).toList();
 
           final bool hasDeadline = matchingBorrows.isNotEmpty;
@@ -368,9 +386,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (isOverdue) {
               deadlineColor = const Color(0xFFDC2626); // Terlambat: Merah pekat
             } else if (isNear) {
-              deadlineColor = const Color(0xFFE11D48); // Segera dikembalikan (<= 24 jam): Rose / Crimson
+              deadlineColor = const Color(
+                0xFFE11D48,
+              ); // Segera dikembalikan (<= 24 jam): Rose / Crimson
             } else {
-              deadlineColor = const Color(0xFFEA580C); // Batas normal: Oranye kemerahan
+              deadlineColor = const Color(
+                0xFFEA580C,
+              ); // Batas normal: Oranye kemerahan
             }
           }
 
@@ -422,12 +444,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   item['day'] as String,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: isToday || hasDeadline ? FontWeight.w900 : FontWeight.w700,
+                    fontWeight: isToday || hasDeadline
+                        ? FontWeight.w900
+                        : FontWeight.w700,
                     color: isSelected
                         ? const Color(0xFF8E1616)
                         : (hasDeadline
-                            ? deadlineColor
-                            : (isToday ? const Color(0xFF8E1616) : const Color(0xFF64748B))),
+                              ? deadlineColor
+                              : (isToday
+                                    ? const Color(0xFF8E1616)
+                                    : const Color(0xFF64748B))),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -442,20 +468,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: const Color(0xFF8E1616).withValues(alpha: 0.35),
+                              color: const Color(0xFF8E1616)
+                                  .withValues(alpha: 0.35),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
                           ]
                         : (hasDeadline
-                            ? [
-                                BoxShadow(
-                                  color: deadlineColor.withValues(alpha: 0.22),
-                                  blurRadius: 5,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ]
-                            : null),
+                              ? [
+                                  BoxShadow(
+                                    color: deadlineColor.withValues(
+                                      alpha: 0.22,
+                                    ),
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ]
+                              : null),
                   ),
                   child: Center(
                     child: Text(
@@ -509,14 +538,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Kondisi Aman: Tidak Ada Pinjaman Aktif
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFF10B981),
-            width: 1.5,
-          ),
+          border: Border.all(color: const Color(0xFF10B981), width: 1.5),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF10B981).withValues(alpha: 0.10),
@@ -532,46 +558,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Badge Status
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFECFDF5),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFFA7F3D0),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.verified_rounded,
-                          size: 13,
-                          color: Color(0xFF047857),
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'STATUS ALAT: AMAN',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF047857),
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
                   // Tool Title
                   const Text(
                     'Semua Alat Tersimpan Rapi',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 15.5,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF0F172A),
                       letterSpacing: -0.3,
@@ -579,7 +572,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
 
                   // Tool Subtitle / Status
                   const Text(
@@ -592,68 +585,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12),
-
-                  // Action Row
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const KategoriScreen(),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x140F172A),
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.search_rounded,
-                            size: 15,
-                            color: Colors.white,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'Jelajahi Katalog',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
+            const SizedBox(width: 14),
 
             // Right Squircle Container (Verified Icon)
             Container(
-              width: 76,
-              height: 76,
+              width: 50,
+              height: 50,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
                 color: const Color(0xFFECFDF5),
-                border: Border.all(
-                  color: const Color(0xFFA7F3D0),
-                  width: 1.5,
-                ),
+                border: Border.all(color: const Color(0xFFA7F3D0), width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFF10B981).withValues(alpha: 0.10),
@@ -665,9 +609,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Center(
                 child: const Icon(
                   Icons.task_alt_rounded,
-                  size: 38,
+                  size: 26,
                   color: Color(0xFF059669),
-                ).animate().scale(delay: 150.ms, duration: 400.ms, curve: Curves.easeOutBack),
+                ).animate().scale(
+                  delay: 150.ms,
+                  duration: 400.ms,
+                  curve: Curves.easeOutBack,
+                ),
               ),
             ),
           ],
@@ -679,7 +627,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return _CardStackBorrowSection(
       activeBorrows: activeBorrows,
       cardBuilder: (ctx, item, {bool isInteractive = true}) {
-        return _buildSingleActiveBorrowCard(ctx, item, isInteractive: isInteractive);
+        return _buildSingleActiveBorrowCard(
+          ctx,
+          item,
+          isInteractive: isInteractive,
+        );
       },
     );
   }
@@ -690,7 +642,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     bool isInteractive = true,
   }) {
     final toolName = item.namaBarang;
-    final categoryName = item.kodeUnit.isNotEmpty ? item.kodeUnit : item.namaKategori;
+    final categoryName = item.kodeUnit.isNotEmpty
+        ? item.kodeUnit
+        : item.namaKategori;
     final toolImage = item.gambarUrl;
 
     String sisaText = 'sisa 2 hari';
@@ -723,10 +677,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFDC2626),
-          width: 1.5,
-        ),
+        border: Border.all(color: const Color(0xFFDC2626), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFFDC2626).withValues(alpha: 0.12),
@@ -746,7 +697,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 // Badge Status
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFEE2E2),
                     borderRadius: BorderRadius.circular(8),
@@ -759,10 +713,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.alarm_rounded,
-                        size: 13,
-                        color: Color(0xFFDC2626),
-                      ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
+                            Icons.alarm_rounded,
+                            size: 13,
+                            color: Color(0xFFDC2626),
+                          )
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scale(
                             begin: const Offset(0.9, 0.9),
                             end: const Offset(1.15, 1.15),
                             duration: 700.ms,
@@ -818,14 +774,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => DetailPeminjamanScreen(item: item),
+                                  builder: (_) =>
+                                      DetailPeminjamanScreen(item: item),
                                 ),
                               );
                             }
                           : null,
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF8E1616),
                           borderRadius: BorderRadius.circular(10),
@@ -862,7 +822,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     if (item.batasKembali != null)
                       Text(
                         _formatIndonesianDate(
-                          DateTime.tryParse(item.batasKembali!) ?? DateTime.now(),
+                          DateTime.tryParse(item.batasKembali!) ??
+                              DateTime.now(),
                         ),
                         style: const TextStyle(
                           fontSize: 12,
@@ -883,10 +844,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               color: Colors.white,
-              border: Border.all(
-                color: const Color(0xFFFECACA),
-                width: 1.5,
-              ),
+              border: Border.all(color: const Color(0xFFFECACA), width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFDC2626).withValues(alpha: 0.10),
@@ -897,7 +855,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(13),
-              child: _buildToolRealPhoto(toolImage, toolName, fit: BoxFit.cover),
+              child: _buildToolRealPhoto(
+                toolImage,
+                toolName,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ],
@@ -908,7 +870,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // =============================================================
   // 4. STATUS SAYA (Dipinjam | Menunggu | Selesai)
   // =============================================================
-  Widget _buildStatusSayaSection(List activeBorrows, TransactionProvider txProvider) {
+  Widget _buildStatusSayaSection(
+    List activeBorrows,
+    TransactionProvider txProvider,
+  ) {
     final dipinjamCount = txProvider.countDipinjam;
     final menungguCount = txProvider.countMenunggu;
     final selesaiCount = txProvider.countSelesai;
@@ -930,43 +895,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             // Card 1: Dipinjam
             Expanded(
-              child: _buildStatusVerticalCard(
-                icon: Icons.construction_rounded,
-                iconColor: const Color(0xFFDC2626),
-                iconBgColor: const Color(0xFFFEE2E2),
-                count: '$dipinjamCount',
-                label: 'Dipinjam',
-                topBorderColor: const Color(0xFFDC2626),
-                bgColor: Colors.white,
-              ).animate().fadeIn(delay: 100.ms, duration: 350.ms).slideY(begin: 0.08, end: 0),
+              child:
+                  _buildStatusVerticalCard(
+                        icon: Icons.construction_rounded,
+                        iconColor: const Color(0xFFDC2626),
+                        iconBgColor: const Color(0xFFFEE2E2),
+                        count: '$dipinjamCount',
+                        label: 'Dipinjam',
+                        topBorderColor: const Color(0xFFDC2626),
+                        bgColor: Colors.white,
+                      )
+                      .animate()
+                      .fadeIn(delay: 100.ms, duration: 350.ms)
+                      .slideY(begin: 0.08, end: 0),
             ),
             const SizedBox(width: 10),
 
             // Card 2: Menunggu
             Expanded(
-              child: _buildStatusVerticalCard(
-                icon: Icons.hourglass_empty_rounded,
-                iconColor: const Color(0xFFD97706),
-                iconBgColor: const Color(0xFFFEF3C7),
-                count: '$menungguCount',
-                label: 'Menunggu',
-                topBorderColor: const Color(0xFFD97706),
-                bgColor: Colors.white,
-              ).animate().fadeIn(delay: 170.ms, duration: 350.ms).slideY(begin: 0.08, end: 0),
+              child:
+                  _buildStatusVerticalCard(
+                        icon: Icons.hourglass_empty_rounded,
+                        iconColor: const Color(0xFFD97706),
+                        iconBgColor: const Color(0xFFFEF3C7),
+                        count: '$menungguCount',
+                        label: 'Menunggu',
+                        topBorderColor: const Color(0xFFD97706),
+                        bgColor: Colors.white,
+                      )
+                      .animate()
+                      .fadeIn(delay: 170.ms, duration: 350.ms)
+                      .slideY(begin: 0.08, end: 0),
             ),
             const SizedBox(width: 10),
 
             // Card 3: Selesai
             Expanded(
-              child: _buildStatusVerticalCard(
-                icon: Icons.check_circle_rounded,
-                iconColor: const Color(0xFF059669),
-                iconBgColor: const Color(0xFFD1FAE5),
-                count: '$selesaiCount',
-                label: 'Selesai',
-                topBorderColor: const Color(0xFF059669),
-                bgColor: Colors.white,
-              ).animate().fadeIn(delay: 240.ms, duration: 350.ms).slideY(begin: 0.08, end: 0),
+              child:
+                  _buildStatusVerticalCard(
+                        icon: Icons.check_circle_rounded,
+                        iconColor: const Color(0xFF059669),
+                        iconBgColor: const Color(0xFFD1FAE5),
+                        count: '$selesaiCount',
+                        label: 'Selesai',
+                        topBorderColor: const Color(0xFF059669),
+                        bgColor: Colors.white,
+                      )
+                      .animate()
+                      .fadeIn(delay: 240.ms, duration: 350.ms)
+                      .slideY(begin: 0.08, end: 0),
             ),
           ],
         ),
@@ -1030,11 +1007,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     child: Center(
-                      child: Icon(
-                        icon,
-                        size: 22,
-                        color: iconColor,
-                      ),
+                      child: Icon(icon, size: 22, color: iconColor),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -1069,7 +1042,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // =============================================================
   // 5. KATEGORI PERALATAN (Geser ke samping, warna kartu berbeda)
   // =============================================================
-  Widget _buildKategoriSection(BuildContext context, AssetProvider assetProvider) {
+  Widget _buildKategoriSection(
+    BuildContext context,
+    AssetProvider assetProvider,
+  ) {
     final categories = assetProvider.categories;
 
     return Column(
@@ -1177,11 +1153,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
                     width: 122,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: style['bgColor'] as Color,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: style['borderColor'] as Color, width: 1.2),
+                      border: Border.all(
+                        color: style['borderColor'] as Color,
+                        width: 1.2,
+                      ),
                       boxShadow: const [
                         BoxShadow(
                           color: Color(0x0A0F172A),
@@ -1201,7 +1183,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: (style['borderColor'] as Color).withValues(alpha: 0.8),
+                              color: (style['borderColor'] as Color).withValues(
+                                alpha: 0.8,
+                              ),
                               width: 1,
                             ),
                             boxShadow: const [
@@ -1238,12 +1222,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             const SizedBox(height: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(6),
                                 border: Border.all(
-                                  color: (style['borderColor'] as Color).withValues(alpha: 0.8),
+                                  color: (style['borderColor'] as Color)
+                                      .withValues(alpha: 0.8),
                                   width: 1,
                                 ),
                               ),
@@ -1267,7 +1255,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFCBD5E1), width: 1),
+                            border: Border.all(
+                              color: const Color(0xFFCBD5E1),
+                              width: 1,
+                            ),
                             boxShadow: const [
                               BoxShadow(
                                 color: Color(0x080F172A),
@@ -1316,14 +1307,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'bgColor': const Color(0xFFFFF1F2),
         'borderColor': const Color(0xFFFECACA),
       };
-    } else if (lower.contains('elektronik') || lower.contains('listrik') || lower.contains('ukur')) {
+    } else if (lower.contains('elektronik') ||
+        lower.contains('listrik') ||
+        lower.contains('ukur')) {
       return {
         'icon': Icons.bolt_rounded,
         'iconColor': const Color(0xFFD97706),
         'bgColor': const Color(0xFFFEF3C7),
         'borderColor': const Color(0xFFFDE68A),
       };
-    } else if (lower.contains('komponen') || lower.contains('chip') || lower.contains('board')) {
+    } else if (lower.contains('komponen') ||
+        lower.contains('chip') ||
+        lower.contains('board')) {
       return {
         'icon': Icons.memory_rounded,
         'iconColor': const Color(0xFF059669),
@@ -1340,9 +1335,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-
-
-  Widget _buildAktivitasTerbaruSection(BuildContext context, TransactionProvider txProvider) {
+  Widget _buildAktivitasTerbaruSection(
+    BuildContext context,
+    TransactionProvider txProvider,
+  ) {
     final history = txProvider.riwayatList;
 
     return Column(
@@ -1392,14 +1388,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: List.generate(history.take(4).length, (index) {
                     final act = history[index];
                     final isDone = act.statusTransaksi == 'dikembalikan';
-                    final isPending = act.statusTransaksi == 'menunggu_persetujuan';
+                    final isPending =
+                        act.statusTransaksi == 'menunggu_persetujuan';
                     final isLast = index == history.take(4).length - 1;
 
                     final actionName = isDone
                         ? 'dikembalikan'
                         : isPending
-                            ? 'diajukan'
-                            : 'dipinjam';
+                        ? 'diajukan'
+                        : 'dipinjam';
 
                     final itemLabel = act.kodeUnit.isNotEmpty
                         ? act.kodeUnit
@@ -1420,8 +1417,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   color: isDone
                                       ? const Color(0xFF059669) // Solid Green
                                       : isPending
-                                          ? const Color(0xFFD97706) // Solid Amber
-                                          : const Color(0xFFDC2626), // Solid Red
+                                      ? const Color(0xFFD97706) // Solid Amber
+                                      : const Color(0xFFDC2626), // Solid Red
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -1454,10 +1451,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         if (!isLast)
-                          const Divider(
-                            height: 1,
-                            color: Color(0xFFE2E8F0),
-                          ),
+                          const Divider(height: 1, color: Color(0xFFE2E8F0)),
                       ],
                     );
                   }),
@@ -1475,7 +1469,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final diff = now.difference(dt);
       if (diff.inDays == 0) {
         if (diff.inHours == 0) {
-          return diff.inMinutes <= 1 ? 'Baru saja' : '${diff.inMinutes} mnt lalu';
+          return diff.inMinutes <= 1
+              ? 'Baru saja'
+              : '${diff.inMinutes} mnt lalu';
         }
         return '${diff.inHours} jam lalu';
       } else if (diff.inDays == 1) {
@@ -1483,7 +1479,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else if (diff.inDays < 7) {
         return '${diff.inDays} hari lalu';
       } else {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'Mei',
+          'Jun',
+          'Jul',
+          'Agu',
+          'Sep',
+          'Okt',
+          'Nov',
+          'Des',
+        ];
         return '${dt.day} ${months[dt.month - 1]}';
       }
     } catch (_) {
@@ -1494,15 +1503,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // =============================================================
   // HELPER: REAL PHOTO LOADER WITH FALLBACK ICON
   // =============================================================
-  Widget _buildToolRealPhoto(String? imageUrl, String toolName, {BoxFit fit = BoxFit.cover}) {
+  Widget _buildToolRealPhoto(
+    String? imageUrl,
+    String toolName, {
+    BoxFit fit = BoxFit.cover,
+  }) {
     final resolvedUrl = ApiConstants.resolveImageUrl(imageUrl);
     if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
       return CachedNetworkImage(
         imageUrl: resolvedUrl,
         fit: fit,
-        placeholder: (context, url) => const WamsShimmer(
-          child: ColoredBox(color: Colors.white),
-        ),
+        placeholder: (context, url) =>
+            const WamsShimmer(child: ColoredBox(color: Colors.white)),
         errorWidget: (context, url, error) => Padding(
           padding: const EdgeInsets.all(12.0),
           child: _buildToolFallbackIcon(toolName),
@@ -1518,7 +1530,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildToolFallbackIcon(String toolName) {
     final n = toolName.toLowerCase();
     IconData icon = Icons.speed_rounded;
-    if (n.contains('multimeter') || n.contains('ukur') || n.contains('listrik')) {
+    if (n.contains('multimeter') ||
+        n.contains('ukur') ||
+        n.contains('listrik')) {
       icon = Icons.electrical_services_rounded;
     } else if (n.contains('bor') || n.contains('perkakas')) {
       icon = Icons.handyman_rounded;
@@ -1528,13 +1542,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       icon = Icons.hardware_rounded;
     }
 
-    return Center(
-      child: Icon(
-        icon,
-        size: 38,
-        color: const Color(0xFF8E1616),
-      ),
-    );
+    return Center(child: Icon(icon, size: 38, color: const Color(0xFF8E1616)));
   }
 }
 
@@ -1543,7 +1551,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 // =============================================================
 class _CardStackBorrowSection extends StatefulWidget {
   final List activeBorrows;
-  final Widget Function(BuildContext context, dynamic item, {bool isInteractive}) cardBuilder;
+  final Widget Function(
+    BuildContext context,
+    dynamic item, {
+    bool isInteractive,
+  })
+  cardBuilder;
 
   const _CardStackBorrowSection({
     required this.activeBorrows,
@@ -1551,7 +1564,8 @@ class _CardStackBorrowSection extends StatefulWidget {
   });
 
   @override
-  State<_CardStackBorrowSection> createState() => _CardStackBorrowSectionState();
+  State<_CardStackBorrowSection> createState() =>
+      _CardStackBorrowSectionState();
 }
 
 class _CardStackBorrowSectionState extends State<_CardStackBorrowSection>
@@ -1633,7 +1647,8 @@ class _CardStackBorrowSectionState extends State<_CardStackBorrowSection>
     _animController.forward(from: 0).then((_) {
       if (mounted) {
         setState(() {
-          _currentIndex = (_currentIndex - 1 + widget.activeBorrows.length) %
+          _currentIndex =
+              (_currentIndex - 1 + widget.activeBorrows.length) %
               widget.activeBorrows.length;
           _dragOffset = 0.0;
           _isAnimating = false;
@@ -1663,9 +1678,13 @@ class _CardStackBorrowSectionState extends State<_CardStackBorrowSection>
     final screenWidth = MediaQuery.of(context).size.width;
     if (targetIndex > _currentIndex) {
       _isAnimating = true;
-      _slideAnimation = Tween<double>(begin: 0.0, end: -(screenWidth + 60.0)).animate(
-        CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
-      );
+      _slideAnimation = Tween<double>(begin: 0.0, end: -(screenWidth + 60.0))
+          .animate(
+            CurvedAnimation(
+              parent: _animController,
+              curve: Curves.easeOutCubic,
+            ),
+          );
       _animController.forward(from: 0).then((_) {
         if (mounted) {
           setState(() {
@@ -1677,9 +1696,13 @@ class _CardStackBorrowSectionState extends State<_CardStackBorrowSection>
       });
     } else {
       _isAnimating = true;
-      _slideAnimation = Tween<double>(begin: 0.0, end: (screenWidth + 60.0)).animate(
-        CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
-      );
+      _slideAnimation = Tween<double>(begin: 0.0, end: (screenWidth + 60.0))
+          .animate(
+            CurvedAnimation(
+              parent: _animController,
+              curve: Curves.easeOutCubic,
+            ),
+          );
       _animController.forward(from: 0).then((_) {
         if (mounted) {
           setState(() {
@@ -1696,7 +1719,11 @@ class _CardStackBorrowSectionState extends State<_CardStackBorrowSection>
   Widget build(BuildContext context) {
     final total = widget.activeBorrows.length;
     if (total == 1) {
-      return widget.cardBuilder(context, widget.activeBorrows[0], isInteractive: true);
+      return widget.cardBuilder(
+        context,
+        widget.activeBorrows[0],
+        isInteractive: true,
+      );
     }
 
     final progress = (_dragOffset.abs() / 240.0).clamp(0.0, 1.0);
@@ -1809,7 +1836,9 @@ class _CardStackBorrowSectionState extends State<_CardStackBorrowSection>
                 height: 6,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(3),
-                  color: isCurrent ? const Color(0xFF8E1616) : const Color(0xFFCBD5E1),
+                  color: isCurrent
+                      ? const Color(0xFF8E1616)
+                      : const Color(0xFFCBD5E1),
                 ),
               ),
             );

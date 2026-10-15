@@ -370,17 +370,9 @@ class _KategoriScreenState extends State<KategoriScreen> {
               ),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
 
-            // 4. NOTICE BANNER: "Peminjaman Wajib Scan QR Code"
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: _buildScanNoticeBanner(),
-            ),
-
-            const SizedBox(height: 12),
-
-            // 5. MAIN PRODUCT GRID (2 COLUMNS)
+            // 4. MAIN PRODUCT GRID (2 COLUMNS)
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
@@ -460,85 +452,6 @@ class _KategoriScreenState extends State<KategoriScreen> {
   }
 
 
-
-  // =============================================================
-  // NOTICE BANNER WIDGET
-  // =============================================================
-  Widget _buildScanNoticeBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFECACA), width: 1.2),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06DC2626),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Red Squircle QR Icon
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFFDC2626),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFDC2626).withValues(alpha: 0.25),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.qr_code_scanner_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Banner Text
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Peminjaman Wajib Scan QR Code',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF991B1B),
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Pilih alat yang Anda butuhkan, lalu klik Scan QR Unit dan arahkan kamera ke stiker QR fisik unit di workshop.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF64748B),
-                    height: 1.35,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.04, end: 0);
-  }
 
   // =============================================================
   // PRODUCT CARD WIDGET (2 COLUMNS)

@@ -387,4 +387,115 @@ class ApiService {
       throw Exception(data['message'] ?? 'Gagal memuat riwayat');
     }
   }
+
+  // --- FORGOT PASSWORD & OTP SERVICES ---
+
+  /// 1. Kirim OTP ke email user untuk reset password
+  Future<Map<String, dynamic>> sendForgotPasswordOtp(String email) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.forgotPasswordSendOtp),
+      headers: _headers(null),
+      body: jsonEncode({'email': email.trim().toLowerCase()}),
+    );
+
+    final data = jsonDecode(response.body);
+    if ((response.statusCode == 200 || response.statusCode == 201) && data['success'] == true) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Gagal mengirim kode OTP.');
+    }
+  }
+
+  /// 2. Verifikasi OTP untuk mendapatkan token reset password
+  Future<Map<String, dynamic>> verifyForgotPasswordOtp(String email, String otpCode) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.forgotPasswordVerifyOtp),
+      headers: _headers(null),
+      body: jsonEncode({
+        'email': email.trim().toLowerCase(),
+        'otp_code': otpCode.trim(),
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Kode OTP salah atau kedaluwarsa.');
+    }
+  }
+
+  /// 3. Simpan password baru menggunakan reset token
+  Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String resetToken,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await http.post(
+      Uri.parse(ApiConstants.forgotPasswordReset),
+      headers: _headers(null),
+      body: jsonEncode({
+        'email': email.trim().toLowerCase(),
+        'reset_token': resetToken,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Gagal mereset kata sandi.');
+    }
+  }
+
+  // --- CHANGE EMAIL VIA OTP SERVICES ---
+
+  /// Kirim OTP ke alamat email baru
+  Future<Map<String, dynamic>> sendChangeEmailOtp({
+    required String newEmail,
+    String? currentPassword,
+  }) async {
+    final token = await _getToken();
+    final payload = <String, dynamic>{
+      'new_email': newEmail.trim().toLowerCase(),
+    };
+    if (currentPassword != null) {
+      payload['current_password'] = currentPassword;
+    }
+
+    final response = await http.post(
+      Uri.parse(ApiConstants.changeEmailSendOtp),
+      headers: _headers(token),
+      body: jsonEncode(payload),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Gagal mengirim kode verifikasi ke email baru.');
+    }
+  }
+
+  /// Verifikasi OTP dan simpan email baru
+  Future<Map<String, dynamic>> verifyChangeEmailOtp(String otpCode) async {
+    final token = await _getToken();
+    final response = await http.post(
+      Uri.parse(ApiConstants.changeEmailVerifyOtp),
+      headers: _headers(token),
+      body: jsonEncode({
+        'otp_code': otpCode.trim(),
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 && data['success'] == true) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Kode OTP salah atau tidak valid.');
+    }
+  }
 }

@@ -371,9 +371,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ).animate().fadeIn(duration: 350.ms).slideY(begin: -0.03, end: 0),
 
+              const SizedBox(height: 20),
+
+              // 2. INFORMASI DETAIL AKUN
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                child: Text(
+                  'INFORMASI AKUN',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textMuted,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.cardLight,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.badge_outlined, color: AppTheme.primary, size: 20),
+                    ),
+                    title: const Text(
+                      'NIP Pegawai',
+                      style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+                    ),
+                    trailing: Text(
+                      user?.nip ?? '-',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  ),
+                ),
+              ).animate(delay: 80.ms).fadeIn(duration: 350.ms).slideY(begin: 0.04, end: 0),
+
               const SizedBox(height: 16),
 
-              // 2. STATS PINJAMAN AKTIF & TOTAL RIWAYAT (EQUAL SIZE DENGAN INTRINSICHEIGHT)
+              // 3. STATS PINJAMAN AKTIF & TOTAL RIWAYAT (EQUAL SIZE DENGAN INTRINSICHEIGHT)
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -504,63 +561,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ],
-                ),
-              ).animate(delay: 80.ms).fadeIn(duration: 350.ms).slideY(begin: 0.04, end: 0),
-
-              const SizedBox(height: 20),
-
-              // 3. INFORMASI DETAIL AKUN
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
-                child: Text(
-                  'INFORMASI AKUN',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textMuted,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.cardLight,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.borderLight),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.badge_outlined, color: AppTheme.primary, size: 20),
-                    ),
-                    title: const Text(
-                      'NIP Pegawai',
-                      style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-                    ),
-                    trailing: Text(
-                      user?.nip ?? '-',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  ),
                 ),
               ).animate(delay: 160.ms).fadeIn(duration: 350.ms).slideY(begin: 0.04, end: 0),
 
