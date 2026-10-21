@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, useForm, router, usePoll } from '@inertiajs/react';
+import { Head, useForm, router, usePoll, usePage } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
     Users,
@@ -11,15 +11,23 @@ import {
     Shield,
     User as UserIcon,
     Mail,
-    CreditCard
+    CreditCard,
+    Eye,
+    EyeOff,
+    Lock
 } from 'lucide-react';
 import ConfirmModal from '@/Components/ConfirmModal';
 
 export default function UserIndex({ users, filters }) {
+    const { auth } = usePage().props;
+    const currentAdminId = auth?.user?.id;
+
     const [search, setSearch] = useState(filters.q || '');
     const [selectedRole, setSelectedRole] = useState(filters.role || '');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+    const [visiblePasswords, setVisiblePasswords] = useState({});
+    const [showModalPassword, setShowModalPassword] = useState(false);
 
     // Auto-refresh daftar user agar akun baru (mis. login via Google dari mobile/web)
     // langsung muncul tanpa perlu refresh halaman manual.
@@ -33,6 +41,27 @@ export default function UserIndex({ users, filters }) {
         password: '',
     });
 
+    const togglePasswordVisibility = (userId) => {
+        setVisiblePasswords((prev) => ({
+            ...prev,
+            [userId]: !prev[userId],
+        }));
+    };
+
+    const handleQuickRoleChange = (u, newRole) => {
+        if (u.role === newRole) return;
+        router.put(
+            `/admin/users/${u.id}`,
+            {
+                role: newRole,
+                quick_role_toggle: true,
+            },
+            {
+                preserveScroll: true,
+            }
+        );
+    };
+
     const handleFilter = (e) => {
         if (e) e.preventDefault();
         router.get('/admin/users', { q: search, role: selectedRole }, { preserveState: true });
@@ -40,6 +69,7 @@ export default function UserIndex({ users, filters }) {
 
     const openCreateModal = () => {
         setEditingUser(null);
+        setShowModalPassword(false);
         reset();
         setData({
             nama: '',
@@ -53,6 +83,7 @@ export default function UserIndex({ users, filters }) {
 
     const openEditModal = (u) => {
         setEditingUser(u);
+        setShowModalPassword(false);
         setData({
             nama: u.nama,
             email: u.email,
@@ -67,10 +98,12 @@ export default function UserIndex({ users, filters }) {
         e.preventDefault();
         if (editingUser) {
             put(`/admin/users/${editingUser.id}`, {
+                preserveScroll: true,
                 onSuccess: () => setModalOpen(false),
             });
         } else {
             post('/admin/users', {
+                preserveScroll: true,
                 onSuccess: () => {
                     setModalOpen(false);
                     reset();
@@ -80,15 +113,24 @@ export default function UserIndex({ users, filters }) {
     };
 
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const openDeleteModal = (u) => {
+        if (isDeleting) return;
         setDeleteModal({ isOpen: true, user: u });
     };
 
     const handleConfirmDelete = () => {
-        if (!deleteModal.user) return;
-        router.delete(`/admin/users/${deleteModal.user.id}`, {
+        if (!deleteModal.user || isDeleting) return;
+        const targetId = deleteModal.user.id;
+        setIsDeleting(true);
+        router.delete(`/admin/users/${targetId}`, {
+            preserveScroll: true,
             onSuccess: () => setDeleteModal({ isOpen: false, user: null }),
+            onFinish: () => {
+                setIsDeleting(false);
+                setDeleteModal({ isOpen: false, user: null });
+            },
         });
     };
 
@@ -142,7 +184,8 @@ export default function UserIndex({ users, filters }) {
                                 <tr>
                                     <th className="p-4">Pengguna</th>
                                     <th className="p-4">NIP</th>
-                                    <th className="p-4">Role</th>
+                                    <th className="p-4">Password</th>
+                                    <th className="p-4">Role Akun</th>
                                     <th className="p-4 text-center">Riwayat Pinjam</th>
                                     <th className="p-4 text-center">Pinjaman Aktif</th>
                                     <th className="p-4 text-right">Aksi</th>
@@ -151,82 +194,118 @@ export default function UserIndex({ users, filters }) {
                             <tbody className="divide-y divide-[#E0E0E0]">
                                 {users.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-[#6B7280] bg-white">
+                                        <td colSpan={7} className="p-8 text-center text-[#6B7280] bg-white">
                                             Tidak ada user ditemukan.
                                         </td>
                                     </tr>
                                 ) : (
-                                    users.data.map((u) => (
-                                        <tr key={u.id} className="hover:bg-[#EEEEEE]/50 bg-white transition-colors">
-                                            <td className="p-4">
-                                                <div className="flex items-center gap-3">
-                                                    {u.avatar && /^https?:\/\//.test(u.avatar) ? (
-                                                        <img
-                                                            src={u.avatar}
-                                                            alt={u.nama}
-                                                            referrerPolicy="no-referrer"
-                                                            className="w-9 h-9 rounded-xl border border-[#E0E0E0] object-cover shrink-0"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-9 h-9 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] flex items-center justify-center font-bold text-[#D84040] text-sm shrink-0">
-                                                            {u.nama.charAt(0)}
+                                    users.data.map((u) => {
+                                        const isPwShown = Boolean(visiblePasswords[u.id]);
+                                        const isSelf = Number(u.id) === Number(currentAdminId);
+                                        return (
+                                            <tr key={u.id} className="hover:bg-[#EEEEEE]/50 bg-white transition-colors">
+                                                <td className="p-4">
+                                                    <div className="flex items-center gap-3">
+                                                        {u.avatar && /^https?:\/\//.test(u.avatar) ? (
+                                                            <img
+                                                                src={u.avatar}
+                                                                alt={u.nama}
+                                                                referrerPolicy="no-referrer"
+                                                                className="w-9 h-9 rounded-xl border border-[#E0E0E0] object-cover shrink-0"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-9 h-9 rounded-xl bg-[#EEEEEE] border border-[#E0E0E0] flex items-center justify-center font-bold text-[#D84040] text-sm shrink-0">
+                                                                {u.nama.charAt(0)}
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="font-bold text-[#1D1616] text-sm">{u.nama}</span>
+                                                                {isSelf && (
+                                                                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-[10px] font-bold text-emerald-700">
+                                                                        Anda
+                                                                    </span>
+                                                                )}
+                                                                {u.google_id && (
+                                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#EEEEEE] border border-[#E0E0E0] text-[10px] font-bold text-[#1D1616]">
+                                                                        <img src="/images/google_logo.png" alt="" className="w-2.5 h-2.5" />
+                                                                        Google
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-[11px] text-[#6B7280]">{u.email}</div>
                                                         </div>
-                                                    )}
-                                                    <div>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="font-bold text-[#1D1616] text-sm">{u.nama}</span>
-                                                            {u.google_id && (
-                                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#EEEEEE] border border-[#E0E0E0] text-[10px] font-bold text-[#1D1616]">
-                                                                    <img src="/images/google_logo.png" alt="" className="w-2.5 h-2.5" />
-                                                                    Google
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="text-[11px] text-[#6B7280]">{u.email}</div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="p-4 font-mono text-[#1D1616] font-semibold">
-                                                {u.nip || '-'}
-                                            </td>
-                                            <td className="p-4">
-                                                <span
-                                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold ${
-                                                        u.role === 'admin'
-                                                            ? 'bg-[#D84040] text-white'
-                                                            : 'bg-[#EEEEEE] text-[#1D1616]'
-                                                    }`}
-                                                >
-                                                    <Shield size={12} />
-                                                    {u.role.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 text-center font-bold text-[#1D1616]">
-                                                {u.total_transaksi}
-                                            </td>
-                                            <td className="p-4 text-center font-extrabold text-[#D84040]">
-                                                {u.transaksi_aktif}
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => openEditModal(u)}
-                                                        className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1D1616] hover:bg-[#EEEEEE] transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        <Edit2 size={15} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openDeleteModal(u)}
-                                                        className="p-1.5 rounded-lg text-[#D84040] hover:bg-[#D84040]/10 transition-colors cursor-pointer"
-                                                        title="Hapus"
-                                                    >
-                                                        <Trash2 size={15} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                </td>
+                                                <td className="p-4 font-mono text-[#1D1616] font-semibold">
+                                                    {u.nip || '-'}
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#F8F9FA] border border-[#E0E0E0]">
+                                                        <span className="font-mono text-xs font-semibold text-[#1D1616] select-all">
+                                                            {isPwShown ? (u.visible_password || '-') : '••••••••'}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => togglePasswordVisibility(u.id)}
+                                                            className="text-[#6B7280] hover:text-[#D84040] transition-colors cursor-pointer"
+                                                            title={isPwShown ? 'Sembunyikan Password' : 'Lihat Password User'}
+                                                        >
+                                                            {isPwShown ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="inline-flex items-center gap-1.5">
+                                                        <select
+                                                            value={u.role}
+                                                            disabled={isSelf}
+                                                            onChange={(e) => handleQuickRoleChange(u, e.target.value)}
+                                                            title={isSelf ? 'Role akun sendiri tidak dapat diturunkan' : 'Klik untuk mengganti role (User <-> Admin)'}
+                                                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                                                                u.role === 'admin'
+                                                                    ? 'bg-[#D84040] text-white border-[#D84040]'
+                                                                    : 'bg-[#EEEEEE] text-[#1D1616] border-[#E0E0E0] hover:border-[#D84040]'
+                                                            } ${isSelf ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                        >
+                                                            <option value="user" className="bg-white text-[#1D1616] font-bold">
+                                                                USER (TEKNISI)
+                                                            </option>
+                                                            <option value="admin" className="bg-white text-[#1D1616] font-bold">
+                                                                ADMIN
+                                                            </option>
+                                                        </select>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-center font-bold text-[#1D1616]">
+                                                    {u.total_transaksi}
+                                                </td>
+                                                <td className="p-4 text-center font-extrabold text-[#D84040]">
+                                                    {u.transaksi_aktif}
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => openEditModal(u)}
+                                                            className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1D1616] hover:bg-[#EEEEEE] transition-colors cursor-pointer"
+                                                            title="Edit Profil & Role"
+                                                        >
+                                                            <Edit2 size={15} />
+                                                        </button>
+                                                        {!isSelf && (
+                                                            <button
+                                                                onClick={() => openDeleteModal(u)}
+                                                                className="p-1.5 rounded-lg text-[#D84040] hover:bg-[#D84040]/10 transition-colors cursor-pointer"
+                                                                title="Hapus Akun Pengguna"
+                                                            >
+                                                                <Trash2 size={15} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -306,18 +385,58 @@ export default function UserIndex({ users, filters }) {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
-                                    Password {editingUser && '(Kosongkan jika tidak diubah)'}
-                                </label>
-                                <input
-                                    type="password"
-                                    value={data.password}
-                                    onChange={(e) => setData('password', e.target.value)}
-                                    placeholder="Minimal 6 karakter"
-                                    required={!editingUser}
-                                    className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
-                                />
-                                {errors.password && <p className="text-[#D84040] text-xs mt-1">{errors.password}</p>}
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-xs font-bold text-[#1D1616]">
+                                        Password Pengguna
+                                    </label>
+                                    {editingUser && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-800">
+                                            <Lock size={10} /> Hanya Lihat (Tidak Dapat Diubah)
+                                        </span>
+                                    )}
+                                </div>
+
+                                {editingUser ? (
+                                    <div className="relative">
+                                        <input
+                                            type={showModalPassword ? 'text' : 'password'}
+                                            value={editingUser.visible_password || '-'}
+                                            readOnly
+                                            disabled
+                                            className="w-full pl-3.5 pr-10 py-2.5 bg-[#F3F4F6] border border-[#E0E0E0] rounded-xl text-xs font-mono font-semibold text-[#1D1616] cursor-not-allowed select-all"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowModalPassword(!showModalPassword)}
+                                            className="absolute right-3 top-2.5 text-[#6B7280] hover:text-[#D84040] cursor-pointer"
+                                            title={showModalPassword ? 'Sembunyikan Password' : 'Lihat Password'}
+                                        >
+                                            {showModalPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                                        </button>
+                                        <p className="text-[10.5px] text-[#6B7280] mt-1">
+                                            Admin dapat melihat password pengguna di sini, namun perubahan password hanya dapat dilakukan oleh pemilik akun.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <input
+                                            type={showModalPassword ? 'text' : 'password'}
+                                            value={data.password}
+                                            onChange={(e) => setData('password', e.target.value)}
+                                            placeholder="Minimal 6 karakter"
+                                            required
+                                            className="w-full pl-3.5 pr-10 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowModalPassword(!showModalPassword)}
+                                            className="absolute right-3 top-2.5 text-[#6B7280] hover:text-[#D84040] cursor-pointer"
+                                        >
+                                            {showModalPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                                        </button>
+                                        {errors.password && <p className="text-[#D84040] text-xs mt-1">{errors.password}</p>}
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex justify-end gap-2 pt-2">
@@ -344,8 +463,9 @@ export default function UserIndex({ users, filters }) {
             {/* Modal Confirm Delete */}
             <ConfirmModal
                 isOpen={deleteModal.isOpen}
-                onClose={() => setDeleteModal({ isOpen: false, user: null })}
+                onClose={() => !isDeleting && setDeleteModal({ isOpen: false, user: null })}
                 onConfirm={handleConfirmDelete}
+                processing={isDeleting}
                 title="Hapus Pengguna"
                 message="Apakah Anda yakin ingin menghapus akun pengguna ini? Akses pengguna ke sistem akan dicabut secara permanen."
                 itemBadge={deleteModal.user ? `${deleteModal.user.nama} (${deleteModal.user.email})` : null}

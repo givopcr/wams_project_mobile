@@ -15,16 +15,18 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Public Authentication
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/auth/google', [AuthController::class, 'loginWithGoogle']);
+// Public Authentication (Protected with Rate Limiting)
+Route::middleware('throttle:10,1')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/auth/google', [AuthController::class, 'loginWithGoogle']);
 
-// Forgot / Reset Password via OTP
-Route::prefix('auth/forgot-password')->group(function () {
-    Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp']);
-    Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
-    Route::post('/reset', [ForgotPasswordController::class, 'resetPassword']);
+    // Forgot / Reset Password via OTP
+    Route::prefix('auth/forgot-password')->group(function () {
+        Route::post('/send-otp', [ForgotPasswordController::class, 'sendOtp']);
+        Route::post('/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
+        Route::post('/reset', [ForgotPasswordController::class, 'resetPassword']);
+    });
 });
 
 // Public/Browsing Data (Bisa diakses untuk scan atau katalog)

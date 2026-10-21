@@ -1,5 +1,5 @@
 # =============================================================
-# WAMS - Image PHP-FPM untuk Laravel 12 (PHP 8.2)
+# WAMS - Image PHP-FPM untuk Laravel (PHP 8.4)
 # =============================================================
 FROM php:8.4-fpm
 
@@ -18,11 +18,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker-php-ext-install -j$(nproc) pdo_mysql mbstring zip gd intl exif bcmath opcache \
     && rm -rf /var/lib/apt/lists/*
 
-# Batas upload disamakan dengan Nginx (client_max_body_size 20M)
+# Batas upload disamakan dengan Nginx (client_max_body_size 20M) & optimasi performa OPcache
 RUN { \
         echo "upload_max_filesize=20M"; \
         echo "post_max_size=20M"; \
         echo "memory_limit=256M"; \
+        echo "opcache.enable=1"; \
+        echo "opcache.enable_cli=1"; \
+        echo "opcache.memory_consumption=128"; \
+        echo "opcache.interned_strings_buffer=16"; \
+        echo "opcache.max_accelerated_files=10000"; \
+        echo "opcache.revalidate_freq=0"; \
+        echo "opcache.validate_timestamps=1"; \
     } > /usr/local/etc/php/conf.d/wams.ini
 
 # Composer

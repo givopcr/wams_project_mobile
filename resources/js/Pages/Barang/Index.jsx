@@ -31,7 +31,7 @@ import {
     ShieldCheck
 } from 'lucide-react';
 
-export default function BarangIndex({ barangList, categories = [], categoryStats = [], filters }) {
+export default function BarangIndex({ barangList, categories = [], categoryStats = [], globalTabCounts = null, filters }) {
     const [search, setSearch] = useState(filters.q || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.kategori_id || '');
 
@@ -52,18 +52,19 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
     const handleTabChange = (newTab) => {
         setIsTableLoading(true);
         setActiveTab(newTab);
-        if (typeof window !== 'undefined') {
-            const url = new URL(window.location.href);
-            if (newTab && newTab !== 'semua') {
-                url.searchParams.set('tipe', newTab);
-            } else {
-                url.searchParams.delete('tipe');
-            }
-            window.history.replaceState({}, '', url.toString());
+        if (newTab === 'habis_pakai' && viewMode === 'unit') {
+            setViewMode('master');
         }
-        setTimeout(() => {
-            setIsTableLoading(false);
-        }, 180);
+        const params = {};
+        if (search) params.q = search;
+        if (selectedCategory) params.kategori_id = selectedCategory;
+        if (newTab && newTab !== 'semua') params.tipe = newTab;
+
+        router.get('/admin/barang', params, {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => setIsTableLoading(false),
+        });
     };
 
     // Auto trigger skeleton on router start/finish for in-page updates
@@ -119,6 +120,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
     // Form Master Barang
     const { data, setData, post, processing, reset, errors, clearErrors } = useForm({
         kategori_id: '',
+        tipe: 'aset',
         nama_barang: '',
         kode_barang: '',
         satuan: 'pcs',
@@ -194,13 +196,16 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
 
     // Tab Counts (Semua, Aset, Habis Pakai, dan Low Stock Alert)
     const tabCounts = useMemo(() => {
+        if (globalTabCounts) {
+            return globalTabCounts;
+        }
         const all = barangList?.data || [];
         const totalAll = all.length;
         const totalAset = all.filter((i) => (i.tipe_kategori || 'aset') === 'aset').length;
         const totalHabisPakai = all.filter((i) => i.tipe_kategori === 'habis_pakai').length;
         const totalLowStock = all.filter((i) => i.tipe_kategori === 'habis_pakai' && i.is_low_stock).length;
         return { totalAll, totalAset, totalHabisPakai, totalLowStock };
-    }, [barangList?.data]);
+    }, [globalTabCounts, barangList?.data]);
 
     // Client-side Filtered Master Barang respecting the active tab
     const filteredBarangList = useMemo(() => {
@@ -271,8 +276,17 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
         reset();
         setImagePreview(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
+
+        // Pilih kategori default sesuai filter kategori yang sedang dipilih
+        let defaultCatId = categories.length > 0 ? categories[0].id : '';
+        if (selectedCategory) {
+            defaultCatId = selectedCategory;
+        }
+        const defaultTipe = activeTab === 'habis_pakai' ? 'habis_pakai' : 'aset';
+
         setData({
-            kategori_id: categories.length > 0 ? categories[0].id : '',
+            kategori_id: defaultCatId,
+            tipe: defaultTipe,
             nama_barang: '',
             kode_barang: '',
             satuan: 'pcs',
@@ -295,6 +309,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
         if (fileInputRef.current) fileInputRef.current.value = '';
         setData({
             kategori_id: b.kategori_id,
+            tipe: b.tipe || b.tipe_kategori || 'aset',
             nama_barang: b.nama_barang,
             kode_barang: b.kode_barang,
             satuan: b.satuan || 'pcs',
@@ -613,6 +628,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                         ) : (
                             categoryStats.map((cat) => {
                                 const isSelected = selectedCategory === String(cat.id);
+                                const isCatHabisPakai = cat.tipe === 'habis_pakai';
                                 return (
                                     <div
                                         key={cat.id}
@@ -627,9 +643,20 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                             <div className="w-12 h-12 rounded-xl bg-[#EEEEEE] flex items-center justify-center border border-[#E0E0E0]">
                                                 {getCategoryIcon(cat.nama_kategori)}
                                             </div>
-                                            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#EEEEEE] text-[#1D1616]">
-                                                {cat.total_barang} Model Barang
-                                            </span>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#EEEEEE] text-[#1D1616]">
+                                                    {cat.total_barang} {isCatHabisPakai ? 'Jenis Bahan' : 'Model Barang'}
+                                                </span>
+                                                <span
+                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                                        isCatHabisPakai
+                                                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                                            : 'bg-rose-50 text-[#D84040] border-rose-200'
+                                                    }`}
+                                                >
+                                                    {isCatHabisPakai ? 'Habis Pakai' : 'Aset Peminjaman'}
+                                                </span>
+                                            </div>
                                         </div>
 
                                         <div className="mt-4">
@@ -637,25 +664,46 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                 {cat.nama_kategori}
                                             </h3>
                                             <p className="text-xs text-[#6B7280] font-medium mt-0.5">
-                                                Total: <span className="font-bold text-[#1D1616]">{cat.total_unit} Unit Fisik</span>
+                                                {isCatHabisPakai ? (
+                                                    <>Mode: <span className="font-bold text-amber-800">Monitoring Kuantitas Stok</span></>
+                                                ) : (
+                                                    <>Total: <span className="font-bold text-[#1D1616]">{cat.total_unit} Unit Fisik</span></>
+                                                )}
                                             </p>
                                         </div>
 
-                                        {/* Breakdown Status Unit */}
-                                        <div className="pt-4 mt-4 border-t border-[#E0E0E0] grid grid-cols-3 gap-2 text-center">
-                                            <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
-                                                <span className="text-[10px] uppercase font-bold text-emerald-700 block">Tersedia</span>
-                                                <span className="text-sm font-extrabold text-emerald-700">{cat.tersedia}</span>
+                                        {/* Breakdown Status Unit / Stok Bahan */}
+                                        {isCatHabisPakai ? (
+                                            <div className="pt-4 mt-4 border-t border-[#E0E0E0] grid grid-cols-3 gap-2 text-center">
+                                                <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
+                                                    <span className="text-[10px] uppercase font-bold text-[#1D1616] block">Total Bahan</span>
+                                                    <span className="text-sm font-extrabold text-[#1D1616]">{cat.total_barang}</span>
+                                                </div>
+                                                <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
+                                                    <span className="text-[10px] uppercase font-bold text-emerald-700 block">Stok Aman</span>
+                                                    <span className="text-sm font-extrabold text-emerald-700">{cat.stok_aman ?? 0}</span>
+                                                </div>
+                                                <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
+                                                    <span className="text-[10px] uppercase font-bold text-[#D84040] block">Menipis</span>
+                                                    <span className="text-sm font-extrabold text-[#D84040]">{cat.stok_menipis ?? 0}</span>
+                                                </div>
                                             </div>
-                                            <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
-                                                <span className="text-[10px] uppercase font-bold text-amber-700 block">Dipinjam</span>
-                                                <span className="text-sm font-extrabold text-amber-700">{cat.dipinjam}</span>
+                                        ) : (
+                                            <div className="pt-4 mt-4 border-t border-[#E0E0E0] grid grid-cols-3 gap-2 text-center">
+                                                <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
+                                                    <span className="text-[10px] uppercase font-bold text-emerald-700 block">Tersedia</span>
+                                                    <span className="text-sm font-extrabold text-emerald-700">{cat.tersedia}</span>
+                                                </div>
+                                                <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
+                                                    <span className="text-[10px] uppercase font-bold text-amber-700 block">Dipinjam</span>
+                                                    <span className="text-sm font-extrabold text-amber-700">{cat.dipinjam}</span>
+                                                </div>
+                                                <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
+                                                    <span className="text-[10px] uppercase font-bold text-[#D84040] block">Rusak</span>
+                                                    <span className="text-sm font-extrabold text-[#D84040]">{cat.maintenance}</span>
+                                                </div>
                                             </div>
-                                            <div className="bg-[#EEEEEE] p-2 rounded-lg border border-[#E0E0E0]">
-                                                <span className="text-[10px] uppercase font-bold text-[#D84040] block">Rusak</span>
-                                                <span className="text-sm font-extrabold text-[#D84040]">{cat.maintenance}</span>
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
                                 );
                             })
@@ -1424,10 +1472,55 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 {/* Kolom Kiri: Informasi Pokok Barang */}
                                 <div className="space-y-3">
+                                    {/* Pilihan Jenis Barang: Aset vs Habis Pakai */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
+                                            Jenis / Kategori Tipe Barang
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => setData('tipe', 'aset')}
+                                                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                                                    data.tipe === 'aset'
+                                                        ? 'bg-[#D84040]/10 border-[#D84040] text-[#1D1616] ring-1 ring-[#D84040]'
+                                                        : 'bg-white border-[#E0E0E0] text-[#6B7280] hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${data.tipe === 'aset' ? 'bg-[#D84040] text-white' : 'bg-[#EEEEEE] text-[#6B7280]'}`}>
+                                                    <Wrench size={15} />
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs font-extrabold text-[#1D1616]">Aset</div>
+                                                    <div className="text-[10px] text-[#6B7280] leading-tight">Alat dipinjam & kembali</div>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setData('tipe', 'habis_pakai')}
+                                                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                                                    data.tipe === 'habis_pakai'
+                                                        ? 'bg-amber-50 border-amber-500 text-[#1D1616] ring-1 ring-amber-500'
+                                                        : 'bg-white border-[#E0E0E0] text-[#6B7280] hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${data.tipe === 'habis_pakai' ? 'bg-amber-500 text-white' : 'bg-[#EEEEEE] text-[#6B7280]'}`}>
+                                                    <Boxes size={15} />
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs font-extrabold text-[#1D1616]">Habis Pakai</div>
+                                                    <div className="text-[10px] text-[#6B7280] leading-tight">Bahan sekali pakai / stok</div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                        {errors.tipe && <p className="text-[#D84040] text-xs mt-1">{errors.tipe}</p>}
+                                    </div>
+
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div>
                                             <label className="block text-xs font-bold text-[#1D1616] mb-1">
-                                                Kategori
+                                                Kategori Kelompok
                                             </label>
                                             <select
                                                 value={data.kategori_id}
@@ -1436,7 +1529,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                 className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none focus:border-[#D84040]"
                                             >
                                                 {categories.map((c) => (
-                                                     <option key={c.id} value={c.id}>
+                                                    <option key={c.id} value={c.id}>
                                                         {c.nama_kategori}
                                                     </option>
                                                 ))}
@@ -1505,8 +1598,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                 <div className="space-y-3">
                                     {/* Pengaturan Tipe (Bahan Habis Pakai vs Aset Fisik) */}
                                     {(() => {
-                                        const selectedCat = categories.find((c) => String(c.id) === String(data.kategori_id));
-                                        const isHabisPakai = selectedCat?.tipe === 'habis_pakai';
+                                        const isHabisPakai = data.tipe === 'habis_pakai';
 
                                         if (isHabisPakai) {
                                             return (
@@ -1732,26 +1824,28 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                         )}
                                     </div>
 
-                                    {/* Pengaturan Izin / Approval Admin */}
-                                    <div className="p-3 bg-amber-50/60 border border-amber-200/80 rounded-xl">
-                                        <label className="flex items-start gap-2.5 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={Boolean(data.perlu_persetujuan)}
-                                                onChange={(e) => setData('perlu_persetujuan', e.target.checked)}
-                                                className="mt-0.5 rounded border-amber-300 text-[#D84040] focus:ring-[#D84040] h-4 w-4 cursor-pointer"
-                                            />
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-1.5 text-xs font-bold text-[#1D1616]">
-                                                    <ShieldAlert size={14} className="text-amber-600 shrink-0" />
-                                                    <span>Wajib Izin Langsung Admin (Multi-Step Approval)</span>
+                                    {/* Pengaturan Izin / Approval Admin (Hanya untuk Aset Peminjaman) */}
+                                    {categories.find((c) => String(c.id) === String(data.kategori_id))?.tipe !== 'habis_pakai' && (
+                                        <div className="p-3 bg-amber-50/60 border border-amber-200/80 rounded-xl">
+                                            <label className="flex items-start gap-2.5 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={Boolean(data.perlu_persetujuan)}
+                                                    onChange={(e) => setData('perlu_persetujuan', e.target.checked)}
+                                                    className="mt-0.5 rounded border-amber-300 text-[#D84040] focus:ring-[#D84040] h-4 w-4 cursor-pointer"
+                                                />
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#1D1616]">
+                                                        <ShieldAlert size={14} className="text-amber-600 shrink-0" />
+                                                        <span>Wajib Izin Langsung Admin (Multi-Step Approval)</span>
+                                                    </div>
+                                                    <p className="text-[10.5px] text-[#6B7280] mt-0.5 leading-tight">
+                                                        Peminjaman barang ini wajib diverifikasi dan disetujui (approve) oleh Admin di Logbook sebelum dapat diambil.
+                                                    </p>
                                                 </div>
-                                                <p className="text-[10.5px] text-[#6B7280] mt-0.5 leading-tight">
-                                                    Peminjaman barang ini wajib diverifikasi dan disetujui (approve) oleh Admin di Logbook sebelum dapat diambil.
-                                                </p>
-                                            </div>
-                                        </label>
-                                    </div>
+                                            </label>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

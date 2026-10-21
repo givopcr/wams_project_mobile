@@ -697,7 +697,7 @@ export default function PageSkeleton({ path = '' }) {
         if (cleanPath.includes('/dashboard')) {
             return <DashboardSkeleton />;
         }
-        if (cleanPath.includes('/barang') || cleanPath.includes('/kategori')) {
+        if (cleanPath.includes('/barang')) {
             return <BarangSkeleton />;
         }
         if (cleanPath.includes('/unit')) {

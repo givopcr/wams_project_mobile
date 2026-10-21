@@ -1,8 +1,10 @@
+name: wams_project
+
 services:
   # Laravel (PHP-FPM)
   app:
     build: .
-    container_name: wams_app
+    container_name: wams-laravel
     restart: unless-stopped
     volumes:
       - ./:/var/www/html
@@ -21,7 +23,7 @@ services:
   # Web server -> http://localhost:8000
   nginx:
     image: nginx:alpine
-    container_name: wams_nginx
+    container_name: wams-webserver
     restart: unless-stopped
     ports:
       - "8000:80"
@@ -34,7 +36,7 @@ services:
   # Database MySQL -> dari Windows: 127.0.0.1:3307 (3306 dipakai Laragon)
   mysql:
     image: mysql:8.0
-    container_name: wams_mysql
+    container_name: wams-database
     restart: unless-stopped
     ports:
       - "3307:3306"
@@ -52,7 +54,7 @@ services:
   # phpMyAdmin -> http://localhost:8080 (user: root / pass: root)
   phpmyadmin:
     image: phpmyadmin
-    container_name: wams_pma
+    container_name: wams-phpmyadmin
     restart: unless-stopped
     ports:
       - "8080:80"

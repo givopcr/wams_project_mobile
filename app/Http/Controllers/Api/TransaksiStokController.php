@@ -27,7 +27,7 @@ class TransaksiStokController extends Controller
         return DB::transaction(function () use ($validated, $userId) {
             $barang = Barang::with('kategori')->lockForUpdate()->findOrFail($validated['barang_id']);
 
-            if ($barang->kategori && $barang->kategori->tipe !== 'habis_pakai') {
+            if (! $barang->isHabisPakai()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Barang ini bukan kategori barang sekali pakai / bahan habis pakai.',

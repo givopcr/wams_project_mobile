@@ -1,10 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Head } from '@inertiajs/react';
-import { User, Lock, Eye, EyeOff, ShieldAlert, KeyRound, Mail, X, CheckCircle2, RefreshCw } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, ShieldAlert, KeyRound, Mail, X, CheckCircle2, RefreshCw, IdCard, UserPlus } from 'lucide-react';
 
-export default function Login() {
+export default function Login({ status, initialTab = 'login' }) {
+    const [activeTab, setActiveTab] = useState(initialTab || 'login');
     const [showPassword, setShowPassword] = useState(false);
+    const [showRegPassword, setShowRegPassword] = useState(false);
+    const [showRegPasswordConfirm, setShowRegPasswordConfirm] = useState(false);
     const [isGoogleRedirecting, setIsGoogleRedirecting] = useState(false);
+
+    // Sync tab with URL query parameter (?tab=register or ?tab=login)
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab');
+        if (tab === 'register') {
+            setActiveTab('register');
+        } else if (tab === 'login') {
+            setActiveTab('login');
+        }
+    }, []);
+
+    // Registration Form
+    const {
+        data: regData,
+        setData: setRegData,
+        post: postRegister,
+        processing: regProcessing,
+        errors: regErrors,
+        reset: resetRegForm,
+        clearErrors: clearRegErrors,
+    } = useForm({
+        nama: '',
+        email: '',
+        nip: '',
+        password: '',
+        password_confirmation: '',
+    });
+
+    const handleRegisterSubmit = (e) => {
+        e.preventDefault();
+        postRegister('/register', {
+            onSuccess: () => {
+                resetRegForm();
+            },
+        });
+    };
 
     // Forgot Password Modal State
     const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
@@ -21,7 +61,7 @@ export default function Login() {
     const [modalSuccessMsg, setModalSuccessMsg] = useState(null);
     const [resendCountdown, setResendCountdown] = useState(60);
 
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, clearErrors } = useForm({
         login: '',
         password: '',
         remember: false,
@@ -171,7 +211,7 @@ export default function Login() {
 
     return (
         <>
-            <Head title="Login - WAMS Workshop" />
+            <Head title={activeTab === 'login' ? 'Masuk - WAMS Workshop' : 'Daftar Akun - WAMS Workshop'} />
 
             <div className="min-h-screen flex bg-[#FAF9F6]">
                 {/* Left Section - Form Area */}
@@ -188,186 +228,409 @@ export default function Login() {
                                 />
                             </div>
                             <h1 className="text-2xl font-bold tracking-tight text-[#1D1616]">
-                                Masuk ke WAMS
+                                {activeTab === 'login' ? 'Masuk ke WAMS' : 'Daftar Akun Baru'}
                             </h1>
                             <p className="text-xs text-[#6B7280] mt-1 font-medium">
-                                Workshop Asset Management System
+                                {activeTab === 'login'
+                                    ? 'Workshop Asset Management System'
+                                    : 'Lengkapi formulir untuk membuat akun pengguna WAMS'}
                             </p>
                         </div>
 
-                        {/* Error Alert */}
-                        {errors.login && (
-                            <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5">
-                                <ShieldAlert size={16} className="shrink-0 text-rose-600" />
-                                <span>{errors.login}</span>
+                        {/* Flash Status Message */}
+                        {status && (
+                            <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2.5">
+                                <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
+                                <span>{status}</span>
                             </div>
                         )}
 
-                        {/* Main Form */}
-                        <form onSubmit={submit} className="space-y-4">
-                            {/* Input Email / NIP */}
-                            <div>
-                                <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
-                                    Email atau NIP
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
-                                        <User size={18} />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        value={data.login}
-                                        onChange={(e) => setData('login', e.target.value)}
-                                        placeholder="nama@instansi.com atau NIP"
-                                        required
-                                        className="w-full pl-10 pr-4 py-3 bg-white border border-[#E0E0E0] rounded-xl text-sm focus:outline-none focus:border-[#D84040] focus:ring-1 focus:ring-[#D84040] transition-colors"
-                                    />
-                                </div>
-                            </div>
+                        {/* Tab Switcher: Masuk / Daftar */}
+                        <div className="flex p-1 bg-slate-100 rounded-2xl mb-6 border border-slate-200/80">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setActiveTab('login');
+                                    clearRegErrors();
+                                }}
+                                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                    activeTab === 'login'
+                                        ? 'bg-white text-slate-900 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-800'
+                                }`}
+                            >
+                                <User size={14} />
+                                Masuk
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setActiveTab('register');
+                                    clearErrors();
+                                }}
+                                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                    activeTab === 'register'
+                                        ? 'bg-white text-slate-900 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-800'
+                                }`}
+                            >
+                                <UserPlus size={14} />
+                                Daftar Akun
+                            </button>
+                        </div>
 
-                            {/* Input Password */}
-                            <div>
-                                <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
-                                    Password
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
-                                        <Lock size={18} />
+                        {/* Login View */}
+                        {activeTab === 'login' ? (
+                            <>
+                                {/* Error Alert */}
+                                {errors.login && (
+                                    <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5">
+                                        <ShieldAlert size={16} className="shrink-0 text-rose-600" />
+                                        <span>{errors.login}</span>
                                     </div>
-                                    <input
-                                        type={showPassword ? 'text' : 'password'}
-                                        value={data.password}
-                                        onChange={(e) => setData('password', e.target.value)}
-                                        placeholder="••••••••"
-                                        required
-                                        className="w-full pl-10 pr-11 py-3 bg-white border border-[#E0E0E0] rounded-xl text-sm focus:outline-none focus:border-[#D84040] focus:ring-1 focus:ring-[#D84040] transition-colors"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#8C93A0] hover:text-[#1D1616] transition-colors"
-                                    >
-                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                    </button>
-                                </div>
-                                {errors.password && (
-                                    <p className="text-rose-600 text-xs mt-1.5 font-medium pl-1">{errors.password}</p>
                                 )}
-                            </div>
 
-                            {/* Remember me & Lupa Password */}
-                            <div className="flex items-center justify-between pt-1 px-1">
-                                <label className="flex items-center gap-2 cursor-pointer select-none">
-                                    <input
-                                        type="checkbox"
-                                        checked={data.remember}
-                                        onChange={(e) => setData('remember', e.target.checked)}
-                                        className="w-4 h-4 rounded border-gray-300 text-[#D84040] focus:ring-[#D84040] accent-[#D84040]"
-                                    />
-                                    <span className="text-xs text-[#6B7280] font-medium">Ingat saya</span>
-                                </label>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setForgotEmail(data.login.includes('@') ? data.login : '');
-                                        setIsForgotModalOpen(true);
-                                    }}
-                                    className="text-xs font-semibold text-[#D84040] hover:text-[#8E1616] transition-colors cursor-pointer"
-                                >
-                                    Lupa kata sandi?
-                                </button>
-                            </div>
-
-                            {/* Centered Pill Submit Button */}
-                            <div className="pt-4 text-center">
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="w-full py-3.5 bg-gradient-to-r from-[#D84040] to-[#8E1616] hover:from-[#c93636] hover:to-[#771111] text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-[#D84040]/30 hover:shadow-xl hover:shadow-[#D84040]/40 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-                                >
-                                    {processing ? 'Memproses...' : 'Masuk ke Sistem'}
-                                </button>
-                            </div>
-
-                            {/* Divider */}
-                            <div className="relative my-4 flex items-center justify-center">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-slate-200" />
-                                </div>
-                                <div className="relative bg-[#FAF9F6] px-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                                    atau masuk dengan
-                                </div>
-                            </div>
-
-                            {/* Google Sign-In Button */}
-                            <div>
-                                <button
-                                    type="button"
-                                    onClick={handleGoogleLogin}
-                                    disabled={isGoogleRedirecting || processing}
-                                    className="w-full h-12 px-4 bg-white hover:bg-slate-50/80 border border-slate-300 hover:border-slate-400 active:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-2xl transition-all shadow-xs hover:shadow-sm flex items-center justify-center gap-3 active:scale-[0.99] cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed group"
-                                >
-                                    {isGoogleRedirecting ? (
-                                        <div className="flex items-center gap-2.5">
-                                            <span className="w-4 h-4 border-2 border-[#D84040] border-t-transparent rounded-full animate-spin" />
-                                            <span className="text-slate-600 text-xs font-semibold">Mengarahkan ke Google...</span>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <img
-                                                src="/images/google_logo.png"
-                                                alt="Google"
-                                                className="w-5 h-5 object-contain shrink-0 transition-transform duration-200 group-hover:scale-105"
+                                {/* Main Form */}
+                                <form onSubmit={submit} className="space-y-4">
+                                    {/* Input Email / NIP */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
+                                            Email atau NIP
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
+                                                <User size={18} />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={data.login}
+                                                onChange={(e) => setData('login', e.target.value)}
+                                                placeholder="nama@instansi.com atau NIP"
+                                                required
+                                                className="w-full pl-10 pr-4 py-3 bg-white border border-[#E0E0E0] rounded-xl text-sm focus:outline-none focus:border-[#D84040] focus:ring-1 focus:ring-[#D84040] transition-colors"
                                             />
-                                            <span className="font-semibold text-[14px] text-slate-800 tracking-tight">
-                                                Masuk dengan Google
-                                            </span>
-                                        </>
-                                    )}
-                                </button>
-                            </div>
+                                        </div>
+                                    </div>
 
-                            {/* Quick Demo Credentials */}
-                            <div className="pt-5 border-t border-[#E5E7EB] mt-5">
-                                <p className="text-[11px] font-semibold text-[#8C93A0] uppercase tracking-wider text-center mb-2.5">
-                                    Akun Uji Coba Cepat
-                                </p>
-                                <div className="grid grid-cols-2 gap-2">
+                                    {/* Input Password */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
+                                            Password
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
+                                                <Lock size={18} />
+                                            </div>
+                                            <input
+                                                type={showPassword ? 'text' : 'password'}
+                                                value={data.password}
+                                                onChange={(e) => setData('password', e.target.value)}
+                                                placeholder="••••••••"
+                                                required
+                                                className="w-full pl-10 pr-11 py-3 bg-white border border-[#E0E0E0] rounded-xl text-sm focus:outline-none focus:border-[#D84040] focus:ring-1 focus:ring-[#D84040] transition-colors"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#8C93A0] hover:text-[#1D1616] transition-colors"
+                                            >
+                                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                        {errors.password && (
+                                            <p className="text-rose-600 text-xs mt-1.5 font-medium pl-1">{errors.password}</p>
+                                        )}
+                                    </div>
+
+                                    {/* Remember me & Lupa Password */}
+                                    <div className="flex items-center justify-between pt-1 px-1">
+                                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                                            <input
+                                                type="checkbox"
+                                                checked={data.remember}
+                                                onChange={(e) => setData('remember', e.target.checked)}
+                                                className="w-4 h-4 rounded border-gray-300 text-[#D84040] focus:ring-[#D84040] accent-[#D84040]"
+                                            />
+                                            <span className="text-xs text-[#6B7280] font-medium">Ingat saya</span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setForgotEmail(data.login.includes('@') ? data.login : '');
+                                                setIsForgotModalOpen(true);
+                                            }}
+                                            className="text-xs font-semibold text-[#D84040] hover:text-[#8E1616] transition-colors cursor-pointer"
+                                        >
+                                            Lupa kata sandi?
+                                        </button>
+                                    </div>
+
+                                    {/* Centered Pill Submit Button */}
+                                    <div className="pt-4 text-center">
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="w-full py-3.5 bg-gradient-to-r from-[#D84040] to-[#8E1616] hover:from-[#c93636] hover:to-[#771111] text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-[#D84040]/30 hover:shadow-xl hover:shadow-[#D84040]/40 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                                        >
+                                            {processing ? 'Memproses...' : 'Masuk'}
+                                        </button>
+                                    </div>
+
+                                    {/* Divider */}
+                                    <div className="relative my-4 flex items-center justify-center">
+                                        <div className="absolute inset-0 flex items-center">
+                                            <div className="w-full border-t border-slate-200" />
+                                        </div>
+                                        <div className="relative bg-[#FAF9F6] px-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                            atau dengan
+                                        </div>
+                                    </div>
+
+                                    {/* Google Sign-In Button */}
+                                    <div>
+                                        <button
+                                            type="button"
+                                            onClick={handleGoogleLogin}
+                                            disabled={isGoogleRedirecting || processing}
+                                            className="w-full h-12 px-4 bg-white hover:bg-slate-50/80 border border-slate-300 hover:border-slate-400 active:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-2xl transition-all shadow-xs hover:shadow-sm flex items-center justify-center gap-3 active:scale-[0.99] cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed group"
+                                        >
+                                            {isGoogleRedirecting ? (
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="w-4 h-4 border-2 border-[#D84040] border-t-transparent rounded-full animate-spin" />
+                                                    <span className="text-slate-600 text-xs font-semibold">Mengarahkan ke Google...</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <img
+                                                        src="/images/google_logo.png"
+                                                        alt="Google"
+                                                        className="w-5 h-5 object-contain shrink-0 transition-transform duration-200 group-hover:scale-105"
+                                                    />
+                                                    <span className="font-semibold text-[14px] text-slate-800 tracking-tight">
+                                                        Masuk dengan Google
+                                                    </span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            </>
+                        ) : (
+                            /* Register View */
+                            <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                                {/* Error Alert jika ada general errors */}
+                                {Object.keys(regErrors).length > 0 && !regErrors.nama && !regErrors.email && !regErrors.nip && !regErrors.password && !regErrors.password_confirmation && (
+                                    <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5">
+                                        <ShieldAlert size={16} className="shrink-0 text-rose-600" />
+                                        <span>Terjadi kesalahan saat pendaftaran. Silakan periksa formulir.</span>
+                                    </div>
+                                )}
+
+                                {/* Input Nama Lengkap */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
+                                        Nama Lengkap <span className="text-rose-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
+                                            <User size={18} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={regData.nama}
+                                            onChange={(e) => setRegData('nama', e.target.value)}
+                                            placeholder="Contoh: Budi Santoso"
+                                            required
+                                            className={`w-full pl-10 pr-4 py-3 bg-white border rounded-xl text-sm focus:outline-none focus:ring-1 transition-colors ${
+                                                regErrors.nama
+                                                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500'
+                                                    : 'border-[#E0E0E0] focus:border-[#D84040] focus:ring-[#D84040]'
+                                            }`}
+                                        />
+                                    </div>
+                                    {regErrors.nama && (
+                                        <p className="text-rose-600 text-xs mt-1.5 font-medium pl-1">{regErrors.nama}</p>
+                                    )}
+                                </div>
+
+                                {/* Input Email */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
+                                        Alamat Email <span className="text-rose-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
+                                            <Mail size={18} />
+                                        </div>
+                                        <input
+                                            type="email"
+                                            value={regData.email}
+                                            onChange={(e) => setRegData('email', e.target.value)}
+                                            placeholder="nama@instansi.com"
+                                            required
+                                            className={`w-full pl-10 pr-4 py-3 bg-white border rounded-xl text-sm focus:outline-none focus:ring-1 transition-colors ${
+                                                regErrors.email
+                                                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500'
+                                                    : 'border-[#E0E0E0] focus:border-[#D84040] focus:ring-[#D84040]'
+                                            }`}
+                                        />
+                                    </div>
+                                    {regErrors.email && (
+                                        <p className="text-rose-600 text-xs mt-1.5 font-medium pl-1">{regErrors.email}</p>
+                                    )}
+                                </div>
+
+                                {/* Input NIP */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
+                                        NIP <span className="text-slate-400 font-normal lowercase">(opsional)</span>
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
+                                            <IdCard size={18} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={regData.nip}
+                                            onChange={(e) => setRegData('nip', e.target.value)}
+                                            placeholder="1985xxxx (jika ada)"
+                                            className={`w-full pl-10 pr-4 py-3 bg-white border rounded-xl text-sm focus:outline-none focus:ring-1 transition-colors ${
+                                                regErrors.nip
+                                                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500'
+                                                    : 'border-[#E0E0E0] focus:border-[#D84040] focus:ring-[#D84040]'
+                                            }`}
+                                        />
+                                    </div>
+                                    {regErrors.nip && (
+                                        <p className="text-rose-600 text-xs mt-1.5 font-medium pl-1">{regErrors.nip}</p>
+                                    )}
+                                </div>
+
+                                {/* Input Password */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
+                                        Password <span className="text-rose-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
+                                            <Lock size={18} />
+                                        </div>
+                                        <input
+                                            type={showRegPassword ? 'text' : 'password'}
+                                            value={regData.password}
+                                            onChange={(e) => setRegData('password', e.target.value)}
+                                            placeholder="Minimal 6 karakter"
+                                            required
+                                            className={`w-full pl-10 pr-11 py-3 bg-white border rounded-xl text-sm focus:outline-none focus:ring-1 transition-colors ${
+                                                regErrors.password
+                                                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500'
+                                                    : 'border-[#E0E0E0] focus:border-[#D84040] focus:ring-[#D84040]'
+                                            }`}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowRegPassword(!showRegPassword)}
+                                            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#8C93A0] hover:text-[#1D1616] transition-colors"
+                                        >
+                                            {showRegPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                    {regErrors.password && (
+                                        <p className="text-rose-600 text-xs mt-1.5 font-medium pl-1">{regErrors.password}</p>
+                                    )}
+                                </div>
+
+                                {/* Input Konfirmasi Password */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
+                                        Konfirmasi Password <span className="text-rose-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
+                                            <Lock size={18} />
+                                        </div>
+                                        <input
+                                            type={showRegPasswordConfirm ? 'text' : 'password'}
+                                            value={regData.password_confirmation}
+                                            onChange={(e) => setRegData('password_confirmation', e.target.value)}
+                                            placeholder="Ulangi kata sandi"
+                                            required
+                                            className={`w-full pl-10 pr-11 py-3 bg-white border rounded-xl text-sm focus:outline-none focus:ring-1 transition-colors ${
+                                                regErrors.password_confirmation
+                                                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500'
+                                                    : 'border-[#E0E0E0] focus:border-[#D84040] focus:ring-[#D84040]'
+                                            }`}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowRegPasswordConfirm(!showRegPasswordConfirm)}
+                                            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#8C93A0] hover:text-[#1D1616] transition-colors"
+                                        >
+                                            {showRegPasswordConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                    {regErrors.password_confirmation && (
+                                        <p className="text-rose-600 text-xs mt-1.5 font-medium pl-1">{regErrors.password_confirmation}</p>
+                                    )}
+                                </div>
+
+                                {/* Tombol Submit Register */}
+                                <div className="pt-3 text-center">
                                     <button
-                                        type="button"
-                                        onClick={() => {
-                                            setData((prev) => ({
-                                                ...prev,
-                                                login: 'givo@gmail.com',
-                                                password: 'password',
-                                            }));
-                                        }}
-                                        className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E0E0E0] hover:border-[#D84040] hover:bg-rose-50/50 text-left transition-all cursor-pointer group"
+                                        type="submit"
+                                        disabled={regProcessing}
+                                        className="w-full py-3.5 bg-gradient-to-r from-[#D84040] to-[#8E1616] hover:from-[#c93636] hover:to-[#771111] text-white text-sm font-bold rounded-2xl transition-all shadow-lg shadow-[#D84040]/30 hover:shadow-xl hover:shadow-[#D84040]/40 active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                                     >
-                                        <span className="block text-xs font-bold text-[#1D1616] group-hover:text-[#D84040]">
-                                            👤 User / Teknisi
-                                        </span>
-                                        <span className="block text-[10px] text-[#6B7280]">givo@gmail.com</span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setData((prev) => ({
-                                                ...prev,
-                                                login: 'admin@wams.test',
-                                                password: 'password',
-                                            }));
-                                        }}
-                                        className="p-2 rounded-xl bg-[#F8F9FA] border border-[#E0E0E0] hover:border-[#D84040] hover:bg-rose-50/50 text-left transition-all cursor-pointer group"
-                                    >
-                                        <span className="block text-xs font-bold text-[#1D1616] group-hover:text-[#D84040]">
-                                            🛡️ Admin
-                                        </span>
-                                        <span className="block text-[10px] text-[#6B7280]">admin@wams.test</span>
+                                        {regProcessing ? (
+                                            <>
+                                                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                <span>Mendaftarkan Akun...</span>
+                                            </>
+                                        ) : (
+                                            <span>Daftar Akun</span>
+                                        )}
                                     </button>
                                 </div>
-                            </div>
-                        </form>
+
+                                {/* Divider */}
+                                <div className="relative my-4 flex items-center justify-center">
+                                    <div className="absolute inset-0 flex items-center">
+                                        <div className="w-full border-t border-slate-200" />
+                                    </div>
+                                    <div className="relative bg-[#FAF9F6] px-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                        atau dengan
+                                    </div>
+                                </div>
+
+                                {/* Google Sign-In Button */}
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={handleGoogleLogin}
+                                        disabled={isGoogleRedirecting || regProcessing}
+                                        className="w-full h-12 px-4 bg-white hover:bg-slate-50/80 border border-slate-300 hover:border-slate-400 active:bg-slate-100 text-slate-700 hover:text-slate-900 rounded-2xl transition-all shadow-xs hover:shadow-sm flex items-center justify-center gap-3 active:scale-[0.99] cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed group"
+                                    >
+                                        {isGoogleRedirecting ? (
+                                            <div className="flex items-center gap-2.5">
+                                                <span className="w-4 h-4 border-2 border-[#D84040] border-t-transparent rounded-full animate-spin" />
+                                                <span className="text-slate-600 text-xs font-semibold">Mengarahkan ke Google...</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <img
+                                                    src="/images/google_logo.png"
+                                                    alt="Google"
+                                                    className="w-5 h-5 object-contain shrink-0 transition-transform duration-200 group-hover:scale-105"
+                                                />
+                                                <span className="font-semibold text-[14px] text-slate-800 tracking-tight">
+                                                    Daftar dengan Google
+                                                </span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
 
                     </div>
                 </div>

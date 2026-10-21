@@ -11,81 +11,83 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class UserWebController extends Controller
 {
     /**
-     * Dashboard Mobile Pengguna (Beranda)
+     * Dashboard Mobile Pengguna (Beranda - Mirip Flutter DashboardScreen)
      */
     public function dashboard(): Response
     {
         $user = auth()->user();
 
-        // 1. Hitung Statistik Cepat Pengguna (Persis seperti kartu KPI admin)
+        // 1. Hitung Statistik Status Saya (Dipinjam | Menunggu | Selesai)
         $stats = [
             'dipinjam' => Logbook::where('user_id', $user->id)->where('status_transaksi', 'dipinjam')->count(),
             'menunggu' => Logbook::where('user_id', $user->id)->where('status_transaksi', 'menunggu_persetujuan')->count(),
             'selesai' => Logbook::where('user_id', $user->id)->where('status_transaksi', 'dikembalikan')->count(),
         ];
 
-        // 2. Daftar Pinjaman Berjalan / Aktif Saat Ini
+        // 2. Daftar Pinjaman Aktif Saat Ini (Untuk Featured Return Card Carousel & Date Strip)
         $activeLoans = Logbook::with(['barangUnit.barang.kategori', 'approver'])
             ->where('user_id', $user->id)
-            ->whereIn('status_transaksi', ['menunggu_persetujuan', 'dipinjam'])
+            ->whereIn('status_transaksi', ['dipinjam', 'menunggu_persetujuan'])
             ->latest('tanggal_pinjam')
             ->get()
             ->map(function ($log) {
                 return $this->formatLogbookItem($log);
             });
 
-        // 3. Kategori dengan info jumlah barang
-        $categories = KategoriBarang::withCount('barang')->get()->map(function ($kat) {
-            return [
-                'id' => $kat->id,
-                'nama_kategori' => $kat->nama_kategori,
-                'qr_code' => $kat->qr_code,
-                'total_barang' => $kat->barang_count ?? $kat->barangs_count ?? 0,
-            ];
-        });
+        // 3. Kategori Peralatan dengan jumlah unit siap (Mirip Flutter _buildKategoriSection)
+        $categories = KategoriBarang::withCount('barang')
+            ->with(['units'])
+            ->get()
+            ->map(function ($kat) {
+                $totalUnits = $kat->units->count();
+                $tersedia = $kat->units->where('status', 'tersedia')->count();
 
-        // 4. Rekomendasi Barang Tersedia untuk Dipinjam
-        $availableItems = Barang::with(['kategori', 'units' => function ($q) {
-            $q->where('status', 'tersedia');
-        }])
-            ->withCount([
-                'units as total_units',
-                'units as available_units' => function ($q) {
-                    $q->where('status', 'tersedia');
-                },
-            ])
+                return [
+                    'id' => $kat->id,
+                    'nama_kategori' => $kat->nama_kategori,
+                    'tipe' => $kat->tipe ?? 'aset',
+                    'is_habis_pakai' => $kat->isHabisPakai(),
+                    'qr_code' => $kat->qr_code,
+                    'total_barang' => $kat->barang_count ?? 0,
+                    'total_unit' => $totalUnits,
+                    'tersedia' => $tersedia,
+                ];
+            });
+
+        // 4. Aktivitas Terbaru (4 transaksi terakhir dengan indikator warna)
+        $recentActivity = Logbook::with(['barangUnit.barang.kategori', 'approver'])
+            ->where('user_id', $user->id)
+            ->latest('tanggal_pinjam')
+            ->take(6)
+            ->get()
+            ->map(function ($log) {
+                return $this->formatLogbookItem($log);
+            });
+
+        // 5. Rekomendasi Barang Tersedia
+        $availableItems = Barang::with(['kategori', 'units'])
             ->latest()
             ->take(8)
             ->get()
             ->map(function ($b) {
-                return [
-                    'id' => $b->id,
-                    'nama_barang' => $b->nama_barang,
-                    'kode_barang' => $b->kode_barang,
-                    'kategori_id' => $b->kategori_id,
-                    'kategori' => $b->kategori?->nama_kategori ?? 'Umum',
-                    'perlu_persetujuan' => (bool) $b->perlu_persetujuan,
-                    'total_units' => $b->total_units,
-                    'available_units' => $b->available_units,
-                    'gambar_url' => $b->gambar ? asset('storage/' . $b->gambar) : null,
-                    'units_sample' => $b->units->take(5)->map(fn ($u) => [
-                        'id' => $u->id,
-                        'kode_unit' => $u->kode_unit,
-                        'kondisi' => $u->kondisi,
-                    ]),
-                ];
+                return $this->formatBarangItem($b);
             });
 
         return Inertia::render('User/MobileDashboard', [
             'stats' => $stats,
             'activeLoans' => $activeLoans,
             'categories' => $categories,
+            'recentActivity' => $recentActivity,
             'availableItems' => $availableItems,
             'user' => [
                 'id' => $user->id,
@@ -98,62 +100,46 @@ class UserWebController extends Controller
     }
 
     /**
-     * Katalog Peralatan & Mesin Workshop
+     * Katalog Peralatan & Barang Kategori (Mirip Flutter KategoriScreen & BarangKategoriScreen)
      */
     public function katalog(Request $request): Response
     {
-        $query = Barang::with(['kategori', 'units' => function ($q) {
-            $q->where('status', 'tersedia');
-        }])
-            ->withCount([
-                'units as total_units',
-                'units as available_units' => function ($q) {
-                    $q->where('status', 'tersedia');
-                },
-            ]);
+        $query = Barang::with(['kategori', 'units']);
 
         // Filter Kategori
         if ($request->filled('kategori_id')) {
             $query->where('kategori_id', $request->kategori_id);
         }
 
-        // Pencarian Nama / Kode Barang
+        // Pencarian Nama / Kode / Spesifikasi Barang
         if ($request->filled('q')) {
             $search = $request->q;
             $query->where(function ($q) use ($search) {
                 $q->where('nama_barang', 'like', "%{$search}%")
                   ->orWhere('kode_barang', 'like', "%{$search}%")
-                  ->orWhere('deskripsi', 'like', "%{$search}%");
+                  ->orWhere('detail_spesifikasi', 'like', "%{$search}%");
             });
         }
 
         $barangs = $query->orderBy('nama_barang')->get()->map(function ($b) {
-            return [
-                'id' => $b->id,
-                'nama_barang' => $b->nama_barang,
-                'kode_barang' => $b->kode_barang,
-                'kategori_id' => $b->kategori_id,
-                'kategori' => $b->kategori?->nama_kategori ?? 'Umum',
-                'deskripsi' => $b->deskripsi,
-                'perlu_persetujuan' => (bool) $b->perlu_persetujuan,
-                'total_units' => $b->total_units,
-                'available_units' => $b->available_units,
-                'tipe' => $b->kategori?->tipe ?? 'aset',
-                'is_habis_pakai' => $b->kategori?->isHabisPakai() ?? false,
-                'satuan' => $b->satuan ?? 'pcs',
-                'stok_saat_ini' => (float) $b->stok_saat_ini,
-                'stok_minimum' => (float) $b->stok_minimum,
-                'is_low_stock' => $b->isLowStock(),
-                'gambar_url' => $b->gambar ? asset('storage/' . $b->gambar) : null,
-                'available_unit_list' => $b->units->map(fn ($u) => [
-                    'id' => $u->id,
-                    'kode_unit' => $u->kode_unit,
-                    'kondisi' => $u->kondisi,
-                ]),
-            ];
+            return $this->formatBarangItem($b);
         });
 
-        $categories = KategoriBarang::withCount('barang')->get();
+        $categories = KategoriBarang::withCount('barang')
+            ->with(['units'])
+            ->get()
+            ->map(function ($kat) {
+                return [
+                    'id' => $kat->id,
+                    'nama_kategori' => $kat->nama_kategori,
+                    'tipe' => $kat->tipe ?? 'aset',
+                    'is_habis_pakai' => $kat->isHabisPakai(),
+                    'qr_code' => $kat->qr_code,
+                    'total_barang' => $kat->barang_count ?? 0,
+                    'total_unit' => $kat->units->count(),
+                    'tersedia' => $kat->units->where('status', 'tersedia')->count(),
+                ];
+            });
 
         return Inertia::render('User/MobileKatalog', [
             'barangs' => $barangs,
@@ -161,95 +147,214 @@ class UserWebController extends Controller
             'filters' => [
                 'kategori_id' => $request->kategori_id,
                 'q' => $request->q,
+                'mode' => $request->query('mode', ''), // 'category_list' untuk tampilan BarangKategoriScreen
             ],
         ]);
     }
 
     /**
-     * Halaman Peminjaman Aktif & Sedang Berjalan
+     * Detail Barang, Pilih Unit, Form Peminjaman & Peminjaman Berhasil
+     * (Mirip Flutter DetailBarangScreen -> PilihUnitScreen -> FormPeminjamanScreen -> PeminjamanBerhasilScreen)
      */
-    public function peminjaman(): Response
+    public function detailBarang(Request $request, $id): Response
+    {
+        $barang = Barang::with(['kategori', 'units'])->findOrFail($id);
+
+        return Inertia::render('User/MobileDetailBarang', [
+            'barang' => $this->formatBarangItem($barang),
+            'initialStep' => $request->query('step', 'detail'), // 'detail' | 'pilih_unit' | 'form' | 'berhasil'
+            'borrowResult' => session('borrow_result'),
+        ]);
+    }
+
+    /**
+     * Halaman Peminjaman Aktif & Detail Peminjaman
+     */
+    public function peminjaman(Request $request): Response
     {
         $user = auth()->user();
 
-        $activeLoans = Logbook::with(['barangUnit.barang.kategori', 'approver'])
+        $allLogs = Logbook::with(['barangUnit.barang.kategori', 'approver'])
             ->where('user_id', $user->id)
-            ->whereIn('status_transaksi', ['menunggu_persetujuan', 'dipinjam'])
             ->latest('tanggal_pinjam')
             ->get()
             ->map(function ($log) {
                 return $this->formatLogbookItem($log);
             });
 
+        $activeLoans = $allLogs->filter(fn ($l) => in_array($l['status_transaksi'], ['dipinjam', 'menunggu_persetujuan']))->values();
+
         return Inertia::render('User/MobilePeminjaman', [
             'loans' => $activeLoans,
+            'allLogs' => $allLogs,
+            'initialLogId' => $request->query('id') ? (int) $request->query('id') : null,
         ]);
     }
 
     /**
-     * Proses Pengajuan Peminjaman Barang
+     * Proses Pengajuan Peminjaman Barang (Mendukung Single Unit maupun Multi-Unit seperti Flutter)
      */
     public function storePinjam(Request $request)
     {
         $request->validate([
             'barang_id' => ['required', 'exists:barang,id'],
-            'barang_unit_id' => ['required', 'exists:barang_unit,id'],
-            'keperluan' => ['required', 'string', 'max:500'],
+            'barang_unit_id' => ['nullable', 'exists:barang_unit,id'],
+            'barang_unit_ids' => ['nullable', 'array'],
+            'barang_unit_ids.*' => ['exists:barang_unit,id'],
+            'keperluan' => ['nullable', 'string', 'max:500'],
+            'foto_pinjam' => ['required', 'string'],
             'batas_kembali' => ['required', 'date'],
+            'tanggal_pinjam' => ['nullable', 'date'],
         ], [
-            'barang_unit_id.required' => 'Peminjaman wajib memindai stiker QR Code pada unit fisik alat terlebih dahulu.',
+            'foto_pinjam.required' => 'Foto barang sebelum dipinjam wajib diunggah dan tidak boleh dilewati.',
         ]);
+
+        $fotoPinjamPath = null;
+        $rawFotoPinjam = $request->input('foto_pinjam');
+        if ($rawFotoPinjam && preg_match('/^data:image\/(\w+);base64,/', $rawFotoPinjam, $typeMatch)) {
+            $ext = strtolower($typeMatch[1]);
+            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                $decoded = base64_decode(substr($rawFotoPinjam, strpos($rawFotoPinjam, ',') + 1));
+                if ($decoded !== false) {
+                    $fotoPinjamPath = 'peminjaman/borrow_' . auth()->id() . '_' . time() . '_' . uniqid() . '.' . $ext;
+                    Storage::disk('public')->put($fotoPinjamPath, $decoded);
+                }
+            }
+        }
+
+        if (!$fotoPinjamPath) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Foto barang sebelum dipinjam wajib diunggah dengan format gambar yang valid.'], 422);
+            }
+            return back()->withErrors(['foto_pinjam' => 'Foto barang sebelum dipinjam wajib diunggah dengan format gambar yang valid.']);
+        }
 
         $user = auth()->user();
         $barang = Barang::findOrFail($request->barang_id);
         $requiresApproval = (bool) $barang->perlu_persetujuan;
         $targetStatus = $requiresApproval ? 'menunggu_persetujuan' : 'dipinjam';
 
-        return DB::transaction(function () use ($user, $barang, $request, $targetStatus, $requiresApproval) {
-            // Unit wajib dipilih secara spesifik dari hasil scan QR unit fisik
-            $unit = BarangUnit::where('id', $request->barang_unit_id)
+        $unitIds = [];
+        if ($request->filled('barang_unit_ids') && is_array($request->barang_unit_ids)) {
+            $unitIds = array_map('intval', $request->barang_unit_ids);
+        } elseif ($request->filled('barang_unit_id')) {
+            $unitIds = [(int) $request->barang_unit_id];
+        }
+
+        if (empty($unitIds)) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Pilih minimal satu unit fisik untuk dipinjam.'], 422);
+            }
+            return back()->with('error', 'Pilih minimal satu unit fisik untuk dipinjam.');
+        }
+
+        $tglPinjam = $request->filled('tanggal_pinjam') ? Carbon::parse($request->tanggal_pinjam) : now();
+        $batasKembali = Carbon::parse($request->batas_kembali);
+        if ($batasKembali->lt($tglPinjam->copy()->startOfDay())) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Batas waktu pengembalian tidak boleh sebelum tanggal pinjam.'], 422);
+            }
+            return back()->with('error', 'Batas waktu pengembalian tidak boleh sebelum tanggal pinjam.');
+        }
+
+        // Batas kuota peminjaman: maksimal 5 unit aktif/menunggu per user
+        $activeUserLoans = Logbook::where('user_id', $user->id)
+            ->whereIn('status_transaksi', ['dipinjam', 'menunggu_persetujuan'])
+            ->count();
+        if (($activeUserLoans + count($unitIds)) > 5) {
+            $msgQuota = 'Batas maksimum peminjaman aktif adalah 5 unit per pengguna.';
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msgQuota], 422);
+            }
+            return back()->with('error', $msgQuota);
+        }
+
+        return DB::transaction(function () use ($user, $barang, $unitIds, $request, $targetStatus, $requiresApproval, $tglPinjam, $batasKembali, $fotoPinjamPath) {
+            $units = BarangUnit::whereIn('id', $unitIds)
                 ->where('barang_id', $barang->id)
                 ->where('status', 'tersedia')
                 ->lockForUpdate()
-                ->first();
+                ->get();
 
-            if (!$unit) {
-                return back()->with('error', 'Unit fisik ini tidak tersedia untuk dipinjam atau sedang digunakan.');
+            if ($units->count() !== count($unitIds)) {
+                $errMsg = 'Satu atau lebih unit fisik tidak tersedia atau sedang digunakan.';
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $errMsg], 422);
+                }
+                return back()->with('error', $errMsg);
             }
 
-            // Update status unit fisik
-            $unit->update([
-                'status' => $targetStatus,
-            ]);
+            $keperluanText = $request->filled('keperluan') ? trim($request->keperluan) : null;
 
-            // Catat logbook peminjaman
-            $logbook = Logbook::create([
-                'user_id' => $user->id,
-                'barang_unit_id' => $unit->id,
-                'tipe_peminjam' => 'user',
-                'keperluan' => $request->keperluan,
-                'batas_kembali' => Carbon::parse($request->batas_kembali),
-                'tanggal_pinjam' => now(),
-                'status_transaksi' => $targetStatus,
-            ]);
+            foreach ($units as $unit) {
+                $unit->update(['status' => $targetStatus]);
 
+                Logbook::create([
+                    'user_id' => $user->id,
+                    'barang_unit_id' => $unit->id,
+                    'tipe_peminjam' => 'user',
+                    'keperluan' => $keperluanText,
+                    'foto_pinjam' => $fotoPinjamPath,
+                    'batas_kembali' => $batasKembali,
+                    'tanggal_pinjam' => $tglPinjam,
+                    'status_transaksi' => $targetStatus,
+                ]);
+            }
+
+            $kodeUnitsStr = $units->pluck('kode_unit')->implode(', ');
             $message = $requiresApproval
-                ? "Pengajuan peminjaman unit {$unit->kode_unit} berhasil diajukan. Menunggu persetujuan Administrator."
-                : "Unit {$unit->kode_unit} ({$barang->nama_barang}) berhasil dipinjam! Silakan ambil alat di workshop.";
+                ? "Pengajuan peminjaman unit ({$kodeUnitsStr}) berhasil dikirim. Menunggu persetujuan Admin."
+                : "Peminjaman unit ({$kodeUnitsStr}) berhasil dikonfirmasi!";
 
-            return redirect()->route('user.peminjaman')->with('success', $message);
+            $borrowResult = [
+                'barang_id' => $barang->id,
+                'nama_barang' => $barang->nama_barang,
+                'gambar_url' => $barang->gambar_url,
+                'kode_unit' => $kodeUnitsStr,
+                'tanggal_pinjam' => $tglPinjam->translatedFormat('d M Y'),
+                'tanggal_kembali' => $batasKembali->translatedFormat('d M Y'),
+                'keperluan' => $keperluanText ?: '-',
+                'foto_pinjam_url' => asset('storage/' . $fotoPinjamPath),
+                'perlu_persetujuan' => $requiresApproval,
+                'status_transaksi' => $targetStatus,
+            ];
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'data' => $borrowResult,
+                ], 201);
+            }
+
+            if ($request->boolean('from_detail_flow')) {
+                return redirect()
+                    ->route('user.barang.detail', ['id' => $barang->id, 'step' => 'berhasil'])
+                    ->with('borrow_result', $borrowResult)
+                    ->with('success', $message);
+            }
+
+            return redirect()->route('user.riwayat')->with('success', $message);
         });
     }
 
     /**
-     * Proses Pengembalian Barang
+     * Proses Pengembalian Barang (Mendukung kondisi 'baik', 'rusak', 'rusak_ringan', 'rusak_berat')
      */
     public function storeKembali(Request $request, $id)
     {
         $request->validate([
-            'kondisi_kembali' => ['required', 'in:baik,rusak_ringan,rusak_berat'],
+            'kondisi_kembali' => ['required', 'in:baik,rusak,rusak_ringan,rusak_berat'],
             'catatan' => ['nullable', 'string', 'max:500'],
+            'foto_kondisi' => ['required', 'string'],
+        ], [
+            'foto_kondisi.required' => 'Foto kondisi barang saat dikembalikan wajib diunggah dan tidak boleh dilewati.',
         ]);
+
+        $rawFoto = $request->input('foto_kondisi');
+        if (!$rawFoto || !preg_match('/^data:image\/(\w+);base64,/', $rawFoto)) {
+            return back()->withErrors(['foto_kondisi' => 'Foto kondisi barang saat dikembalikan wajib diunggah dengan format gambar yang valid.']);
+        }
 
         $user = auth()->user();
 
@@ -265,27 +370,51 @@ class UserWebController extends Controller
             }
 
             $unit = BarangUnit::where('id', $logbook->barang_unit_id)->lockForUpdate()->first();
+            $kondisi = $request->kondisi_kembali === 'baik' ? 'baik' : 'rusak';
 
-            // Update Logbook
-            $logbook->update([
+            $updateData = [
                 'status_transaksi' => 'dikembalikan',
                 'tanggal_kembali' => now(),
-                'kondisi_kembali' => $request->kondisi_kembali,
-            ]);
+                'kondisi_kembali' => $kondisi,
+            ];
+
+            if (Schema::hasColumn('logbook', 'catatan_kembali') && $request->filled('catatan')) {
+                $updateData['catatan_kembali'] = trim($request->catatan);
+            }
+
+            if (Schema::hasColumn('logbook', 'foto_kembali') && $request->filled('foto_kondisi')) {
+                $rawFoto = $request->input('foto_kondisi');
+                if (preg_match('/^data:image\/(\w+);base64,/', $rawFoto, $typeMatch)) {
+                    $ext = strtolower($typeMatch[1]);
+                    if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                        $decoded = base64_decode(substr($rawFoto, strpos($rawFoto, ',') + 1));
+                        if ($decoded !== false) {
+                            $filePath = 'pengembalian/return_' . $logbook->id . '_' . time() . '.' . $ext;
+                            Storage::disk('public')->put($filePath, $decoded);
+                            $updateData['foto_kembali'] = $filePath;
+                        }
+                    }
+                }
+            }
+
+            // Update Logbook
+            $logbook->update($updateData);
 
             // Update Unit status: jika kondisi baik -> tersedia, jika rusak -> maintenance
             if ($unit) {
-                $newUnitStatus = $request->kondisi_kembali === 'baik' ? 'tersedia' : 'maintenance';
+                $newUnitStatus = $kondisi === 'baik' ? 'tersedia' : 'maintenance';
                 $unit->update([
                     'status' => $newUnitStatus,
-                    'kondisi' => $request->kondisi_kembali,
+                    'kondisi' => $kondisi,
                 ]);
             }
 
-            $kodeUnit = $unit?->kode_unit ?? 'Unit';
-            return redirect()->route('user.peminjaman')->with(
+            $namaBarang = $unit?->barang?->nama_barang ?? ($unit?->kode_unit ?? 'Alat');
+            $labelKondisi = $kondisi === 'baik' ? 'Baik' : 'Rusak';
+
+            return redirect()->route('user.riwayat')->with(
                 'success',
-                "Alat ({$kodeUnit}) telah berhasil dikembalikan. Terima kasih!"
+                "Pengembalian {$namaBarang} ({$labelKondisi}) berhasil dikonfirmasi!"
             );
         });
     }
@@ -322,45 +451,38 @@ class UserWebController extends Controller
     }
 
     /**
-     * Halaman Riwayat Transaksi Lengkap
+     * Halaman Riwayat Peminjaman (Mirip Flutter RiwayatScreen + DetailPeminjamanScreen + FormPengembalianScreen)
      */
     public function riwayat(Request $request): Response
     {
         $user = auth()->user();
 
-        $query = Logbook::with(['barangUnit.barang.kategori', 'approver'])
+        $allItems = Logbook::with(['barangUnit.barang.kategori', 'approver'])
             ->where('user_id', $user->id)
-            ->latest('tanggal_pinjam');
-
-        if ($request->filled('status')) {
-            $query->where('status_transaksi', $request->status);
-        }
-
-        if ($request->filled('q')) {
-            $search = $request->q;
-            $query->whereHas('barangUnit', function ($qUnit) use ($search) {
-                $qUnit->where('kode_unit', 'like', "%{$search}%")
-                      ->orWhereHas('barang', function ($qBarang) use ($search) {
-                          $qBarang->where('nama_barang', 'like', "%{$search}%");
-                      });
+            ->latest('tanggal_pinjam')
+            ->get()
+            ->map(function ($log) {
+                return $this->formatLogbookItem($log);
             });
-        }
-
-        $riwayat = $query->paginate(15)->through(function ($log) {
-            return $this->formatLogbookItem($log);
-        });
 
         return Inertia::render('User/MobileRiwayat', [
-            'riwayat' => $riwayat,
+            'riwayatList' => $allItems,
+            'riwayat' => [
+                'data' => $allItems,
+                'links' => [],
+            ],
             'filters' => [
                 'status' => $request->status,
                 'q' => $request->q,
+                'tab' => $request->query('tab', 'semua'),
+                'detail_id' => $request->query('detail_id') ? (int) $request->query('detail_id') : null,
+                'return_id' => $request->query('return_id') ? (int) $request->query('return_id') : null,
             ],
         ]);
     }
 
     /**
-     * Halaman Scanner QR Code Mobile
+     * Halaman Scanner QR Code Mobile (Mirip Flutter ScanScreen)
      */
     public function scanner(Request $request): Response
     {
@@ -383,14 +505,58 @@ class UserWebController extends Controller
     }
 
     /**
-     * Lookup Cepat Unit Fisik saat Scan QR Code
+     * Lookup Cepat saat Scan QR Code (Mendukung QR Kategori maupun QR Unit Fisik)
      */
     public function lookupUnit(string $kode_unit): JsonResponse
     {
         $user = auth()->user();
+        $raw = trim(urldecode($kode_unit));
 
-        // Normalisasi format QR code jika membawa awalan URL atau query parameter
-        $cleanKode = trim($kode_unit);
+        // 1. Cek apakah QR adalah QR Kategori (/scan/kategori/{id} atau ID/qr_code kategori)
+        if (preg_match('#scan/kategori/(\d+)#i', $raw, $katMatch)) {
+            $kat = KategoriBarang::find((int) $katMatch[1]);
+            if ($kat) {
+                return response()->json([
+                    'success' => true,
+                    'type' => 'kategori',
+                    'data' => [
+                        'id' => $kat->id,
+                        'nama_kategori' => $kat->nama_kategori,
+                    ],
+                ]);
+            }
+        }
+
+        if (is_numeric($raw)) {
+            $kat = KategoriBarang::find((int) $raw);
+            if ($kat) {
+                return response()->json([
+                    'success' => true,
+                    'type' => 'kategori',
+                    'data' => [
+                        'id' => $kat->id,
+                        'nama_kategori' => $kat->nama_kategori,
+                    ],
+                ]);
+            }
+        }
+
+        $katByCode = KategoriBarang::where('qr_code', $raw)
+            ->orWhere('qr_code', '/' . ltrim($raw, '/'))
+            ->first();
+        if ($katByCode) {
+            return response()->json([
+                'success' => true,
+                'type' => 'kategori',
+                'data' => [
+                    'id' => $katByCode->id,
+                    'nama_kategori' => $katByCode->nama_kategori,
+                ],
+            ]);
+        }
+
+        // 2. Normalisasi format QR Unit Fisik
+        $cleanKode = $raw;
         if (str_contains($cleanKode, '?')) {
             $cleanKode = explode('?', $cleanKode)[0];
         }
@@ -407,7 +573,7 @@ class UserWebController extends Controller
         if (!$unit) {
             return response()->json([
                 'success' => false,
-                'message' => "Kode unit '{$cleanKode}' tidak ditemukan di sistem WAMS.",
+                'message' => "Kode QR '{$cleanKode}' tidak ditemukan di sistem WAMS.",
             ], 404);
         }
 
@@ -421,6 +587,7 @@ class UserWebController extends Controller
 
         return response()->json([
             'success' => true,
+            'type' => 'unit',
             'data' => [
                 'id' => $unit->id,
                 'kode_unit' => $unit->kode_unit,
@@ -435,23 +602,28 @@ class UserWebController extends Controller
                     'kode_barang' => $unit->barang?->kode_barang,
                     'kategori' => $unit->barang?->kategori?->nama_kategori,
                     'perlu_persetujuan' => (bool) $unit->barang?->perlu_persetujuan,
-                    'gambar_url' => $unit->barang?->gambar ? asset('storage/' . $unit->barang->gambar) : null,
+                    'gambar_url' => $unit->barang?->gambar_url,
                 ],
             ],
         ]);
     }
 
     /**
-     * Profil Pengguna & Ringkasan Aktivitas
+     * Profil Pengguna & Edit Profil (Mirip Flutter ProfileScreen & EditProfileScreen)
      */
-    public function profile(): Response
+    public function profile(Request $request): Response
     {
         $user = auth()->user();
 
+        $activeCount = Logbook::where('user_id', $user->id)->where('status_transaksi', 'dipinjam')->count();
+        $totalHistory = Logbook::where('user_id', $user->id)->count();
+
         $stats = [
-            'total_pinjam' => Logbook::where('user_id', $user->id)->count(),
+            'active_borrows' => $activeCount,
+            'total_history' => $totalHistory,
+            'total_pinjam' => $totalHistory,
             'selesai' => Logbook::where('user_id', $user->id)->where('status_transaksi', 'dikembalikan')->count(),
-            'aktif' => Logbook::where('user_id', $user->id)->where('status_transaksi', 'dipinjam')->count(),
+            'aktif' => $activeCount,
             'menunggu' => Logbook::where('user_id', $user->id)->where('status_transaksi', 'menunggu_persetujuan')->count(),
         ];
 
@@ -465,11 +637,133 @@ class UserWebController extends Controller
                 'joined_at' => $user->created_at?->translatedFormat('d F Y') ?? 'Member Workshop',
             ],
             'stats' => $stats,
+            'initialMode' => $request->query('mode', 'view'), // 'view' | 'edit'
         ]);
     }
 
     /**
-     * Helper formatting Logbook item
+     * Update Profil & Password (Mirip Flutter EditProfileScreen)
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'nama' => ['required', 'string', 'max:255'],
+            'nip' => ['nullable', 'string', 'max:50', 'unique:users,nip,' . $user->id],
+            'current_password' => ['nullable', 'string'],
+            'new_password' => ['nullable', 'string', 'min:6', 'confirmed'],
+        ], [
+            'nama.required' => 'Nama lengkap wajib diisi.',
+            'nip.unique' => 'NIP sudah terdaftar pada pengguna lain.',
+            'new_password.min' => 'Password baru minimal 6 karakter.',
+            'new_password.confirmed' => 'Konfirmasi password baru tidak cocok.',
+        ]);
+
+        if ($request->filled('new_password')) {
+            if (!Hash::check($request->current_password ?? '', $user->password)) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Password saat ini salah.',
+                    ], 422);
+                }
+                throw ValidationException::withMessages([
+                    'current_password' => ['Password saat ini salah.'],
+                ]);
+            }
+            $user->password = Hash::make($request->new_password);
+        }
+
+        $user->nama = trim($request->nama);
+        if ($request->has('nip')) {
+            $user->nip = $request->nip ? trim($request->nip) : null;
+        }
+        $user->save();
+
+        if ($request->filled('new_password')) {
+            $user->recordPlainPassword($request->new_password);
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $request->filled('new_password') ? 'Password berhasil diperbarui.' : 'Profil berhasil diperbarui.',
+                'data' => [
+                    'id' => $user->id,
+                    'nama' => $user->nama,
+                    'email' => $user->email,
+                    'nip' => $user->nip,
+                ],
+            ]);
+        }
+
+        return back()->with('success', $request->filled('new_password') ? 'Password berhasil diperbarui.' : 'Profil berhasil diperbarui.');
+    }
+
+    /**
+     * Helper formatting Barang item (Sesuai BarangModel Flutter)
+     */
+    private function formatBarangItem(Barang $b): array
+    {
+        $units = $b->relationLoaded('units') ? $b->units : $b->units()->get();
+        $totalUnits = $units->count();
+        $availableUnits = $units->where('status', 'tersedia')->count();
+        $dipinjamUnits = $units->where('status', 'dipinjam')->count();
+        $maintenanceUnits = $units->where('status', 'maintenance')->count();
+        $isHabisPakai = $b->isHabisPakai();
+
+        return [
+            'id' => $b->id,
+            'kategori_id' => $b->kategori_id,
+            'nama_kategori' => $b->kategori?->nama_kategori ?? 'Peralatan',
+            'kategori' => $b->kategori?->nama_kategori ?? 'Peralatan',
+            'nama_barang' => $b->nama_barang,
+            'kode_barang' => $b->kode_barang ?? 'WMS',
+            'detail_spesifikasi' => $b->detail_spesifikasi,
+            'deskripsi' => $b->detail_spesifikasi,
+            'lokasi' => $b->lokasi ?? 'Workshop Mesin / Lab Utama',
+            'lokasi_penyimpanan' => $b->lokasi ?? 'Workshop Mesin / Lab Utama',
+            'perlu_persetujuan' => (bool) $b->perlu_persetujuan,
+            'total_unit' => $totalUnits,
+            'total_units' => $totalUnits,
+            'tersedia' => $availableUnits,
+            'stok_tersedia' => $availableUnits,
+            'available_units' => $availableUnits,
+            'dipinjam' => $dipinjamUnits,
+            'maintenance' => $maintenanceUnits,
+            'can_borrow' => $availableUnits > 0,
+            'tipe' => $isHabisPakai ? 'habis_pakai' : 'aset',
+            'is_habis_pakai' => $isHabisPakai,
+            'satuan' => $b->satuan ?? 'unit',
+            'stok_saat_ini' => (float) $b->stok_saat_ini,
+            'stok_minimum' => (float) $b->stok_minimum,
+            'is_low_stock' => $isHabisPakai ? $b->isLowStock() : false,
+            'gambar_url' => $b->gambar_url,
+            'foto_url' => $b->gambar_url,
+            'units' => $units->map(fn ($u) => [
+                'id' => $u->id,
+                'barang_id' => $u->barang_id,
+                'kode_unit' => $u->kode_unit,
+                'serial_number' => $u->nomor_seri ?? null,
+                'status' => $u->status,
+                'kondisi' => $u->kondisi,
+                'kondisi_label' => $u->kondisi === 'baik' ? 'Baik' : 'Rusak',
+                'gambar_url' => $u->gambar_url,
+                'unit_gambar_url' => $u->unit_gambar_url,
+                'is_tersedia' => $u->status === 'tersedia',
+                'is_maintenance' => $u->status === 'maintenance',
+            ])->values(),
+            'available_unit_list' => $units->where('status', 'tersedia')->map(fn ($u) => [
+                'id' => $u->id,
+                'kode_unit' => $u->kode_unit,
+                'kondisi' => $u->kondisi,
+            ])->values(),
+        ];
+    }
+
+    /**
+     * Helper formatting Logbook item (Sesuai RiwayatModel Flutter)
      */
     private function formatLogbookItem(Logbook $log): array
     {
@@ -484,9 +778,15 @@ class UserWebController extends Controller
             $isOverdue = $now->greaterThan($log->batas_kembali);
             $diff = $now->diff($log->batas_kembali);
             if ($isOverdue) {
-                $remainingText = 'Terlambat ' . ($diff->days > 0 ? "{$diff->days} hari " : '') . "{$diff->h} jam";
+                $remainingText = $diff->days > 0 ? "{$diff->days} hari terlambat" : "{$diff->h} jam terlambat";
             } else {
-                $remainingText = 'Sisa ' . ($diff->days > 0 ? "{$diff->days}h " : '') . sprintf('%02d:%02d', $diff->h, $diff->i);
+                if ($diff->days > 0) {
+                    $remainingText = "sisa {$diff->days} hari";
+                } elseif ($diff->h > 0) {
+                    $remainingText = "sisa {$diff->h} jam";
+                } else {
+                    $remainingText = "segera berakhir";
+                }
             }
         }
 
@@ -497,20 +797,33 @@ class UserWebController extends Controller
             'unit_id' => $unit?->id,
             'nama_barang' => $barang?->nama_barang ?? 'Peralatan Workshop',
             'kode_barang' => $barang?->kode_barang ?? '-',
-            'kode_unit' => $unit?->kode_unit ?? '-',
+            'nama_kategori' => $barang?->kategori?->nama_kategori ?? 'Umum',
             'kategori' => $barang?->kategori?->nama_kategori ?? 'Umum',
+            'kode_unit' => $unit?->kode_unit ?? '-',
             'keperluan' => $log->keperluan,
             'status_transaksi' => $log->status_transaksi,
+            'kondisi_pinjam_label' => 'Baik',
             'kondisi_kembali' => $log->kondisi_kembali,
-            'tanggal_pinjam' => $log->tanggal_pinjam?->translatedFormat('d M Y, H:i') ?? '-',
-            'batas_kembali' => $log->batas_kembali?->translatedFormat('d M Y, H:i') ?? '-',
+            'kondisi_kembali_label' => $log->kondisi_kembali
+                ? ($log->kondisi_kembali === 'baik' ? 'Baik' : 'Rusak')
+                : '-',
+            'catatan_kembali' => $log->catatan_kembali ?? null,
+            'tanggal_pinjam' => $log->tanggal_pinjam?->translatedFormat('d M Y') ?? '-',
+            'tanggal_pinjam_raw' => $log->tanggal_pinjam?->toIso8601String(),
+            'batas_kembali' => $log->batas_kembali?->translatedFormat('d M Y') ?? '-',
             'batas_kembali_raw' => $log->batas_kembali?->toIso8601String(),
-            'tanggal_kembali' => $log->tanggal_kembali?->translatedFormat('d M Y, H:i'),
+            'batas_kembali_iso' => $log->batas_kembali?->toIso8601String(),
+            'tanggal_kembali' => $log->tanggal_kembali?->translatedFormat('d M Y'),
+            'tanggal_kembali_raw' => $log->tanggal_kembali?->toIso8601String(),
             'is_overdue' => $isOverdue,
             'remaining_text' => $remainingText,
+            'nama_approver' => $log->approver?->nama,
             'approver_nama' => $log->approver?->nama,
             'alasan_penolakan' => $log->alasan_penolakan,
-            'gambar_url' => $barang?->gambar ? asset('storage/' . $barang->gambar) : null,
+            'foto_pinjam_url' => $log->foto_pinjam_url,
+            'foto_kembali_url' => $log->foto_kembali_url,
+            'gambar_url' => $unit?->gambar_url ?? $barang?->gambar_url,
+            'foto' => $unit?->gambar_url ?? $barang?->gambar_url,
         ];
     }
 }

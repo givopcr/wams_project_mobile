@@ -8,9 +8,12 @@ use App\Http\Requests\Api\PengembalianRequest;
 use App\Models\Barang;
 use App\Models\BarangUnit;
 use App\Models\Logbook;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class TransaksiController extends Controller
 {
@@ -24,15 +27,56 @@ class TransaksiController extends Controller
         $requestedUnitId = $request->barang_unit_id;
         $requestedUnitIds = $request->barang_unit_ids;
         $keperluan = $request->keperluan;
-        $batasKembali = $request->filled('batas_kembali') ? $request->batas_kembali : null;
+
+        $tanggalPinjam = $request->filled('tanggal_pinjam')
+            ? Carbon::parse($request->tanggal_pinjam)
+            : now();
+        $batasKembali = $request->filled('batas_kembali')
+            ? Carbon::parse($request->batas_kembali)
+            : $tanggalPinjam->copy()->addDays(3);
+
+        if ($batasKembali->lt($tanggalPinjam)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Batas waktu pengembalian tidak boleh kurang dari tanggal peminjaman.',
+            ], 422);
+        }
+
+        // Batasi kuota peminjaman aktif per user maksimal 5 unit
+        $activeLoansCount = Logbook::where('user_id', $user->id)
+            ->whereIn('status_transaksi', ['dipinjam', 'menunggu_persetujuan'])
+            ->count();
+        $requestedCount = (is_array($requestedUnitIds) && count($requestedUnitIds) > 0) ? count($requestedUnitIds) : 1;
+
+        if (($activeLoansCount + $requestedCount) > 5) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Batas maksimum peminjaman aktif adalah 5 unit per pengguna.',
+            ], 422);
+        }
 
         $barang = Barang::findOrFail($barangId);
         $requiresApproval = (bool) $barang->perlu_persetujuan;
         $targetStatus = $requiresApproval ? 'menunggu_persetujuan' : 'dipinjam';
 
+        $fotoPinjamPath = null;
+        if ($request->filled('foto_pinjam')) {
+            $fotoData = $request->input('foto_pinjam');
+            if (str_starts_with($fotoData, 'data:image')) {
+                $parts = explode(',', $fotoData, 2);
+                if (count($parts) === 2) {
+                    $decoded = base64_decode($parts[1]);
+                    if ($decoded !== false) {
+                        $fotoPinjamPath = 'peminjaman/' . uniqid('bor_') . '.jpg';
+                        Storage::disk('public')->put($fotoPinjamPath, $decoded);
+                    }
+                }
+            }
+        }
+
         // Multiple units handling
         if (is_array($requestedUnitIds) && count($requestedUnitIds) > 0) {
-            return DB::transaction(function () use ($user, $barang, $requestedUnitIds, $targetStatus, $requiresApproval, $keperluan, $batasKembali) {
+            return DB::transaction(function () use ($user, $barang, $requestedUnitIds, $targetStatus, $requiresApproval, $keperluan, $tanggalPinjam, $batasKembali, $fotoPinjamPath) {
                 $units = BarangUnit::whereIn('id', $requestedUnitIds)
                     ->where('barang_id', $barang->id)
                     ->where('status', 'tersedia')
@@ -55,8 +99,9 @@ class TransaksiController extends Controller
                         'barang_unit_id' => $unit->id,
                         'tipe_peminjam' => 'user',
                         'keperluan' => $keperluan,
+                        'foto_pinjam' => $fotoPinjamPath,
                         'batas_kembali' => $batasKembali,
-                        'tanggal_pinjam' => now(),
+                        'tanggal_pinjam' => $tanggalPinjam,
                         'tanggal_kembali' => null,
                         'kondisi_kembali' => null,
                         'status_transaksi' => $targetStatus,
@@ -77,7 +122,7 @@ class TransaksiController extends Controller
                         'kode_unit' => $units->pluck('kode_unit')->implode(', '),
                         'kode_units' => $units->pluck('kode_unit')->toArray(),
                         'barang_nama' => $barang->nama_barang,
-                        'tanggal_pinjam' => now()->toIso8601String(),
+                        'tanggal_pinjam' => $tanggalPinjam->toIso8601String(),
                         'status_transaksi' => $targetStatus,
                         'requires_approval' => $requiresApproval,
                     ],
@@ -85,7 +130,7 @@ class TransaksiController extends Controller
             });
         }
 
-        return DB::transaction(function () use ($user, $barang, $requestedUnitId, $targetStatus, $requiresApproval, $keperluan, $batasKembali) {
+        return DB::transaction(function () use ($user, $barang, $requestedUnitId, $targetStatus, $requiresApproval, $keperluan, $tanggalPinjam, $batasKembali, $fotoPinjamPath) {
             // Lock row untuk mencegah race condition
             if ($requestedUnitId) {
                 $unit = BarangUnit::where('id', $requestedUnitId)
@@ -118,8 +163,9 @@ class TransaksiController extends Controller
                 'barang_unit_id' => $unit->id,
                 'tipe_peminjam' => 'user',
                 'keperluan' => $keperluan,
+                'foto_pinjam' => $fotoPinjamPath,
                 'batas_kembali' => $batasKembali,
-                'tanggal_pinjam' => now(),
+                'tanggal_pinjam' => $tanggalPinjam,
                 'tanggal_kembali' => null,
                 'kondisi_kembali' => null,
                 'status_transaksi' => $targetStatus,
@@ -151,9 +197,10 @@ class TransaksiController extends Controller
     {
         $user = $request->user();
         $logbookId = $request->logbook_id;
-        $kondisiKembali = $request->kondisi_kembali; // 'baik' atau 'rusak'
+        $rawKondisi = $request->kondisi_kembali;
+        $kondisiKembali = in_array($rawKondisi, ['rusak', 'rusak_ringan', 'rusak_berat']) ? 'rusak' : 'baik';
 
-        return DB::transaction(function () use ($user, $logbookId, $kondisiKembali) {
+        return DB::transaction(function () use ($user, $logbookId, $kondisiKembali, $request) {
             // Validasi: Logbook harus milik user bersangkutan (kecuali admin) dan status masih dipinjam
             $query = Logbook::where('id', $logbookId)->lockForUpdate();
 
@@ -170,19 +217,40 @@ class TransaksiController extends Controller
                 ], 404);
             }
 
-            if ($logbook->status_transaksi === 'dikembalikan') {
+            if ($logbook->status_transaksi !== 'dipinjam') {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Transaksi ini sudah selesai dikembalikan sebelumnya.',
+                    'message' => 'Transaksi ini tidak berstatus dipinjam atau sudah dikembalikan sebelumnya.',
                 ], 422);
             }
 
-            // 1. Update Logbook
-            $logbook->update([
+            $updatePayload = [
                 'tanggal_kembali' => now(),
                 'kondisi_kembali' => $kondisiKembali,
                 'status_transaksi' => 'dikembalikan',
-            ]);
+            ];
+
+            if ($request->filled('catatan') && Schema::hasColumn('logbook', 'catatan_kembali')) {
+                $updatePayload['catatan_kembali'] = $request->input('catatan');
+            }
+
+            if ($request->filled('foto_kondisi') && Schema::hasColumn('logbook', 'foto_kembali')) {
+                $fotoData = $request->input('foto_kondisi');
+                if (str_starts_with($fotoData, 'data:image')) {
+                    $parts = explode(',', $fotoData, 2);
+                    if (count($parts) === 2) {
+                        $decoded = base64_decode($parts[1]);
+                        if ($decoded !== false) {
+                            $filename = 'pengembalian/' . uniqid('ret_') . '.jpg';
+                            Storage::disk('public')->put($filename, $decoded);
+                            $updatePayload['foto_kembali'] = $filename;
+                        }
+                    }
+                }
+            }
+
+            // 1. Update Logbook
+            $logbook->update($updatePayload);
 
             // 2. Update status & kondisi unit fisik
             $unit = BarangUnit::where('id', $logbook->barang_unit_id)->lockForUpdate()->first();

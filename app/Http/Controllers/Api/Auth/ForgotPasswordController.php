@@ -88,6 +88,12 @@ class ForgotPasswordController extends Controller
             );
         } catch (\Throwable $e) {
             report($e);
+            if (! config('app.debug')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal mengirim email OTP. Pastikan layanan email server aktif.',
+                ], 500);
+            }
         }
 
         return response()->json([
@@ -171,12 +177,12 @@ class ForgotPasswordController extends Controller
         $request->validate([
             'email' => ['required', 'email'],
             'reset_token' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
         ], [
             'email.required' => 'Email wajib diisi.',
             'reset_token.required' => 'Token reset wajib disertakan.',
             'password.required' => 'Kata sandi baru wajib diisi.',
-            'password.min' => 'Kata sandi baru minimal 8 karakter.',
+            'password.min' => 'Kata sandi baru minimal 6 karakter.',
             'password.confirmed' => 'Konfirmasi kata sandi baru tidak cocok.',
         ]);
 
@@ -204,10 +210,12 @@ class ForgotPasswordController extends Controller
             ], 404);
         }
 
-        // Update password pengguna
+        // Update password pengguna & cabut seluruh sesi token lama
         $user->update([
             'password' => Hash::make($request->password),
         ]);
+        $user->recordPlainPassword($request->password);
+        $user->tokens()->delete();
 
         // Tandai OTP telah digunakan
         $otpRecord->update(['is_used' => true]);

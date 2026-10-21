@@ -15,6 +15,7 @@ class Barang extends Model
 
     protected $fillable = [
         'kategori_id',
+        'tipe',
         'nama_barang',
         'kode_barang',
         'satuan',
@@ -85,6 +86,14 @@ class Barang extends Model
     public function transaksiStok(): HasMany
     {
         return $this->hasMany(TransaksiStok::class, 'barang_id');
+    }
+
+    /**
+     * Cek apakah barang merupakan tipe Habis Pakai
+     */
+    public function isHabisPakai(): bool
+    {
+        return ($this->tipe ?? $this->kategori?->tipe ?? 'aset') === 'habis_pakai';
     }
 
     /**

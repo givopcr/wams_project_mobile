@@ -45,8 +45,8 @@ class AdminWebController extends Controller
              'transaksi_aktif' => Logbook::where('status_transaksi', 'dipinjam')->count(),
              'transaksi_selesai' => Logbook::where('status_transaksi', 'dikembalikan')->count(),
              'menunggu_approval' => Logbook::where('status_transaksi', 'menunggu_persetujuan')->count(),
-             'total_habis_pakai' => Barang::whereHas('kategori', fn($q) => $q->where('tipe', 'habis_pakai'))->count(),
-             'low_stock_count' => Barang::whereHas('kategori', fn($q) => $q->where('tipe', 'habis_pakai'))->whereColumn('stok_saat_ini', '<=', 'stok_minimum')->count(),
+             'total_habis_pakai' => Barang::where('tipe', 'habis_pakai')->count(),
+             'low_stock_count' => Barang::where('tipe', 'habis_pakai')->whereColumn('stok_saat_ini', '<=', 'stok_minimum')->count(),
          ];
 
          // 3 Transaksi / List User Terakhir (Meminjam atau Mengembalikan)
@@ -80,13 +80,6 @@ class AdminWebController extends Controller
          // 3 Kategori Utama: Perkakas, Elektronik, Komponen
          $targetCategories = ['Perkakas', 'Elektronik', 'Komponen'];
          $days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-         
-         // Baseline patterns for demo/seed variety if activity is low
-         $baselineLoanPatterns = [
-             'Perkakas' => [12, 18, 15, 8, 22, 14, 6],   // Peak on Jumat & Selasa
-             'Elektronik' => [8, 11, 24, 19, 14, 9, 5],   // Peak on Rabu & Kamis
-             'Komponen' => [5, 9, 14, 12, 20, 26, 10],   // Peak on Sabtu & Jumat
-         ];
 
          // Pre-fetch 7-day category loans to prevent 21+ subqueries in the loop
          $categoryLoans7Days = Logbook::join('barang_unit', 'logbook.barang_unit_id', '=', 'barang_unit.id')
@@ -114,9 +107,9 @@ class AdminWebController extends Controller
              $dipinjamUnitCat = $cat ? BarangUnit::whereHas('barang', fn($q) => $q->where('kategori_id', $catId))->where('status', 'dipinjam')->count() : 0;
              $tersediaUnitCat = $cat ? BarangUnit::whereHas('barang', fn($q) => $q->where('kategori_id', $catId))->where('status', 'tersedia')->count() : 0;
 
-             // Build 7-day trend
+             // Build 7-day trend (100% real database figures)
              $dailyLoans = [];
-             $peakDay = 'Sen';
+             $peakDay = '-';
              $maxLoans = 0;
              $totalLoansWeek = 0;
 
@@ -130,8 +123,7 @@ class AdminWebController extends Controller
                      $realCount = (int) ($categoryLoans7Days[$catId][$date] ?? 0);
                  }
 
-                 $baseline = $baselineLoanPatterns[$catTitle][$dayIndex] ?? ($baselineLoanPatterns['Perkakas'][$dayIndex] ?? 10);
-                 $count = max($realCount, $baseline);
+                 $count = $realCount;
 
                  if ($count > $maxLoans) {
                      $maxLoans = $count;
@@ -183,16 +175,12 @@ class AdminWebController extends Controller
                   ];
               })
               ->sortByDesc('total_peminjaman')
-              ->values();
-
-          $fallbackBorrow = [18, 14, 11, 7, 4];
-          $topBarangDipinjam = $topBarangDipinjam->take(5)->map(function ($item, $idx) use ($fallbackBorrow) {
-              if ($item['total_peminjaman'] === 0) {
-                  $item['total_peminjaman'] = $fallbackBorrow[$idx] ?? (5 - $idx);
-              }
-              $item['rank'] = $idx + 1;
-              return $item;
-          });
+              ->values()
+              ->take(5)
+              ->map(function ($item, $idx) {
+                  $item['rank'] = $idx + 1;
+                  return $item;
+              });
 
           // 2. Top Unit Yang Sering Maintenance (Pre-aggregated query to avoid N+1)
           $maintenanceCounts = Logbook::where('kondisi_kembali', 'rusak')
@@ -220,21 +208,36 @@ class AdminWebController extends Controller
                   ];
               })
               ->sortByDesc('total_maintenance')
-              ->values();
+              ->values()
+              ->take(5)
+              ->map(function ($item, $idx) {
+                  $item['rank'] = $idx + 1;
+                  return $item;
+              });
 
-          $fallbackMaint = [8, 5, 4, 3, 2];
-          $topUnitMaintenance = $topUnitMaintenance->take(5)->map(function ($item, $idx) use ($fallbackMaint) {
-              if ($item['total_maintenance'] === 0) {
-                  $item['total_maintenance'] = $fallbackMaint[$idx] ?? (3 - $idx);
-              }
-              $item['rank'] = $idx + 1;
-              return $item;
-          });
+          // Helper closure untuk mendeteksi transaksi yang terlambat berdasarkan batas_kembali
+          $applyOverdueFilter = function ($q) {
+              $q->where(function ($sub) {
+                  $sub->where('status_transaksi', 'dipinjam')
+                      ->where(function ($overdueCond) {
+                          $overdueCond->where(function ($hasBatas) {
+                              $hasBatas->whereNotNull('batas_kembali')
+                                  ->where('batas_kembali', '<', now());
+                          })->orWhere(function ($noBatas) {
+                              $noBatas->whereNull('batas_kembali')
+                                  ->where('tanggal_pinjam', '<=', now()->subHours(24));
+                          });
+                      });
+              })->orWhere(function ($sub) {
+                  $sub->where('status_transaksi', 'dikembalikan')
+                      ->whereNotNull('batas_kembali')
+                      ->whereColumn('tanggal_kembali', '>', 'batas_kembali');
+              });
+          };
 
-          // 3. Statistik Keterlambatan (Line Chart: Daily, Weekly, Monthly)
+          // 3. Statistik Keterlambatan (Line Chart: Daily, Weekly, Monthly - 100% Real Data)
           $dailyLate = [];
           $daysLabel = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-          $fallbackDailyLate = [2, 4, 1, 3, 5, 2, 1];
           $startOfWeek = now()->startOfWeek(); // Mulai dari hari Senin
           for ($d = 0; $d < 7; $d++) {
               $targetDate = (clone $startOfWeek)->addDays($d);
@@ -242,65 +245,46 @@ class AdminWebController extends Controller
               $dayIndex = $d;
 
               $realCount = Logbook::whereDate('tanggal_pinjam', $dateStr)
-                  ->where(function ($q) {
-                      $q->where(function ($sub) {
-                          $sub->where('status_transaksi', 'dipinjam')
-                              ->where('tanggal_pinjam', '<=', now()->subHours(24));
-                      })->orWhere(function ($sub) {
-                          $sub->whereNotNull('batas_kembali')
-                              ->whereColumn('tanggal_kembali', '>', 'batas_kembali');
-                      });
-                  })->count();
-
-              $finalCount = max($realCount, $fallbackDailyLate[$dayIndex] ?? 1);
+                  ->where($applyOverdueFilter)
+                  ->count();
 
               $dailyLate[] = [
                   'label' => $daysLabel[$dayIndex] ?? 'Hari',
                   'date' => $targetDate->translatedFormat('d M Y'),
-                  'count' => $finalCount,
+                  'count' => $realCount,
               ];
           }
 
           $weeklyLate = [];
-          $fallbackWeeklyLate = [4, 7, 5, 8];
           for ($w = 3; $w >= 0; $w--) {
               $startW = now()->subWeeks($w)->startOfWeek();
               $endW = now()->subWeeks($w)->endOfWeek();
 
               $realCount = Logbook::whereBetween('tanggal_pinjam', [$startW, $endW])
-                  ->where(function ($q) {
-                      $q->where('status_transaksi', 'dipinjam')
-                          ->where('tanggal_pinjam', '<=', now()->subHours(24));
-                  })->count();
-
-              $finalCount = max($realCount, $fallbackWeeklyLate[3 - $w] ?? 4);
+                  ->where($applyOverdueFilter)
+                  ->count();
 
               $weeklyLate[] = [
                   'label' => 'M' . (4 - $w),
                   'date' => $startW->translatedFormat('d M') . ' - ' . $endW->translatedFormat('d M'),
-                  'count' => $finalCount,
+                  'count' => $realCount,
               ];
           }
 
           $monthlyLate = [];
-          $fallbackMonthlyLate = [12, 9, 15, 11, 14, 8];
           for ($m = 5; $m >= 0; $m--) {
               $targetMonth = now()->subMonths($m);
               $startM = (clone $targetMonth)->startOfMonth();
               $endM = (clone $targetMonth)->endOfMonth();
 
               $realCount = Logbook::whereBetween('tanggal_pinjam', [$startM, $endM])
-                  ->where(function ($q) {
-                      $q->where('status_transaksi', 'dipinjam')
-                          ->where('tanggal_pinjam', '<=', now()->subHours(24));
-                  })->count();
-
-              $finalCount = max($realCount, $fallbackMonthlyLate[5 - $m] ?? 8);
+                  ->where($applyOverdueFilter)
+                  ->count();
 
               $monthlyLate[] = [
                   'label' => $targetMonth->translatedFormat('M'),
                   'date' => $targetMonth->translatedFormat('F Y'),
-                  'count' => $finalCount,
+                  'count' => $realCount,
               ];
           }
 
@@ -309,7 +293,15 @@ class AdminWebController extends Controller
               'weekly' => $weeklyLate,
               'monthly' => $monthlyLate,
               'total_active' => Logbook::where('status_transaksi', 'dipinjam')
-                  ->where('tanggal_pinjam', '<=', now()->subHours(24))
+                  ->where(function ($q) {
+                      $q->where(function ($hasBatas) {
+                          $hasBatas->whereNotNull('batas_kembali')
+                              ->where('batas_kembali', '<', now());
+                      })->orWhere(function ($noBatas) {
+                          $noBatas->whereNull('batas_kembali')
+                              ->where('tanggal_pinjam', '<=', now()->subHours(24));
+                      });
+                  })
                   ->count(),
           ];
 
@@ -324,78 +316,6 @@ class AdminWebController extends Controller
      }
 
     /**
-     * Manajemen Kategori
-     */
-    public function kategori(Request $request): Response
-    {
-        $query = KategoriBarang::withCount('barang')->with('units');
-
-        if ($request->filled('q')) {
-            $query->where('nama_kategori', 'like', "%{$request->q}%");
-        }
-
-        $categories = $query->latest()->paginate(10)->withQueryString();
-
-        $categories->getCollection()->transform(function ($k) {
-            return [
-                'id' => $k->id,
-                'nama_kategori' => $k->nama_kategori,
-                'tipe' => $k->tipe ?? 'aset',
-                'qr_code' => $k->qr_code,
-                'total_barang' => $k->barang_count,
-                'total_unit' => $k->units->count(),
-                'tersedia' => $k->units->where('status', 'tersedia')->count(),
-                'dipinjam' => $k->units->where('status', 'dipinjam')->count(),
-                'maintenance' => $k->units->where('status', 'maintenance')->count(),
-                'created_at' => $k->created_at->format('Y-m-d H:i'),
-            ];
-        });
-
-        return Inertia::render('Kategori/Index', [
-            'categories' => $categories,
-            'filters' => $request->only(['q']),
-        ]);
-    }
-
-    public function storeKategori(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'nama_kategori' => ['required', 'string', 'max:255'],
-            'tipe' => ['nullable', 'in:aset,habis_pakai'],
-        ]);
-
-        $validated['tipe'] = $validated['tipe'] ?? 'aset';
-
-        $kategori = KategoriBarang::create($validated);
-        $kategori->update([
-            'qr_code' => "/scan/kategori/{$kategori->id}",
-        ]);
-
-        return back()->with('success', 'Kategori barang berhasil ditambahkan.');
-    }
-
-    public function updateKategori(Request $request, $id): RedirectResponse
-    {
-        $kategori = KategoriBarang::findOrFail($id);
-        $validated = $request->validate([
-            'nama_kategori' => ['required', 'string', 'max:255'],
-            'tipe' => ['nullable', 'in:aset,habis_pakai'],
-        ]);
-
-        $kategori->update($validated);
-
-        return back()->with('success', 'Kategori barang berhasil diperbarui.');
-    }
-
-    public function destroyKategori($id): RedirectResponse
-    {
-        $kategori = KategoriBarang::findOrFail($id);
-        $kategori->delete();
-
-        return back()->with('success', 'Kategori barang berhasil dihapus.');
-    }
-
-    /**
      * Manajemen Master Barang
      */
     public function barang(Request $request): Response
@@ -404,6 +324,15 @@ class AdminWebController extends Controller
 
         if ($request->filled('kategori_id')) {
             $query->where('kategori_id', $request->kategori_id);
+        }
+
+        if ($request->filled('tipe') && in_array($request->tipe, ['aset', 'habis_pakai'])) {
+            $tipe = $request->tipe;
+            if ($tipe === 'habis_pakai') {
+                $query->where('tipe', 'habis_pakai');
+            } else {
+                $query->where(fn ($sub) => $sub->where('tipe', 'aset')->orWhereNull('tipe'));
+            }
         }
 
         if ($request->filled('q')) {
@@ -419,12 +348,14 @@ class AdminWebController extends Controller
         $barangList = $query->latest()->paginate(10)->withQueryString();
 
         $barangList->getCollection()->transform(function ($b) {
-            $isHabisPakai = ($b->kategori?->tipe ?? 'aset') === 'habis_pakai';
+            $tipeBarang = $b->isHabisPakai() ? 'habis_pakai' : 'aset';
+            $isHabisPakai = $tipeBarang === 'habis_pakai';
             return [
                 'id' => $b->id,
                 'kategori_id' => $b->kategori_id,
                 'nama_kategori' => $b->kategori ? $b->kategori->nama_kategori : '-',
-                'tipe_kategori' => $b->kategori ? ($b->kategori->tipe ?? 'aset') : 'aset',
+                'tipe' => $tipeBarang,
+                'tipe_kategori' => $tipeBarang,
                 'nama_barang' => $b->nama_barang,
                 'kode_barang' => $b->kode_barang,
                 'satuan' => $b->satuan,
@@ -453,20 +384,34 @@ class AdminWebController extends Controller
             ];
         });
 
-        $categories = KategoriBarang::withCount('barang')->with('units')->get();
+        $categories = KategoriBarang::withCount('barang')->with(['units', 'barang'])->get();
 
         $categoryStats = $categories->map(function ($k) {
+            $habisPakaiItems = $k->barang->filter(fn ($b) => $b->isHabisPakai());
+            $isMostlyHabisPakai = ($k->tipe ?? 'aset') === 'habis_pakai' || ($k->barang_count > 0 && $habisPakaiItems->count() === $k->barang_count);
+            $lowStockCount = $habisPakaiItems->filter(fn ($b) => (float) $b->stok_saat_ini <= (float) $b->stok_minimum)->count();
+            $safeStockCount = max(0, $habisPakaiItems->count() - $lowStockCount);
+
             return [
                 'id' => $k->id,
                 'nama_kategori' => $k->nama_kategori,
-                'tipe' => $k->tipe ?? 'aset',
+                'tipe' => $isMostlyHabisPakai ? 'habis_pakai' : 'aset',
                 'total_barang' => $k->barang_count,
                 'total_unit' => $k->units->count(),
                 'tersedia' => $k->units->where('status', 'tersedia')->count(),
                 'dipinjam' => $k->units->where('status', 'dipinjam')->count(),
                 'maintenance' => $k->units->where('status', 'maintenance')->count(),
+                'stok_aman' => $safeStockCount,
+                'stok_menipis' => $lowStockCount,
             ];
         });
+
+        $totalAllCount = Barang::count();
+        $totalHabisPakaiCount = Barang::where('tipe', 'habis_pakai')->count();
+        $totalAsetCount = max(0, $totalAllCount - $totalHabisPakaiCount);
+        $totalLowStockCount = Barang::where('tipe', 'habis_pakai')
+            ->whereColumn('stok_saat_ini', '<=', 'stok_minimum')
+            ->count();
 
         return Inertia::render('Barang/Index', [
             'barangList' => $barangList,
@@ -476,7 +421,13 @@ class AdminWebController extends Controller
                 'tipe' => $c->tipe ?? 'aset',
             ]),
             'categoryStats' => $categoryStats,
-            'filters' => $request->only(['q', 'kategori_id']),
+            'globalTabCounts' => [
+                'totalAll' => $totalAllCount,
+                'totalAset' => $totalAsetCount,
+                'totalHabisPakai' => $totalHabisPakaiCount,
+                'totalLowStock' => $totalLowStockCount,
+            ],
+            'filters' => $request->only(['q', 'kategori_id', 'tipe']),
         ]);
     }
 
@@ -484,6 +435,7 @@ class AdminWebController extends Controller
     {
         $validated = $request->validate([
             'kategori_id' => ['required', 'exists:kategori_barang,id'],
+            'tipe' => ['required', 'in:aset,habis_pakai'],
             'nama_barang' => ['required', 'string', 'max:255'],
             'kode_barang' => ['required', 'string', 'max:50', 'unique:barang,kode_barang'],
             'satuan' => ['nullable', 'string', 'max:50'],
@@ -503,8 +455,7 @@ class AdminWebController extends Controller
             unset($validated['gambar']);
         }
 
-        $kategori = KategoriBarang::find($validated['kategori_id']);
-        $isHabisPakai = $kategori && $kategori->tipe === 'habis_pakai';
+        $isHabisPakai = $validated['tipe'] === 'habis_pakai';
 
         $stokAwal = (float) ($validated['stok_saat_ini'] ?? 0);
         $validated['stok_saat_ini'] = $stokAwal;
@@ -549,6 +500,7 @@ class AdminWebController extends Controller
 
         $validated = $request->validate([
             'kategori_id' => ['required', 'exists:kategori_barang,id'],
+            'tipe' => ['required', 'in:aset,habis_pakai'],
             'nama_barang' => ['required', 'string', 'max:255'],
             'kode_barang' => ['required', 'string', 'max:50', Rule::unique('barang', 'kode_barang')->ignore($barang->id)],
             'satuan' => ['nullable', 'string', 'max:50'],
@@ -560,6 +512,7 @@ class AdminWebController extends Controller
         ]);
 
         $validated['perlu_persetujuan'] = $request->boolean('perlu_persetujuan');
+        $validated['stok_minimum'] = (float) ($validated['stok_minimum'] ?? 0);
 
         if ($request->hasFile('gambar')) {
             if ($barang->gambar && Storage::disk('public')->exists($barang->gambar)) {
@@ -650,7 +603,15 @@ class AdminWebController extends Controller
 
     public function destroyBarang($id): RedirectResponse
     {
-        $barang = Barang::with('units')->findOrFail($id);
+        $barang = Barang::with('units')->find($id);
+        if (!$barang) {
+            return redirect()->route('admin.barang')->with('success', 'Barang sudah berhasil dihapus.');
+        }
+
+        if ($barang->units->whereIn('status', ['dipinjam', 'menunggu_persetujuan'])->isNotEmpty()) {
+            return back()->with('error', 'Barang tidak dapat dihapus karena masih ada unit yang sedang dipinjam atau menunggu persetujuan.');
+        }
+
         if ($barang->gambar && Storage::disk('public')->exists($barang->gambar)) {
             Storage::disk('public')->delete($barang->gambar);
         }
@@ -661,7 +622,7 @@ class AdminWebController extends Controller
         }
         $barang->delete();
 
-        return back()->with('success', 'Barang berhasil dihapus.');
+        return redirect()->route('admin.barang')->with('success', 'Barang berhasil dihapus.');
     }
 
     /**
@@ -780,7 +741,7 @@ class AdminWebController extends Controller
 
         $validated = $request->validate([
             'kode_unit' => ['required', 'string', 'max:50', Rule::unique('barang_unit', 'kode_unit')->ignore($unit->id)],
-            'status' => ['required', 'in:tersedia,dipinjam,maintenance'],
+            'status' => ['required', 'in:tersedia,menunggu_persetujuan,dipinjam,maintenance'],
             'kondisi' => ['required', 'in:baik,rusak'],
             'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ]);
@@ -806,7 +767,15 @@ class AdminWebController extends Controller
 
     public function destroyUnit($id): RedirectResponse
     {
-        $unit = BarangUnit::findOrFail($id);
+        $unit = BarangUnit::find($id);
+        if (!$unit) {
+            return back()->with('success', 'Unit fisik sudah berhasil dihapus.');
+        }
+
+        if (in_array($unit->status, ['dipinjam', 'menunggu_persetujuan'])) {
+            return back()->with('error', 'Unit fisik yang sedang dipinjam atau dalam pengajuan tidak dapat dihapus.');
+        }
+
         if ($unit->gambar && Storage::disk('public')->exists($unit->gambar)) {
             Storage::disk('public')->delete($unit->gambar);
         }
@@ -858,13 +827,13 @@ class AdminWebController extends Controller
      */
     public function approvePeminjaman(Request $request, $id): RedirectResponse
     {
-        $log = Logbook::with('barangUnit')->findOrFail($id);
+        return DB::transaction(function () use ($request, $id) {
+            $log = Logbook::where('id', $id)->lockForUpdate()->firstOrFail();
 
-        if ($log->status_transaksi !== 'menunggu_persetujuan') {
-            return back()->with('error', 'Status peminjaman ini bukan menunggu persetujuan.');
-        }
+            if ($log->status_transaksi !== 'menunggu_persetujuan') {
+                return back()->with('error', 'Status peminjaman ini bukan menunggu persetujuan.');
+            }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($log, $request) {
             $log->update([
                 'status_transaksi' => 'dipinjam',
                 'disetujui_oleh' => auth()->id(),
@@ -873,12 +842,15 @@ class AdminWebController extends Controller
                 'batas_kembali' => $request->filled('batas_kembali') ? $request->batas_kembali : ($log->batas_kembali ?? now()->addDays(3)),
             ]);
 
-            if ($log->barangUnit) {
-                $log->barangUnit->update(['status' => 'dipinjam']);
+            if ($log->barang_unit_id) {
+                $unit = BarangUnit::where('id', $log->barang_unit_id)->lockForUpdate()->first();
+                if ($unit) {
+                    $unit->update(['status' => 'dipinjam']);
+                }
             }
-        });
 
-        return back()->with('success', 'Permohonan peminjaman berhasil disetujui.');
+            return back()->with('success', 'Permohonan peminjaman berhasil disetujui.');
+        });
     }
 
     /**
@@ -890,13 +862,13 @@ class AdminWebController extends Controller
             'alasan_penolakan' => ['required', 'string', 'max:500'],
         ]);
 
-        $log = Logbook::with('barangUnit')->findOrFail($id);
+        return DB::transaction(function () use ($request, $id) {
+            $log = Logbook::where('id', $id)->lockForUpdate()->firstOrFail();
 
-        if ($log->status_transaksi !== 'menunggu_persetujuan') {
-            return back()->with('error', 'Status peminjaman ini bukan menunggu persetujuan.');
-        }
+            if ($log->status_transaksi !== 'menunggu_persetujuan') {
+                return back()->with('error', 'Status peminjaman ini bukan menunggu persetujuan.');
+            }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($log, $request) {
             $log->update([
                 'status_transaksi' => 'ditolak',
                 'disetujui_oleh' => auth()->id(),
@@ -904,12 +876,15 @@ class AdminWebController extends Controller
                 'alasan_penolakan' => $request->alasan_penolakan,
             ]);
 
-            if ($log->barangUnit) {
-                $log->barangUnit->update(['status' => 'tersedia']);
+            if ($log->barang_unit_id) {
+                $unit = BarangUnit::where('id', $log->barang_unit_id)->lockForUpdate()->first();
+                if ($unit) {
+                    $unit->update(['status' => 'tersedia']);
+                }
             }
-        });
 
-        return back()->with('success', 'Permohonan peminjaman berhasil ditolak.');
+            return back()->with('success', 'Permohonan peminjaman berhasil ditolak.');
+        });
     }
 
     /**
@@ -937,6 +912,22 @@ class AdminWebController extends Controller
 
         $users = $query->latest()->latest('id')->paginate(15)->withQueryString();
 
+        $users->getCollection()->transform(function ($u) {
+            return [
+                'id' => $u->id,
+                'nama' => $u->nama,
+                'email' => $u->email,
+                'nip' => $u->nip,
+                'role' => $u->role,
+                'avatar' => $u->avatar,
+                'google_id' => $u->google_id,
+                'total_transaksi' => $u->total_transaksi,
+                'transaksi_aktif' => $u->transaksi_aktif,
+                'visible_password' => $u->getAdminVisiblePassword(),
+                'created_at' => $u->created_at?->format('d M Y'),
+            ];
+        });
+
         return Inertia::render('User/Index', [
             'users' => $users,
             'filters' => $request->only(['q', 'role']),
@@ -953,8 +944,10 @@ class AdminWebController extends Controller
             'password' => ['required', 'string', 'min:6'],
         ]);
 
-        $validated['password'] = Hash::make($validated['password']);
-        User::create($validated);
+        $rawPassword = $validated['password'];
+        $validated['password'] = Hash::make($rawPassword);
+        $user = User::create($validated);
+        $user->recordPlainPassword($rawPassword);
 
         return back()->with('success', 'User berhasil ditambahkan.');
     }
@@ -963,35 +956,69 @@ class AdminWebController extends Controller
     {
         $user = User::findOrFail($id);
 
+        // Mode 1: Quick Role Switch dari tabel Manajemen User
+        if ($request->boolean('quick_role_toggle')) {
+            $validatedRole = $request->validate([
+                'role' => ['required', 'in:admin,user'],
+            ]);
+
+            if ($user->id === auth()->id() && $validatedRole['role'] !== 'admin') {
+                return back()->with('error', 'Anda tidak dapat menurunkan role akun Administrator Anda sendiri.');
+            }
+
+            $user->update(['role' => $validatedRole['role']]);
+            $roleLabel = $validatedRole['role'] === 'admin' ? 'Administrator' : 'User / Teknisi';
+
+            return back()->with('success', "Role akun {$user->nama} berhasil diubah menjadi {$roleLabel}.");
+        }
+
+        // Mode 2: Edit Data Pengguna (Admin hanya dapat melihat password, tidak dapat mengubahnya)
         $validated = $request->validate([
             'nama' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'nip' => ['nullable', 'string', 'max:50', Rule::unique('users', 'nip')->ignore($user->id)],
             'role' => ['required', 'in:admin,user'],
-            'password' => ['nullable', 'string', 'min:6'],
         ]);
 
-        if (! empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-        } else {
-            unset($validated['password']);
+        if ($user->id === auth()->id() && $validated['role'] !== 'admin') {
+            return back()->with('error', 'Anda tidak dapat menurunkan role akun Administrator Anda sendiri.');
         }
 
         $user->update($validated);
 
-        return back()->with('success', 'User berhasil diperbarui.');
+        return back()->with('success', 'Data pengguna berhasil diperbarui.');
     }
 
     public function destroyUser($id): RedirectResponse
     {
-        $user = User::findOrFail($id);
-        if ($user->id === Auth::id()) {
-            return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
+        $user = User::find($id);
+        if (!$user) {
+            return redirect()->route('admin.users')->with('success', 'Akun pengguna berhasil dihapus.');
         }
 
-        $user->delete();
+        if ($user->id === auth()->id()) {
+            return redirect()->route('admin.users')->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
+        }
 
-        return back()->with('success', 'User berhasil dihapus.');
+        $namaUser = $user->nama;
+
+        DB::transaction(function () use ($user) {
+            // Kembalikan unit yang masih berstatus dipinjam/menunggu_persetujuan oleh user ini ke 'tersedia'
+            $activeLogs = Logbook::where('user_id', $user->id)
+                ->whereIn('status_transaksi', ['dipinjam', 'menunggu_persetujuan'])
+                ->get();
+
+            foreach ($activeLogs as $log) {
+                if ($log->barang_unit_id) {
+                    BarangUnit::where('id', $log->barang_unit_id)->update(['status' => 'tersedia']);
+                }
+            }
+
+            $user->tokens()->delete();
+            $user->delete();
+        });
+
+        return redirect()->route('admin.users')->with('success', "Akun pengguna {$namaUser} berhasil dihapus.");
     }
 
     /**
@@ -1038,128 +1065,21 @@ class AdminWebController extends Controller
     }
 
     /**
-     * Ekspor Laporan ke Excel / CSV dengan UTF-8 BOM
+     * Ekspor Laporan ke Excel (.xls) Berformat Tabel Rapi & Berborder per Section
      */
-    public function exportExcelReports(Request $request): StreamedResponse
+    public function exportExcelReports(Request $request)
     {
         $data = $this->getReportsData($request);
         $periodSlug = $data['filters']['period'] ?? 'all';
-        $filename = 'Laporan-WAMS-' . strtoupper($periodSlug) . '-' . date('Ymd-His') . '.csv';
+        $filename = 'Laporan-WAMS-' . strtoupper($periodSlug) . '-' . now()->timezone('Asia/Jakarta')->format('Ymd-His') . '.xls';
 
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-            'Pragma' => 'no-cache',
-            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires' => '0',
-        ];
-
-        return response()->stream(function () use ($data) {
-            $file = fopen('php://output', 'w');
-            // UTF-8 BOM for automatic Excel delimiter & character encoding support
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-
-            // Header Dokumen
-            fputcsv($file, ['WORKSHOP ASSET MANAGEMENT SYSTEM (WAMS) - REKAP LAPORAN & STATISTIK']);
-            fputcsv($file, ['Periode Filter:', $data['filters']['period_label']]);
-            fputcsv($file, ['Tanggal Unduh:', date('d F Y, H:i:s') . ' WIB']);
-            fputcsv($file, []);
-
-            // 1. Ringkasan
-            fputcsv($file, ['=== 1. RINGKASAN STATISTIK UTAMA ===']);
-            fputcsv($file, ['Indikator Metrik', 'Jumlah', 'Keterangan']);
-            fputcsv($file, ['Total Peminjaman', $data['summary']['total_peminjaman'], 'Jumlah transaksi sirkulasi dalam periode']);
-            fputcsv($file, ['Total Pengembalian', $data['summary']['total_pengembalian'], 'Unit telah dikembalikan ke workshop']);
-            fputcsv($file, ['Total Keterlambatan', $data['summary']['total_keterlambatan'], 'Unit sedang dipinjam melebihi 24 jam']);
-            fputcsv($file, ['Total Unit Fisik', $data['summary']['total_unit'], 'Seluruh unit workshop terdaftar']);
-            fputcsv($file, ['Unit Tersedia', $data['summary']['unit_tersedia'], 'Siap dipinjam']);
-            fputcsv($file, ['Unit Sedang Dipinjam', $data['summary']['unit_dipinjam'], 'Sedang digunakan teknisi']);
-            fputcsv($file, ['Unit Maintenance', $data['summary']['unit_maintenance'], 'Sedang dalam pemeliharaan / rusak']);
-            fputcsv($file, []);
-
-            // 2. Kondisi Aset
-            fputcsv($file, ['=== 2. KONDISI ASET WORKSHOP ===']);
-            fputcsv($file, ['Status / Kondisi', 'Jumlah Unit', 'Persentase']);
-            fputcsv($file, ['Layak Pakai / Baik', $data['asset_conditions']['baik']['count'], $data['asset_conditions']['baik']['percentage'] . '%']);
-            fputcsv($file, ['Kondisi Rusak', $data['asset_conditions']['rusak']['count'], $data['asset_conditions']['rusak']['percentage'] . '%']);
-            fputcsv($file, ['Status Maintenance', $data['asset_conditions']['maintenance']['count'], $data['asset_conditions']['maintenance']['percentage'] . '%']);
-            fputcsv($file, []);
-
-            // 3. Statistik Kategori
-            fputcsv($file, ['=== 3. STATISTIK PER KATEGORI BARANG ===']);
-            fputcsv($file, ['Kategori', 'Total Model Barang', 'Total Unit Fisik', 'Tersedia', 'Dipinjam', 'Maintenance', 'Frekuensi Dipinjam', 'Pangsa Utilisasi']);
-            foreach ($data['category_stats'] as $cat) {
-                fputcsv($file, [
-                    $cat['nama_kategori'],
-                    $cat['total_barang'],
-                    $cat['total_unit'],
-                    $cat['unit_tersedia'],
-                    $cat['unit_dipinjam'],
-                    $cat['unit_maintenance'],
-                    $cat['frekuensi_pinjam'] . ' kali',
-                    $cat['persentase_utilisasi'] . '%',
-                ]);
-            }
-            fputcsv($file, []);
-
-            // 4. Utilisasi Aset
-            fputcsv($file, ['=== 4. UTILISASI ASET (BARANG PALING SERING DIPINJAM) ===']);
-            fputcsv($file, ['Nama Barang', 'Kode Barang', 'Kategori', 'Lokasi Simpan', 'Total Unit', 'Unit Dipinjam', 'Frekuensi Dipinjam', 'Pangsa Peminjaman']);
-            foreach ($data['asset_utilization'] as $asset) {
-                fputcsv($file, [
-                    $asset['nama_barang'],
-                    $asset['kode_barang'],
-                    $asset['kategori'],
-                    $asset['lokasi'],
-                    $asset['total_unit'],
-                    $asset['active_borrowed'],
-                    $asset['frekuensi_pinjam'] . ' kali',
-                    $asset['persentase_utilisasi'] . '%',
-                ]);
-            }
-            fputcsv($file, []);
-
-            // 5. Rekap Logbook Transaksi
-            fputcsv($file, ['=== 5. REKAP LOGBOOK TRANSAKSI LENGKAP ===']);
-            fputcsv($file, ['No', 'User / Teknisi', 'NIP', 'Nama Barang', 'Kode Barang', 'Kode Unit', 'Kategori', 'Waktu Pinjam', 'Waktu Kembali', 'Durasi', 'Status Transaksi', 'Kondisi Kembali', 'Keterangan']);
-            foreach ($data['logbooks'] as $idx => $log) {
-                fputcsv($file, [
-                    $idx + 1,
-                    $log['user_nama'],
-                    $log['user_nip'],
-                    $log['nama_barang'],
-                    $log['kode_barang'],
-                    $log['kode_unit'],
-                    $log['kategori'],
-                    $log['tanggal_pinjam_formatted'],
-                    $log['tanggal_kembali_formatted'],
-                    $log['durasi'],
-                    ucfirst($log['status_transaksi']),
-                    ucfirst($log['kondisi_kembali']),
-                    $log['is_terlambat'] ? 'Terlambat (>24 Jam)' : 'Tepat Waktu / Normal',
-                ]);
-            }
-            fputcsv($file, []);
-
-            // 6. Laporan Maintenance
-            fputcsv($file, ['=== 6. LAPORAN PEMELIHARAAN & UNIT RUSAK ===']);
-            fputcsv($file, ['No', 'Kode Unit', 'Nama Barang', 'Kategori', 'Status', 'Kondisi', 'Terakhir Update', 'Pelapor / Pengguna Terakhir', 'Catatan']);
-            foreach ($data['maintenance_reports'] as $idx => $m) {
-                fputcsv($file, [
-                    $idx + 1,
-                    $m['kode_unit'],
-                    $m['nama_barang'],
-                    $m['kategori'],
-                    ucfirst($m['status']),
-                    ucfirst($m['kondisi']),
-                    $m['tanggal_update'],
-                    $m['pelapor_terakhir'],
-                    $m['catatan'],
-                ]);
-            }
-
-            fclose($file);
-        }, 200, $headers);
+        return response()
+            ->view('reports.excel', $data)
+            ->header('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"")
+            ->header('Pragma', 'no-cache')
+            ->header('Cache-Control', 'must-revalidate, post-check=0, pre-check=0')
+            ->header('Expires', '0');
     }
 
     /**
@@ -1228,11 +1148,25 @@ class AdminWebController extends Controller
         $totalPeminjaman = $allLogbooks->count();
         $totalPengembalian = $allLogbooks->where('status_transaksi', 'dikembalikan')->count();
 
-        // Keterlambatan: transaksi 'dipinjam' yang sudah lebih dari 24 jam sejak tanggal_pinjam
+        // Keterlambatan: berdasarkan batas_kembali (fallback 24 jam jika batas_kembali kosong)
         $thresholdTime = Carbon::now()->subHours(24);
-        $totalKeterlambatan = $allLogbooks->where('status_transaksi', 'dipinjam')
-            ->filter(fn($l) => Carbon::parse($l->tanggal_pinjam)->lte($thresholdTime))
-            ->count();
+        $isLogLate = function ($log) use ($thresholdTime): bool {
+            $tglPinjam = Carbon::parse($log->tanggal_pinjam);
+            $tglKembali = $log->tanggal_kembali ? Carbon::parse($log->tanggal_kembali) : null;
+            $batasKembali = $log->batas_kembali ? Carbon::parse($log->batas_kembali) : null;
+
+            if ($log->status_transaksi === 'dipinjam') {
+                return $batasKembali ? Carbon::now()->gt($batasKembali) : $tglPinjam->lte($thresholdTime);
+            }
+
+            if ($log->status_transaksi === 'dikembalikan' && $tglKembali && $batasKembali) {
+                return $tglKembali->gt($batasKembali);
+            }
+
+            return false;
+        };
+
+        $totalKeterlambatan = $allLogbooks->filter($isLogLate)->count();
 
         $totalUnit = BarangUnit::count();
         $unitDipinjam = BarangUnit::where('status', 'dipinjam')->count();
@@ -1250,11 +1184,11 @@ class AdminWebController extends Controller
         ];
 
         // 2. Rekap Logbook Formatted
-        $logbookList = $allLogbooks->map(function ($log) use ($thresholdTime) {
+        $logbookList = $allLogbooks->map(function ($log) use ($isLogLate) {
             $tglPinjam = Carbon::parse($log->tanggal_pinjam);
             $tglKembali = $log->tanggal_kembali ? Carbon::parse($log->tanggal_kembali) : null;
 
-            $isLate = ($log->status_transaksi === 'dipinjam' && $tglPinjam->lte($thresholdTime));
+            $isLate = $isLogLate($log);
 
             $durasi = '-';
             if ($tglKembali) {
@@ -1273,11 +1207,17 @@ class AdminWebController extends Controller
                 }
             }
 
+            $isGuest = $log->tipe_peminjam === 'guest';
+            $userNama = $isGuest
+                ? ($log->guest_nama ?: 'Tamu') . ' (Tamu)'
+                : ($log->user?->nama ?? 'Unknown User');
+            $userNip = $isGuest ? 'Guest' : ($log->user?->nip ?? '-');
+
             return [
                 'id' => $log->id,
-                'user_nama' => $log->user?->nama ?? 'Unknown User',
-                'user_nip' => $log->user?->nip ?? '-',
-                'user_role' => $log->user?->role ?? 'user',
+                'user_nama' => $userNama,
+                'user_nip' => $userNip,
+                'user_role' => $isGuest ? 'guest' : ($log->user?->role ?? 'user'),
                 'nama_barang' => $log->barangUnit?->barang?->nama_barang ?? 'Barang Dihapus',
                 'kode_barang' => $log->barangUnit?->barang?->kode_barang ?? '-',
                 'kategori' => $log->barangUnit?->barang?->kategori?->nama_kategori ?? 'Umum',
@@ -1357,6 +1297,10 @@ class AdminWebController extends Controller
             ->get()
             ->map(function ($u) {
                 $lastLog = Logbook::with('user')->where('barang_unit_id', $u->id)->latest('tanggal_pinjam')->first();
+                $defaultNote = $u->kondisi === 'rusak'
+                    ? 'Unit mengalami kerusakan fisik / perlu perbaikan'
+                    : 'Pemeliharaan rutin berkala unit workshop';
+
                 return [
                     'id' => $u->id,
                     'kode_unit' => $u->kode_unit,
@@ -1366,8 +1310,8 @@ class AdminWebController extends Controller
                     'status' => $u->status,
                     'kondisi' => $u->kondisi,
                     'tanggal_update' => $u->updated_at->format('d M Y, H:i'),
-                    'pelapor_terakhir' => $lastLog?->user?->nama ?? 'Staff Workshop',
-                    'catatan' => $u->kondisi === 'rusak' ? 'Unit mengalami kerusakan fisik / perlu perbaikan' : 'Pemeliharaan rutin berkala unit workshop',
+                    'pelapor_terakhir' => $lastLog ? ($lastLog->peminjam_nama ?: 'Staff Workshop') : 'Staff Workshop',
+                    'catatan' => ($lastLog && !empty($lastLog->catatan_kembali)) ? $lastLog->catatan_kembali : $defaultNote,
                 ];
             });
 
@@ -1550,18 +1494,29 @@ class AdminWebController extends Controller
             'batas_kembali' => ['required', 'date', 'after_or_equal:tanggal_pinjam'],
         ]);
 
-        $unit = BarangUnit::findOrFail($validated['barang_unit_id']);
-        $unit->update(['status' => 'dipinjam']);
+        return DB::transaction(function () use ($validated) {
+            $unit = BarangUnit::where('id', $validated['barang_unit_id'])
+                ->where('status', 'tersedia')
+                ->lockForUpdate()
+                ->first();
 
-        Logbook::create([
-            'user_id' => $validated['user_id'],
-            'barang_unit_id' => $unit->id,
-            'tanggal_pinjam' => $validated['tanggal_pinjam'],
-            'batas_kembali' => $validated['batas_kembali'],
-            'status_transaksi' => 'dipinjam',
-        ]);
+            if (!$unit) {
+                return back()->with('error', 'Unit barang sedang dipinjam atau tidak tersedia.');
+            }
 
-        return back()->with('success', 'Peminjaman berhasil dijadwalkan ke kalender.');
+            $unit->update(['status' => 'dipinjam']);
+
+            Logbook::create([
+                'user_id' => $validated['user_id'],
+                'barang_unit_id' => $unit->id,
+                'tipe_peminjam' => 'user',
+                'tanggal_pinjam' => $validated['tanggal_pinjam'],
+                'batas_kembali' => $validated['batas_kembali'],
+                'status_transaksi' => 'dipinjam',
+            ]);
+
+            return back()->with('success', 'Peminjaman berhasil dijadwalkan ke kalender.');
+        });
     }
 
     /**
@@ -1923,6 +1878,7 @@ class AdminWebController extends Controller
         $user->update([
             'password' => Hash::make($request->password),
         ]);
+        $user->recordPlainPassword($request->password);
 
         return back()->with('success', 'Password administrator berhasil diubah.');
     }

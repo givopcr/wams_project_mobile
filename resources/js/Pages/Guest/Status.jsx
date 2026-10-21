@@ -11,7 +11,10 @@ import {
     RotateCcw,
     Sparkles,
     AlertTriangle,
-    RefreshCw
+    RefreshCw,
+    Camera,
+    X,
+    Check
 } from 'lucide-react';
 
 export default function GuestStatus({ unit, logbook }) {
@@ -22,9 +25,21 @@ export default function GuestStatus({ unit, logbook }) {
     const [showReturnModal, setShowReturnModal] = useState(false);
     const [kondisi, setKondisi] = useState('baik');
     const [catatan, setCatatan] = useState('');
+    const [fotoKondisi, setFotoKondisi] = useState(null);
     const [returning, setReturning] = useState(false);
     const [returnError, setReturnError] = useState(null);
     const [returnSuccess, setReturnSuccess] = useState(false);
+
+    const handleFotoKondisiChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            setFotoKondisi(ev.target.result);
+            setReturnError(null);
+        };
+        reader.readAsDataURL(file);
+    };
 
     // Countdown Timer calculation
     useEffect(() => {
@@ -67,6 +82,11 @@ export default function GuestStatus({ unit, logbook }) {
         e.preventDefault();
         setReturnError(null);
 
+        if (!fotoKondisi) {
+            setReturnError('Foto kondisi barang saat dikembalikan wajib diunggah dan tidak boleh dilewati.');
+            return;
+        }
+
         if (kondisi === 'rusak' && !catatan.trim()) {
             setReturnError('Catatan kerusakan / kendala alat wajib diisi.');
             return;
@@ -79,6 +99,7 @@ export default function GuestStatus({ unit, logbook }) {
             const response = await axios.post(`/guest/return/${unit.kode_unit}`, {
                 kondisi: kondisi,
                 catatan: catatan.trim(),
+                foto_kondisi: fotoKondisi,
                 token: token,
             });
 
@@ -325,6 +346,57 @@ export default function GuestStatus({ unit, logbook }) {
                                     ></textarea>
                                 </div>
                             )}
+
+                            {/* Foto Barang Dikembalikan (Wajib) */}
+                            <div>
+                                <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
+                                    Foto Barang Dikembalikan <span className="text-[#D84040]">* (Wajib)</span>
+                                </label>
+                                <label
+                                    className={`w-full h-32 bg-white rounded-xl border flex flex-col items-center justify-center cursor-pointer overflow-hidden relative transition-colors ${
+                                        fotoKondisi
+                                            ? 'border-emerald-500'
+                                            : 'border-dashed border-[#D84040]/60 hover:border-[#D84040]'
+                                    }`}
+                                >
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        onChange={handleFotoKondisiChange}
+                                        className="hidden"
+                                    />
+                                    {fotoKondisi ? (
+                                        <>
+                                            <img
+                                                src={fotoKondisi}
+                                                alt="Foto Pengembalian"
+                                                className="w-full h-full object-cover"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setFotoKondisi(null);
+                                                }}
+                                                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center cursor-pointer"
+                                            >
+                                                <X size={13} />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Camera size={24} className="text-[#D84040]" />
+                                            <span className="mt-1 text-xs font-bold text-[#1D1616]">
+                                                Ketuk untuk ambil foto barang dikembalikan
+                                            </span>
+                                            <span className="text-[10px] text-[#6B7280]">
+                                                Wajib diisi dan tidak boleh dilewati
+                                            </span>
+                                        </>
+                                    )}
+                                </label>
+                            </div>
 
                             {/* Action Buttons */}
                             <div className="space-y-2 pt-1">

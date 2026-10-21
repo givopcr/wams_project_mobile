@@ -15,7 +15,42 @@ class AuthWebController extends Controller
     {
         return Inertia::render('Auth/Login', [
             'status' => session('status'),
+            'initialTab' => $request->query('tab', 'login'),
         ]);
+    }
+
+    public function register(Request $request)
+    {
+        $validated = $request->validate([
+            'nama' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'nip' => ['nullable', 'string', 'max:50', 'unique:users,nip'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+        ], [
+            'nama.required' => 'Nama lengkap wajib diisi.',
+            'email.required' => 'Alamat email wajib diisi.',
+            'email.email' => 'Format alamat email tidak valid.',
+            'email.unique' => 'Email ini sudah terdaftar.',
+            'nip.unique' => 'NIP ini sudah digunakan oleh akun lain.',
+            'password.required' => 'Password wajib diisi.',
+            'password.min' => 'Password minimal 6 karakter.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
+        ]);
+
+        $user = \App\Models\User::create([
+            'nama' => $validated['nama'],
+            'email' => $validated['email'],
+            'nip' => $validated['nip'] ?: null,
+            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+            'role' => 'user',
+        ]);
+
+        $user->recordPlainPassword($validated['password']);
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('user.dashboard')->with('success', 'Registrasi berhasil! Selamat datang di WAMS, ' . $user->nama . '.');
     }
 
     public function login(Request $request)
@@ -36,6 +71,7 @@ class AuthWebController extends Controller
 
         if (Auth::attempt([$loginField => $credentials['login'], 'password' => $credentials['password']], $request->boolean('remember'))) {
             $request->session()->regenerate();
+            Auth::user()->recordPlainPassword($credentials['password']);
 
             if (Auth::user()->role === 'admin') {
                 return redirect()->route('admin.dashboard')->with('success', 'Selamat datang kembali, Administrator!');

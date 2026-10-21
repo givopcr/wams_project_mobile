@@ -16,9 +16,12 @@ class GuestOtp extends Model
         'guest_nama',
         'kode_unit',
         'durasi_menit',
+        'keperluan',
+        'foto_pinjam',
         'otp_code',
         'expires_at',
         'is_used',
+        'attempts',
     ];
 
     protected function casts(): array
@@ -27,6 +30,7 @@ class GuestOtp extends Model
             'expires_at' => 'datetime',
             'is_used' => 'boolean',
             'durasi_menit' => 'integer',
+            'attempts' => 'integer',
         ];
     }
 

@@ -54,10 +54,12 @@ class AdminApiController extends Controller
     {
         $validated = $request->validate([
             'nama_kategori' => ['required', 'string', 'max:255'],
+            'tipe' => ['nullable', 'in:aset,habis_pakai'],
         ]);
 
         $kategori = KategoriBarang::create([
             'nama_kategori' => $validated['nama_kategori'],
+            'tipe' => $validated['tipe'] ?? 'aset',
         ]);
 
         $kategori->update([
@@ -80,6 +82,7 @@ class AdminApiController extends Controller
 
         $validated = $request->validate([
             'nama_kategori' => ['required', 'string', 'max:255'],
+            'tipe' => ['nullable', 'in:aset,habis_pakai'],
         ]);
 
         $kategori->update($validated);
@@ -96,7 +99,15 @@ class AdminApiController extends Controller
      */
     public function destroyKategori($id): JsonResponse
     {
-        $kategori = KategoriBarang::findOrFail($id);
+        $kategori = KategoriBarang::with('units')->findOrFail($id);
+
+        if ($kategori->units->whereIn('status', ['dipinjam', 'menunggu_persetujuan'])->isNotEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kategori tidak dapat dihapus karena masih memiliki unit yang sedang dipinjam atau diajukan.',
+            ], 422);
+        }
+
         $kategori->delete();
 
         return response()->json([
@@ -114,6 +125,9 @@ class AdminApiController extends Controller
             'kategori_id' => ['required', 'exists:kategori_barang,id'],
             'nama_barang' => ['required', 'string', 'max:255'],
             'kode_barang' => ['required', 'string', 'max:50', 'unique:barang,kode_barang'],
+            'satuan' => ['nullable', 'string', 'max:50'],
+            'stok_saat_ini' => ['nullable', 'numeric', 'min:0'],
+            'stok_minimum' => ['nullable', 'numeric', 'min:0'],
             'detail_spesifikasi' => ['nullable', 'string'],
             'lokasi' => ['nullable', 'string', 'max:255'],
             'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
@@ -121,12 +135,26 @@ class AdminApiController extends Controller
         ]);
 
         $validated['perlu_persetujuan'] = $request->boolean('perlu_persetujuan');
+        $validated['stok_saat_ini'] = (float) ($validated['stok_saat_ini'] ?? 0);
+        $validated['stok_minimum'] = (float) ($validated['stok_minimum'] ?? 0);
 
         if ($request->hasFile('gambar')) {
             $validated['gambar'] = $request->file('gambar')->store('barang', 'public');
         }
 
         $barang = Barang::create($validated);
+
+        $kategori = KategoriBarang::find($validated['kategori_id']);
+        if ($kategori && $kategori->tipe === 'habis_pakai' && $validated['stok_saat_ini'] > 0) {
+            \App\Models\TransaksiStok::create([
+                'barang_id' => $barang->id,
+                'user_id' => $request->user()?->id,
+                'tipe' => 'masuk',
+                'jumlah' => $validated['stok_saat_ini'],
+                'sisa_stok' => $validated['stok_saat_ini'],
+                'keterangan' => 'Stok awal saat pendaftaran barang',
+            ]);
+        }
 
         return response()->json([
             'success' => true,
@@ -146,6 +174,8 @@ class AdminApiController extends Controller
             'kategori_id' => ['required', 'exists:kategori_barang,id'],
             'nama_barang' => ['required', 'string', 'max:255'],
             'kode_barang' => ['required', 'string', 'max:50', Rule::unique('barang', 'kode_barang')->ignore($barang->id)],
+            'satuan' => ['nullable', 'string', 'max:50'],
+            'stok_minimum' => ['nullable', 'numeric', 'min:0'],
             'detail_spesifikasi' => ['nullable', 'string'],
             'lokasi' => ['nullable', 'string', 'max:255'],
             'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
@@ -177,7 +207,14 @@ class AdminApiController extends Controller
      */
     public function destroyBarang($id): JsonResponse
     {
-        $barang = Barang::findOrFail($id);
+        $barang = Barang::with('units')->findOrFail($id);
+
+        if ($barang->units->whereIn('status', ['dipinjam', 'menunggu_persetujuan'])->isNotEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Barang tidak dapat dihapus karena masih memiliki unit yang sedang dipinjam atau diajukan.',
+            ], 422);
+        }
 
         if ($barang->gambar && Storage::disk('public')->exists($barang->gambar)) {
             Storage::disk('public')->delete($barang->gambar);
@@ -200,7 +237,7 @@ class AdminApiController extends Controller
 
         $validated = $request->validate([
             'kode_unit' => ['required', 'string', 'max:50', 'unique:barang_unit,kode_unit'],
-            'status' => ['required', 'in:tersedia,dipinjam,maintenance'],
+            'status' => ['required', 'in:tersedia,menunggu_persetujuan,dipinjam,maintenance'],
             'kondisi' => ['required', 'in:baik,rusak'],
         ]);
 
@@ -222,7 +259,7 @@ class AdminApiController extends Controller
 
         $validated = $request->validate([
             'kode_unit' => ['required', 'string', 'max:50', Rule::unique('barang_unit', 'kode_unit')->ignore($unit->id)],
-            'status' => ['required', 'in:tersedia,dipinjam,maintenance'],
+            'status' => ['required', 'in:tersedia,menunggu_persetujuan,dipinjam,maintenance'],
             'kondisi' => ['required', 'in:baik,rusak'],
         ]);
 
@@ -241,6 +278,14 @@ class AdminApiController extends Controller
     public function destroyUnit($id): JsonResponse
     {
         $unit = BarangUnit::findOrFail($id);
+
+        if (in_array($unit->status, ['dipinjam', 'menunggu_persetujuan'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unit fisik yang sedang dipinjam atau dalam pengajuan tidak dapat dihapus.',
+            ], 422);
+        }
+
         $unit->delete();
 
         return response()->json([

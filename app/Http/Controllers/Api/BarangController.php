@@ -31,12 +31,21 @@ class BarangController extends Controller
         $barang = $query->paginate($request->input('per_page', 15));
 
         $barang->getCollection()->transform(function ($item) {
+            $isHabisPakai = $item->isHabisPakai();
+            $tipe = $isHabisPakai ? 'habis_pakai' : 'aset';
+
             return [
                 'id' => $item->id,
                 'kategori_id' => $item->kategori_id,
                 'nama_kategori' => $item->kategori ? $item->kategori->nama_kategori : null,
+                'tipe' => $tipe,
+                'is_habis_pakai' => $isHabisPakai,
                 'nama_barang' => $item->nama_barang,
                 'kode_barang' => $item->kode_barang,
+                'satuan' => $item->satuan,
+                'stok_saat_ini' => (float) $item->stok_saat_ini,
+                'stok_minimum' => (float) $item->stok_minimum,
+                'is_low_stock' => $isHabisPakai ? $item->isLowStock() : false,
                 'detail_spesifikasi' => $item->detail_spesifikasi,
                 'lokasi' => $item->lokasi,
                 'gambar_url' => $item->gambar_url,
@@ -62,6 +71,8 @@ class BarangController extends Controller
         $barang = Barang::with(['kategori', 'units'])->findOrFail($id);
 
         $tersediaCount = $barang->units->where('status', 'tersedia')->count();
+        $isHabisPakai = $barang->isHabisPakai();
+        $tipe = $isHabisPakai ? 'habis_pakai' : 'aset';
 
         return response()->json([
             'success' => true,
@@ -69,8 +80,14 @@ class BarangController extends Controller
                 'id' => $barang->id,
                 'kategori_id' => $barang->kategori_id,
                 'nama_kategori' => $barang->kategori ? $barang->kategori->nama_kategori : null,
+                'tipe' => $tipe,
+                'is_habis_pakai' => $isHabisPakai,
                 'nama_barang' => $barang->nama_barang,
                 'kode_barang' => $barang->kode_barang,
+                'satuan' => $barang->satuan,
+                'stok_saat_ini' => (float) $barang->stok_saat_ini,
+                'stok_minimum' => (float) $barang->stok_minimum,
+                'is_low_stock' => $isHabisPakai ? $barang->isLowStock() : false,
                 'detail_spesifikasi' => $barang->detail_spesifikasi,
                 'lokasi' => $barang->lokasi,
                 'gambar_url' => $barang->gambar_url,
@@ -79,7 +96,7 @@ class BarangController extends Controller
                 'dipinjam' => $barang->units->where('status', 'dipinjam')->count(),
                 'maintenance' => $barang->units->where('status', 'maintenance')->count(),
                 'perlu_persetujuan' => (bool) $barang->perlu_persetujuan,
-                'can_borrow' => $tersediaCount > 0,
+                'can_borrow' => $isHabisPakai ? ((float) $barang->stok_saat_ini > 0) : ($tersediaCount > 0),
             ],
         ]);
     }

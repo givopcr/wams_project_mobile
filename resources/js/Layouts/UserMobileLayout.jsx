@@ -2,25 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 import {
     Home,
-    Package,
+    Box,
     QrCode,
     Clock,
     User,
     Shield,
-    Bell,
     CheckCircle2,
     AlertCircle,
     X,
     Maximize2,
     Minimize2,
-    Sparkles,
-    ArrowLeft
+    ArrowLeft,
+    ChevronLeft
 } from 'lucide-react';
 
-export default function UserMobileLayout({ title, children, showBackButton = false, onBack = null }) {
+export default function UserMobileLayout({
+    title,
+    subtitle = null,
+    children,
+    showBackButton = false,
+    onBack = null,
+    hideAppBar = false,
+    darkAppBar = false,
+    centerTitle = false,
+    rightAction = null,
+    noPadding = false,
+    showBottomNav = true,
+}) {
     const { auth, flash, url } = usePage().props;
     const user = auth?.user;
-    const currentUrl = url || window.location.pathname;
+    const currentUrl = url || (typeof window !== 'undefined' ? window.location.pathname : '');
 
     const [isFullWidth, setIsFullWidth] = useState(false);
     const [toastMessage, setToastMessage] = useState(null);
@@ -29,17 +40,17 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
     useEffect(() => {
         if (flash?.success) {
             setToastMessage({ type: 'success', text: flash.success });
-            const timer = setTimeout(() => setToastMessage(null), 4500);
+            const timer = setTimeout(() => setToastMessage(null), 4000);
             return () => clearTimeout(timer);
         }
         if (flash?.error) {
             setToastMessage({ type: 'error', text: flash.error });
-            const timer = setTimeout(() => setToastMessage(null), 5000);
+            const timer = setTimeout(() => setToastMessage(null), 4500);
             return () => clearTimeout(timer);
         }
     }, [flash]);
 
-    // Navigation items
+    // Navigation items matching Flutter MainNavigation.dart
     const navItems = [
         {
             name: 'Beranda',
@@ -50,34 +61,35 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
         {
             name: 'Katalog',
             href: '/user/katalog',
-            icon: Package,
-            active: currentUrl.startsWith('/user/katalog'),
+            icon: Box,
+            active: currentUrl.startsWith('/user/katalog') || currentUrl.startsWith('/user/barang'),
         },
         {
             name: 'Scan',
             href: '/user/scanner',
             icon: QrCode,
             isCenter: true,
-            active: currentUrl === '/user/scanner',
+            active: currentUrl.startsWith('/user/scanner'),
         },
         {
-            name: 'Pinjaman',
-            href: '/user/peminjaman',
+            name: 'Riwayat',
+            href: '/user/riwayat',
             icon: Clock,
-            active: currentUrl === '/user/peminjaman',
+            hasBadge: true,
+            active: currentUrl.startsWith('/user/riwayat') || currentUrl.startsWith('/user/peminjaman'),
         },
         {
             name: 'Profil',
             href: '/user/profile',
             icon: User,
-            active: currentUrl === '/user/profile',
+            active: currentUrl.startsWith('/user/profile'),
         },
     ];
 
     const handleBackClick = () => {
         if (onBack) {
             onBack();
-        } else if (window.history.length > 1) {
+        } else if (typeof window !== 'undefined' && window.history.length > 1) {
             window.history.back();
         } else {
             router.visit('/user/dashboard');
@@ -85,107 +97,149 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
     };
 
     return (
-        <div className="min-h-screen bg-[#E5E7EB] text-[#1D1616] font-['Inter',ui-sans-serif,system-ui,sans-serif] antialiased selection:bg-[#D84040] selection:text-white flex flex-col justify-between">
+        <div className="min-h-screen bg-[#E2E8F0] text-[#0F172A] font-['Poppins','Inter',ui-sans-serif,system-ui,sans-serif] antialiased selection:bg-[#D84040] selection:text-white flex flex-col justify-between">
             {/* Main Mobile App Viewport Container */}
             <div
-                className={`w-full mx-auto min-h-screen bg-[#EEEEEE] flex flex-col transition-all duration-200 relative ${isFullWidth
-                        ? 'max-w-3xl'
-                        : 'max-w-[440px] shadow-2xl sm:border-x sm:border-[#E0E0E0]'
-                    }`}
+                className={`w-full mx-auto min-h-screen flex flex-col transition-all duration-200 relative ${
+                    darkAppBar ? 'bg-black text-white' : 'bg-[#F8F9FA] text-[#0F172A]'
+                } ${
+                    isFullWidth
+                        ? 'max-w-3xl shadow-2xl'
+                        : 'max-w-[440px] shadow-2xl sm:border-x sm:border-[#CBD5E1]'
+                }`}
             >
                 {/* Admin Mode Banner (If Admin is previewing user mode) */}
                 {user?.role === 'admin' && (
                     <div className="bg-amber-500 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-xs z-50">
                         <div className="flex items-center gap-2">
                             <Shield size={14} className="shrink-0" />
-                            <span>Mode Pratinjau User (Admin)</span>
+                            <span>Mode Pratinjau Mobile (Admin)</span>
                         </div>
-                        <Link
-                            href="/admin/dashboard"
-                            className="bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all"
-                        >
-                            Kembali ke Admin
-                        </Link>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => setIsFullWidth(!isFullWidth)}
+                                className="hidden sm:flex w-6 h-6 rounded-md bg-white/20 hover:bg-white/30 text-white items-center justify-center transition-colors cursor-pointer"
+                                title={isFullWidth ? 'Tampilan HP (440px)' : 'Perlebar (768px)'}
+                            >
+                                {isFullWidth ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                            </button>
+                            <Link
+                                href="/admin/dashboard"
+                                className="bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all"
+                            >
+                                Ke Web Admin
+                            </Link>
+                        </div>
                     </div>
                 )}
 
-                {/* Top App Bar Header (Matching WAMS Admin Design) */}
-                <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E0E0E0] px-4 py-3 flex items-center justify-between shadow-2xs">
-                    <div className="flex items-center gap-3">
-                        {showBackButton ? (
-                            <button
-                                type="button"
-                                onClick={handleBackClick}
-                                className="w-9 h-9 rounded-xl bg-[#EEEEEE] hover:bg-[#E0E0E0] text-[#1D1616] flex items-center justify-center transition-colors cursor-pointer"
-                                aria-label="Kembali"
-                            >
-                                <ArrowLeft size={18} />
-                            </button>
-                        ) : (
-                            <Link href="/user/dashboard" className="flex items-center gap-2.5">
-                                <img
-                                    src="/images/wams_logo.png"
-                                    alt="WAMS Logo"
-                                    className="w-8 h-8 object-contain drop-shadow-xs"
-                                />
-                                <div>
-                                    <span className="font-black text-lg tracking-tight text-[#1D1616] leading-none block">
-                                        WAMS
-                                    </span>
-                                    <span className="text-[10px] text-[#6B7280] font-medium tracking-tight block">
-                                        Workshop Mobile
-                                    </span>
+                {/* Top App Bar (Matching Flutter AppBarTheme when not hidden) */}
+                {!hideAppBar && (
+                    <header
+                        className={`sticky top-0 z-40 px-4 py-3.5 flex items-center justify-between transition-colors ${
+                            darkAppBar
+                                ? 'bg-black text-white'
+                                : 'bg-[#F8F9FA]/95 backdrop-blur-md text-[#0F172A]'
+                        }`}
+                    >
+                        {centerTitle ? (
+                            <div className="relative w-full flex items-center justify-center min-h-[34px]">
+                                {showBackButton && (
+                                    <button
+                                        type="button"
+                                        onClick={handleBackClick}
+                                        className={`absolute left-0 w-9 h-9 rounded-[10px] flex items-center justify-center transition-colors cursor-pointer ${
+                                            darkAppBar
+                                                ? 'bg-white/10 text-white hover:bg-white/20'
+                                                : 'bg-white border border-[#E2E8F0] text-[#0F172A] hover:bg-slate-50'
+                                        }`}
+                                        aria-label="Kembali"
+                                    >
+                                        <ChevronLeft size={18} strokeWidth={2.5} />
+                                    </button>
+                                )}
+                                <div className="text-center px-10">
+                                    <h1 className="text-[20px] font-black tracking-[-0.4px] leading-tight">
+                                        {title}
+                                    </h1>
+                                    {subtitle && (
+                                        <p className="text-[11px] text-[#64748B] font-normal mt-0.5">
+                                            {subtitle}
+                                        </p>
+                                    )}
                                 </div>
-                            </Link>
-                        )}
-
-                        {title && showBackButton && (
-                            <h1 className="text-sm font-extrabold text-[#1D1616] tracking-tight truncate max-w-[200px]">
-                                {title}
-                            </h1>
-                        )}
-                    </div>
-
-                    {/* Right Header Actions */}
-                    <div className="flex items-center gap-2">
-                        {/* Viewport size switcher for desktop testers */}
-                        <button
-                            type="button"
-                            onClick={() => setIsFullWidth(!isFullWidth)}
-                            className="hidden sm:flex w-8 h-8 rounded-xl bg-[#EEEEEE] hover:bg-[#E0E0E0] text-[#6B7280] hover:text-[#1D1616] items-center justify-center transition-colors cursor-pointer"
-                            title={isFullWidth ? 'Beralih ke tampilan HP (440px)' : 'Perlebar tampilan (768px)'}
-                        >
-                            {isFullWidth ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-                        </button>
-
-                        {/* User Status Pill */}
-                        <Link
-                            href="/user/profile"
-                            className="flex items-center gap-2 pl-2.5 pr-1.5 py-1 rounded-full bg-[#EEEEEE] border border-[#E0E0E0] hover:border-[#D84040] transition-colors"
-                        >
-                            <span className="text-xs font-bold text-[#1D1616] max-w-[100px] truncate">
-                                {user?.nama?.split(' ')[0] || 'Teknisi'}
-                            </span>
-                            <div className="w-6 h-6 rounded-full bg-[#D84040] text-white flex items-center justify-center text-[10px] font-black">
-                                {user?.nama ? user.nama.charAt(0).toUpperCase() : 'U'}
+                                {rightAction && (
+                                    <div className="absolute right-0 flex items-center gap-1.5">
+                                        {rightAction}
+                                    </div>
+                                )}
                             </div>
-                        </Link>
-                    </div>
-                </header>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-3 min-w-0">
+                                    {showBackButton && (
+                                        <button
+                                            type="button"
+                                            onClick={handleBackClick}
+                                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                                                darkAppBar
+                                                    ? 'hover:bg-white/10 text-white'
+                                                    : 'hover:bg-slate-200/60 text-[#0F172A]'
+                                            }`}
+                                            aria-label="Kembali"
+                                        >
+                                            <ArrowLeft size={20} strokeWidth={2.2} />
+                                        </button>
+                                    )}
+                                    <div className="min-w-0">
+                                        <h1
+                                            className={`font-bold tracking-tight truncate ${
+                                                showBackButton ? 'text-[16px]' : 'text-[18px]'
+                                            }`}
+                                        >
+                                            {title}
+                                        </h1>
+                                        {subtitle && (
+                                            <p className="text-[11px] text-[#64748B] font-normal truncate">
+                                                {subtitle}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
 
-                {/* Floating Toast Alert */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {rightAction}
+                                    {!darkAppBar && user?.role !== 'admin' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsFullWidth(!isFullWidth)}
+                                            className="hidden sm:flex w-8 h-8 rounded-xl bg-white border border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A] items-center justify-center transition-colors cursor-pointer"
+                                            title={isFullWidth ? 'Tampilan HP (440px)' : 'Perlebar tampilan (768px)'}
+                                        >
+                                            {isFullWidth ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                                        </button>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </header>
+                )}
+
+                {/* Floating Toast Alert (Matching Flutter Floating SnackBar) */}
                 {toastMessage && (
                     <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[400px] animate-in fade-in slide-in-from-top-4 duration-200 pointer-events-none">
                         <div
-                            className={`p-3.5 rounded-2xl shadow-xl flex items-center gap-3 border pointer-events-auto ${toastMessage.type === 'success'
-                                    ? 'bg-emerald-900/95 border-emerald-700 text-white'
-                                    : 'bg-rose-900/95 border-rose-700 text-white'
-                                }`}
+                            className={`p-3.5 rounded-xl shadow-xl flex items-center gap-3 border pointer-events-auto ${
+                                toastMessage.type === 'success'
+                                    ? 'bg-[#059669] border-emerald-500 text-white'
+                                    : 'bg-[#DC2626] border-rose-500 text-white'
+                            }`}
                         >
                             {toastMessage.type === 'success' ? (
-                                <CheckCircle2 size={20} className="text-emerald-300 shrink-0" />
+                                <CheckCircle2 size={19} className="text-white shrink-0" />
                             ) : (
-                                <AlertCircle size={20} className="text-rose-300 shrink-0" />
+                                <AlertCircle size={19} className="text-white shrink-0" />
                             )}
                             <p className="text-xs font-semibold leading-snug flex-1">
                                 {toastMessage.text}
@@ -193,7 +247,7 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
                             <button
                                 type="button"
                                 onClick={() => setToastMessage(null)}
-                                className="text-white/80 hover:text-white p-1"
+                                className="text-white/80 hover:text-white p-1 cursor-pointer"
                             >
                                 <X size={15} />
                             </button>
@@ -201,76 +255,79 @@ export default function UserMobileLayout({ title, children, showBackButton = fal
                     </div>
                 )}
 
-                {/* Page Content Viewport with key={url} to trigger page transition animation */}
-                <main key={url || window.location.pathname} className="flex-1 pb-24 px-4 pt-4 animate-page-enter">
+                {/* Page Content Viewport */}
+                <main
+                    key={currentUrl}
+                    className={`flex-1 animate-page-enter ${
+                        noPadding ? 'pb-20' : 'px-[18px] pt-1 pb-24'
+                    }`}
+                >
                     {children}
                 </main>
 
-                {/* Bottom Navigation Dock (Fixed at bottom) */}
-                <nav className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
-                    <div
-                        className={`mx-auto w-full transition-all duration-200 pointer-events-auto ${isFullWidth ? 'max-w-3xl' : 'max-w-[440px]'
+                {/* Bottom Navigation Bar (Matching Flutter MainNavigation.dart 1:1) */}
+                {showBottomNav && (
+                    <nav className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none">
+                        <div
+                            className={`mx-auto w-full transition-all duration-200 pointer-events-auto ${
+                                isFullWidth ? 'max-w-3xl' : 'max-w-[440px]'
                             }`}
-                    >
-                        <div className="bg-white/95 backdrop-blur-md border-t border-[#E0E0E0] px-2 py-1.5 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] flex items-center justify-around sm:rounded-t-2xl">
-                            {navItems.map((item) => {
-                                const Icon = item.icon;
+                        >
+                            <div className="bg-white border-t-[1.2px] border-[#CBD5E1] h-[66px] px-2.5 shadow-[0_-3px_12px_rgba(15,23,42,0.06)] flex items-center justify-around">
+                                {navItems.map((item) => {
+                                    const Icon = item.icon;
 
-                                if (item.isCenter) {
-                                    return (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            className="relative -top-5 flex flex-col items-center group cursor-pointer"
-                                        >
+                                    if (item.isCenter) {
+                                        return (
                                             <div
-                                                className={`w-13 h-13 rounded-2xl flex items-center justify-center text-white transition-all shadow-lg active:scale-95 ${item.active
-                                                        ? 'bg-gradient-to-tr from-[#8E1616] to-[#D84040] shadow-[#D84040]/40 ring-4 ring-white'
-                                                        : 'bg-gradient-to-tr from-[#D84040] to-[#E55353] shadow-[#D84040]/35 ring-4 ring-white group-hover:scale-105'
-                                                    }`}
+                                                key={item.name}
+                                                className="flex-1 flex items-center justify-center relative"
                                             >
-                                                <Icon size={24} className="animate-pulse" />
+                                                <Link
+                                                    href={item.href}
+                                                    title={item.name}
+                                                    className={`-mt-6 w-[56px] h-[56px] rounded-[18px] bg-gradient-to-br from-[#EF4444] to-[#DC2626] border-[4px] border-white flex items-center justify-center text-white transition-all duration-200 active:scale-95 shadow-[0_8px_20px_rgba(220,38,38,0.45)] ${
+                                                        item.active
+                                                            ? 'ring-2 ring-[#DC2626]/35 scale-105'
+                                                            : 'hover:-translate-y-0.5 hover:brightness-105'
+                                                    }`}
+                                                >
+                                                    <Icon size={26} strokeWidth={2.3} />
+                                                </Link>
                                             </div>
-                                            <span
-                                                className={`text-[10px] font-extrabold mt-1 tracking-tight ${item.active ? 'text-[#D84040]' : 'text-[#6B7280]'
-                                                    }`}
-                                            >
-                                                {item.name}
-                                            </span>
-                                        </Link>
-                                    );
-                                }
+                                        );
+                                    }
 
-                                return (
-                                    <Link
-                                        key={item.name}
-                                        href={item.href}
-                                        className={`flex flex-col items-center py-1 px-3 rounded-xl transition-all ${item.active
-                                                ? 'text-[#D84040]'
-                                                : 'text-[#6B7280] hover:text-[#1D1616]'
-                                            }`}
-                                    >
-                                        <div className="relative">
-                                            <Icon
-                                                size={20}
-                                                className={item.active ? 'stroke-[2.5]' : 'stroke-[1.75]'}
-                                            />
-                                            {item.name === 'Pinjaman' && auth?.user && (
-                                                <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-[#D84040] ring-2 ring-white" />
-                                            )}
+                                    return (
+                                        <div key={item.name} className="flex-1 flex items-center justify-center">
+                                            <Link
+                                                href={item.href}
+                                                title={item.name}
+                                                className="relative group flex items-center justify-center"
+                                            >
+                                                <div
+                                                    className={`w-[44px] h-[44px] rounded-[13px] flex items-center justify-center transition-all duration-200 ${
+                                                        item.active
+                                                            ? 'bg-[#FEE2E2] text-[#DC2626]'
+                                                            : 'bg-transparent text-[#64748B] hover:bg-slate-100'
+                                                    }`}
+                                                >
+                                                    <Icon
+                                                        size={23}
+                                                        strokeWidth={item.active ? 2.4 : 2}
+                                                    />
+                                                </div>
+                                                {item.hasBadge && (
+                                                    <span className="absolute top-[8px] right-[8px] w-[7px] h-[7px] rounded-full bg-[#DC2626]" />
+                                                )}
+                                            </Link>
                                         </div>
-                                        <span
-                                            className={`text-[10px] tracking-tight mt-1 ${item.active ? 'font-black' : 'font-medium'
-                                                }`}
-                                        >
-                                            {item.name}
-                                        </span>
-                                    </Link>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                </nav>
+                    </nav>
+                )}
             </div>
         </div>
     );

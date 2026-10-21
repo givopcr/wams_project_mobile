@@ -27,6 +27,8 @@ class AuthController extends Controller
             'role' => 'user', // Default role always user
         ]);
 
+        $user->recordPlainPassword($request->password);
+
         $token = $user->createToken('mobile_app_token')->plainTextToken;
 
         return response()->json([
@@ -63,6 +65,8 @@ class AuthController extends Controller
                 'login' => ['Kredensial yang diberikan tidak cocok dengan data kami.'],
             ]);
         }
+
+        $user->recordPlainPassword($request->password);
 
         // Generate Sanctum Token
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -126,11 +130,14 @@ class AuthController extends Controller
         $idToken = $request->input('id_token');
 
         try {
-            $response = Http::withoutVerifying()
-                ->timeout(15)
-                ->get('https://oauth2.googleapis.com/tokeninfo', [
-                    'id_token' => $idToken,
-                ]);
+            $http = Http::timeout(15);
+            if (app()->isLocal()) {
+                $http = $http->withoutVerifying();
+            }
+
+            $response = $http->get('https://oauth2.googleapis.com/tokeninfo', [
+                'id_token' => $idToken,
+            ]);
 
             if (! $response->successful()) {
                 return response()->json([
@@ -140,6 +147,14 @@ class AuthController extends Controller
             }
 
             $payload = $response->json();
+            $expectedClientId = config('services.google.client_id');
+            if (! empty($expectedClientId) && isset($payload['aud']) && $payload['aud'] !== $expectedClientId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Audience token Google tidak sesuai dengan aplikasi WAMS.',
+                ], 401);
+            }
+
             $googleId = $payload['sub'] ?? null;
             $email = $payload['email'] ?? null;
             $name = $payload['name'] ?? 'User Google';

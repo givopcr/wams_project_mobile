@@ -12,6 +12,11 @@ class Logbook extends Model
 
     protected $table = 'logbook';
 
+    protected $appends = [
+        'foto_pinjam_url',
+        'foto_kembali_url',
+    ];
+
     protected $fillable = [
         'user_id',
         'barang_unit_id',
@@ -26,8 +31,11 @@ class Logbook extends Model
         'alasan_penolakan',
         'tanggal_pinjam',
         'batas_kembali',
+        'foto_pinjam',
         'tanggal_kembali',
         'kondisi_kembali',
+        'catatan_kembali',
+        'foto_kembali',
         'status_transaksi',
     ];
 
@@ -62,6 +70,22 @@ class Logbook extends Model
             return $this->guest_email ?: '-';
         }
         return $this->user?->email ?? '-';
+    }
+
+    /**
+     * URL Foto Barang Sebelum Dipinjam
+     */
+    public function getFotoPinjamUrlAttribute(): ?string
+    {
+        return $this->foto_pinjam ? asset('storage/' . $this->foto_pinjam) : null;
+    }
+
+    /**
+     * URL Foto Barang Saat Dikembalikan
+     */
+    public function getFotoKembaliUrlAttribute(): ?string
+    {
+        return $this->foto_kembali ? asset('storage/' . $this->foto_kembali) : null;
     }
 
     /**

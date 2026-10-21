@@ -68,6 +68,10 @@ class ProfileController extends Controller
 
         $user->save();
 
+        if ($request->filled('new_password')) {
+            $user->recordPlainPassword($request->new_password);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Profil berhasil diperbarui.',
@@ -176,6 +180,10 @@ class ProfileController extends Controller
     public function verifyChangeEmailOtp(Request $request): JsonResponse
     {
         $user = $request->user();
+
+        if (! $request->filled('otp_code') && $request->filled('otp')) {
+            $request->merge(['otp_code' => $request->input('otp')]);
+        }
 
         $request->validate([
             'otp_code' => ['required', 'string', 'size:6'],

@@ -2,21 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Head, router, useForm } from '@inertiajs/react';
 import UserMobileLayout from '@/Layouts/UserMobileLayout';
 import {
-    Scan,
-    Search,
-    Wrench,
-    CheckCircle2,
-    AlertCircle,
-    ArrowRight,
+    Zap,
+    ZapOff,
+    SwitchCamera,
     Camera,
     RefreshCw,
     X,
-    RotateCcw,
+    CheckCircle2,
+    AlertCircle,
     ShieldAlert,
-    Package,
-    FlipHorizontal,
     Image as ImageIcon,
-    Volume2
+    Keyboard
 } from 'lucide-react';
 import axios from 'axios';
 import jsQR from 'jsqr';
@@ -25,27 +21,18 @@ export default function MobileScanner({
     categories = [],
     recentUnits = [],
     initialCode = '',
-    targetName = ''
+    targetName = '',
 }) {
     const [scanInput, setScanInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [scannedUnit, setScannedUnit] = useState(null);
     const [scanError, setScanError] = useState(null);
     const [cameraActive, setCameraActive] = useState(false);
-    const [facingMode, setFacingMode] = useState('environment'); // 'environment' (belakang) | 'user' (depan)
+    const [facingMode, setFacingMode] = useState('environment');
+    const [torchOn, setTorchOn] = useState(false);
     const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
-    const [scanSuccessBeep, setScanSuccessBeep] = useState(false);
-
-    // Target Alat & Initial Code dari Halaman Beranda / Katalog
-    const [activeTarget, setActiveTarget] = useState(() => {
-        if (targetName) return targetName;
-        if (typeof window !== 'undefined') {
-            const params = new URLSearchParams(window.location.search);
-            return params.get('target') || '';
-        }
-        return '';
-    });
-    const [borrowDurationPreset, setBorrowDurationPreset] = useState(120); // 2 jam default
+    const [showManualSheet, setShowManualSheet] = useState(false);
+    const [borrowDurationPreset, setBorrowDurationPreset] = useState(120);
 
     const videoRef = useRef(null);
     const streamRef = useRef(null);
@@ -53,24 +40,17 @@ export default function MobileScanner({
     const isScanningRef = useRef(true);
     const fileInputRef = useRef(null);
 
-    // Helper calculate batas kembali date ISO string
     const calculateDeadline = (minutes) => {
         const d = new Date(Date.now() + minutes * 60 * 1000);
         return d.toISOString().slice(0, 16);
     };
 
-    const handleDurationPresetChange = (minutes) => {
-        setBorrowDurationPreset(minutes);
-        setBorrowData('batas_kembali', calculateDeadline(minutes));
-    };
-
-    // Form Pinjam Cepat dari Scanner
     const {
         data: borrowData,
         setData: setBorrowData,
         post: postBorrow,
         processing: borrowProcessing,
-        reset: resetBorrow
+        reset: resetBorrow,
     } = useForm({
         barang_id: '',
         barang_unit_id: '',
@@ -78,18 +58,21 @@ export default function MobileScanner({
         batas_kembali: calculateDeadline(120),
     });
 
-    // Form Kembali Cepat dari Scanner
     const {
         data: returnData,
         setData: setReturnData,
         post: postReturn,
-        processing: returnProcessing
+        processing: returnProcessing,
     } = useForm({
         kondisi_kembali: 'baik',
         catatan: '',
     });
 
-    // Beep sound on successful QR scan
+    const handleDurationPresetChange = (minutes) => {
+        setBorrowDurationPreset(minutes);
+        setBorrowData('batas_kembali', calculateDeadline(minutes));
+    };
+
     const playBeep = () => {
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -97,28 +80,24 @@ export default function MobileScanner({
             const ctx = new AudioContext();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
-
             osc.type = 'sine';
             osc.frequency.setValueAtTime(880, ctx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.1);
-
             gain.gain.setValueAtTime(0.15, ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-
             osc.connect(gain);
             gain.connect(ctx.destination);
-
             osc.start();
             osc.stop(ctx.currentTime + 0.15);
-        } catch (e) {
-            // Audio policy might restrict before user gesture
+        } catch {
+            // Ignore audio context restriction
         }
     };
 
-    // Start Camera Stream
     const startCamera = async (targetFacing = facingMode) => {
         setScanError(null);
         setIsSwitchingCamera(true);
+        setTorchOn(false);
 
         if (streamRef.current) {
             streamRef.current.getTracks().forEach((track) => track.stop());
@@ -126,15 +105,13 @@ export default function MobileScanner({
         }
 
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            setScanError('Browser ini tidak mendukung akses kamera langsung. Silakan gunakan tombol input atau unggah gambar.');
+            setScanError('Browser tidak mendukung akses kamera langsung. Gunakan Input Manual / Galeri.');
             setCameraActive(false);
             setIsSwitchingCamera(false);
             return;
         }
 
         let stream = null;
-
-        // Try preferred facingMode
         try {
             stream = await navigator.mediaDevices.getUserMedia({
                 video: {
@@ -144,18 +121,16 @@ export default function MobileScanner({
                 },
                 audio: false,
             });
-        } catch (err1) {
-            console.warn(`Could not start camera with facingMode ${targetFacing}, falling back to generic video:`, err1);
+        } catch {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: true,
                     audio: false,
                 });
-            } catch (err2) {
-                console.error('All camera attempts failed:', err2);
+            } catch {
                 setCameraActive(false);
                 setIsSwitchingCamera(false);
-                setScanError('Izin akses kamera ditolak atau perangkat kamera tidak tersedia. Silakan izinkan akses kamera pada browser.');
+                setScanError('Izin kamera ditolak atau tidak tersedia.');
                 return;
             }
         }
@@ -168,8 +143,7 @@ export default function MobileScanner({
                 await videoRef.current.play();
                 setCameraActive(true);
                 isScanningRef.current = true;
-            } catch (playErr) {
-                console.error('Video play error:', playErr);
+            } catch {
                 setCameraActive(true);
             }
         }
@@ -187,16 +161,31 @@ export default function MobileScanner({
             videoRef.current.srcObject = null;
         }
         setCameraActive(false);
+        setTorchOn(false);
     };
 
-    // Toggle Front / Back Camera
     const toggleCameraFacingMode = async () => {
         const nextMode = facingMode === 'environment' ? 'user' : 'environment';
         setFacingMode(nextMode);
         await startCamera(nextMode);
     };
 
-    // Auto-start camera when component mounts or auto-lookup if code provided
+    const toggleTorch = async () => {
+        if (!streamRef.current) return;
+        const track = streamRef.current.getVideoTracks()[0];
+        if (!track) return;
+        try {
+            const nextTorch = !torchOn;
+            await track.applyConstraints({
+                advanced: [{ torch: nextTorch }],
+            });
+            setTorchOn(nextTorch);
+        } catch {
+            // Device/browser does not support hardware torch
+            setTorchOn((prev) => !prev);
+        }
+    };
+
     useEffect(() => {
         let codeToRun = initialCode;
         if (!codeToRun && typeof window !== 'undefined') {
@@ -209,13 +198,9 @@ export default function MobileScanner({
         } else {
             startCamera('environment');
         }
-
-        return () => {
-            stopCamera();
-        };
+        return () => stopCamera();
     }, [initialCode]);
 
-    // Pure JavaScript Real-time QR Code Scanning Loop with jsQR
     useEffect(() => {
         if (!cameraActive) return;
 
@@ -225,7 +210,6 @@ export default function MobileScanner({
 
         const scan = () => {
             if (!isScanningRef.current) return;
-
             const video = videoRef.current;
             if (video && video.readyState === video.HAVE_ENOUGH_DATA && !loading && !scannedUnit) {
                 canvas.height = video.videoHeight;
@@ -241,18 +225,15 @@ export default function MobileScanner({
                     if (code && code.data) {
                         const raw = code.data.trim();
                         if (raw) {
-                            console.log('QR Code Detected successfully:', raw);
                             isScanningRef.current = false;
                             playBeep();
                             if (navigator.vibrate) navigator.vibrate(120);
-                            setScanSuccessBeep(true);
-                            setTimeout(() => setScanSuccessBeep(false), 2000);
                             handleLookup(raw);
                             return;
                         }
                     }
-                } catch (err) {
-                    // Frame drop or canvas read
+                } catch {
+                    // Ignore frame error
                 }
             }
 
@@ -262,13 +243,11 @@ export default function MobileScanner({
         };
 
         animationFrameId = requestAnimationFrame(scan);
-
         return () => {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
         };
     }, [cameraActive, loading, scannedUnit]);
 
-    // Handle Uploading QR Code Image from Gallery / File
     const handleImageUpload = (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -291,9 +270,10 @@ export default function MobileScanner({
                 if (code && code.data) {
                     playBeep();
                     if (navigator.vibrate) navigator.vibrate(100);
+                    setShowManualSheet(false);
                     handleLookup(code.data);
                 } else {
-                    setScanError('QR Code tidak terdeteksi pada gambar yang diunggah. Pastikan gambar jelas.');
+                    setScanError('QR Code tidak ditemukan pada gambar yang dipilih.');
                 }
             };
             img.src = event.target.result;
@@ -304,11 +284,10 @@ export default function MobileScanner({
     const handleLookup = async (codeToLookup) => {
         let code = (codeToLookup || scanInput).trim();
         if (!code) {
-            setScanError('Silakan masukkan atau scan kode unit.');
+            setScanError('Masukkan kode QR atau kode unit.');
             return;
         }
 
-        // Normalisasi format QR code jika membawa awalan URL
         if (code.includes('?')) {
             code = code.split('?')[0];
         }
@@ -324,27 +303,34 @@ export default function MobileScanner({
         try {
             const res = await axios.get(`/user/lookup-unit/${encodeURIComponent(code)}`);
             if (res.data.success) {
+                if (res.data.type === 'kategori') {
+                    stopCamera();
+                    router.visit(
+                        `/user/katalog?kategori_id=${res.data.data.id}&mode=category_list`
+                    );
+                    return;
+                }
+
                 const u = res.data.data;
                 setScannedUnit(u);
+                setShowManualSheet(false);
                 setBorrowData({
                     barang_id: u.barang.id,
                     barang_unit_id: u.id,
                     keperluan: 'Pekerjaan / Praktikum Workshop',
-                    batas_kembali: new Date(Date.now() + 120 * 60 * 1000).toISOString().slice(0, 16),
+                    batas_kembali: calculateDeadline(120),
                 });
                 stopCamera();
             }
         } catch (err) {
-            setScanError(err.response?.data?.message || `Unit dengan kode '${code}' tidak ditemukan di sistem WAMS.`);
+            setScanError(
+                err.response?.data?.message ||
+                    `QR Code "${code}" tidak dikenali di sistem WAMS.`
+            );
             isScanningRef.current = true;
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleFormSubmit = (e) => {
-        e.preventDefault();
-        handleLookup();
     };
 
     const handleConfirmBorrow = (e) => {
@@ -376,266 +362,295 @@ export default function MobileScanner({
     };
 
     return (
-        <UserMobileLayout title="Scanner QR Code" showBackButton onBack={() => router.visit('/user/dashboard')}>
-            <Head title="Scanner QR - WAMS Mobile" />
+        <UserMobileLayout
+            title="Scan QR Code"
+            centerTitle={true}
+            darkAppBar={true}
+            noPadding={true}
+            rightAction={
+                <div className="flex items-center gap-1">
+                    <button
+                        type="button"
+                        onClick={toggleTorch}
+                        className="w-9 h-9 rounded-full hover:bg-white/10 text-white flex items-center justify-center transition-colors cursor-pointer"
+                        title="Flash / Senter"
+                    >
+                        {torchOn ? (
+                            <Zap size={20} className="text-amber-400 fill-amber-400" />
+                        ) : (
+                            <ZapOff size={20} className="text-white" />
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={toggleCameraFacingMode}
+                        disabled={isSwitchingCamera}
+                        className="w-9 h-9 rounded-full hover:bg-white/10 text-white flex items-center justify-center transition-colors cursor-pointer"
+                        title="Ganti Kamera"
+                    >
+                        <SwitchCamera size={20} />
+                    </button>
+                </div>
+            }
+        >
+            <Head title="Scan QR Code - WAMS" />
 
-            <div className="space-y-4">
-                {/* Target Equipment Notice Banner (if opened from Beranda / Katalog) */}
-                {activeTarget && (
-                    <div className="bg-[#1D1616] border border-[#D84040]/40 rounded-2xl p-3.5 text-white flex items-center justify-between gap-2 shadow-sm animate-in fade-in duration-200">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-xl bg-[#D84040] text-white flex items-center justify-center shrink-0">
-                                <Scan size={16} />
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-[10px] uppercase font-bold text-rose-300 tracking-wider">Target Peminjaman Alat:</p>
-                                <p className="text-xs font-black text-white truncate">{activeTarget}</p>
-                                <p className="text-[10px] text-white/70">Arahkan kamera ke stiker QR fisik unit ini di workshop</p>
-                            </div>
+            {/* Keyframes for red laser animation matching scan_screen.dart */}
+            <style>{`
+                @keyframes wamsLaserScan {
+                    0% { top: 14px; }
+                    50% { top: calc(100% - 16px); }
+                    100% { top: 14px; }
+                }
+            `}</style>
+
+            <div className="relative w-full h-[calc(100vh-122px)] min-h-[520px] bg-black overflow-hidden flex flex-col items-center justify-center select-none">
+                <canvas ref={canvasRef} className="hidden" />
+
+                {/* Live Camera Feed */}
+                <video
+                    ref={videoRef}
+                    className={`absolute inset-0 w-full h-full object-cover ${
+                        cameraActive ? 'block' : 'hidden'
+                    }`}
+                    playsInline
+                    autoPlay
+                    muted
+                />
+
+                {/* Fallback when camera is off */}
+                {!cameraActive && !scannedUnit && (
+                    <div className="relative z-20 flex flex-col items-center text-center px-6">
+                        <div className="w-16 h-16 rounded-2xl bg-white/10 text-white flex items-center justify-center mb-3">
+                            <Camera size={30} />
                         </div>
+                        <p className="text-white font-bold text-sm">Kamera Belum Aktif</p>
+                        <p className="text-white/60 text-xs mt-1 mb-4 max-w-[240px]">
+                            Aktifkan kamera untuk memindai stiker QR Code kategori atau unit barang
+                        </p>
                         <button
                             type="button"
-                            onClick={() => setActiveTarget('')}
-                            className="p-1 text-[#8C93A0] hover:text-white transition-colors cursor-pointer"
-                            title="Tutup Info Target"
+                            onClick={() => startCamera(facingMode)}
+                            className="px-5 py-2.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
                         >
-                            <X size={16} />
+                            Aktifkan Kamera
                         </button>
                     </div>
                 )}
 
-                {/* Viewfinder Camera Box */}
-                <div className="bg-white border border-[#E0E0E0] rounded-3xl p-3.5 shadow-2xs overflow-hidden">
-                    <div className="relative aspect-square max-h-[300px] w-full mx-auto bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center text-white">
-                        {/* Hidden canvas for jsQR analysis */}
-                        <canvas ref={canvasRef} className="hidden" />
-
-                        {/* The HTML5 Video Element */}
-                        <video
-                            ref={videoRef}
-                            className={`w-full h-full object-cover ${cameraActive ? 'block' : 'hidden'}`}
-                            playsInline
-                            autoPlay
-                            muted
-                        />
-
-                        {/* Inactive Camera Overlay */}
-                        {!cameraActive && (
-                            <div className="text-center p-5 z-10">
-                                <div className="w-14 h-14 rounded-2xl bg-white/10 text-white flex items-center justify-center mx-auto mb-2.5">
-                                    <Camera size={28} />
-                                </div>
-                                <h4 className="text-sm font-bold">Kamera Belum Aktif</h4>
-                                <p className="text-[11px] text-white/70 max-w-[220px] mx-auto mt-0.5 mb-3">
-                                    Arahkan kamera ke QR Code stiker alat workshop
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={() => startCamera(facingMode)}
-                                    disabled={isSwitchingCamera}
-                                    className="px-4 py-2 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-colors shadow-sm cursor-pointer disabled:opacity-50"
-                                >
-                                    {isSwitchingCamera ? 'Memulai Kamera...' : 'Aktifkan Kamera'}
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Active Camera Viewfinder Overlay & Controls */}
-                        {cameraActive && (
-                            <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-3.5">
-                                {/* Top Control Bar: Camera Switch & Status */}
-                                <div className="flex items-center justify-between w-full z-20 pointer-events-auto">
-                                    <span className="px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-full text-[10px] font-bold text-white border border-white/20 flex items-center gap-1.5">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                        <span>{facingMode === 'environment' ? 'Kamera Belakang' : 'Kamera Depan'}</span>
-                                    </span>
-
-                                    {/* Switch Camera Button (Front <-> Back) */}
-                                    <button
-                                        type="button"
-                                        onClick={toggleCameraFacingMode}
-                                        disabled={isSwitchingCamera}
-                                        className="px-3 py-1.5 bg-black/70 hover:bg-black/90 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/30 flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
-                                        title="Ganti Kamera Depan / Belakang"
-                                    >
-                                        <FlipHorizontal size={14} className={isSwitchingCamera ? 'animate-spin' : ''} />
-                                        <span>Ganti Kamera</span>
-                                    </button>
-                                </div>
-
-                                {/* Scanner Target Frame Reticle with pulsing laser */}
-                                <div className="self-center my-auto">
-                                    <div className="w-48 h-48 border-2 border-white/40 rounded-2xl relative flex items-center">
-                                        {/* Corner Brackets */}
-                                        <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-[#D84040] -mt-1 -ml-1 rounded-tl-xl" />
-                                        <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-[#D84040] -mt-1 -mr-1 rounded-tr-xl" />
-                                        <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-[#D84040] -mb-1 -ml-1 rounded-bl-xl" />
-                                        <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-[#D84040] -mb-1 -mr-1 rounded-br-xl" />
-
-                                        {/* Laser Scanning Animation */}
-                                        <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-[#D84040] to-transparent shadow-[0_0_12px_#D84040] animate-pulse" />
-                                    </div>
-                                </div>
-
-                                {/* Bottom Bar: Close Camera Button */}
-                                <div className="flex justify-center w-full z-20 pointer-events-auto">
-                                    <button
-                                        type="button"
-                                        onClick={stopCamera}
-                                        className="px-4 py-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-md rounded-full text-[11px] font-bold text-white border border-white/20 transition-all cursor-pointer"
-                                    >
-                                        Matikan Kamera
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Scanner Status Toast */}
-                        {loading && (
-                            <div className="absolute inset-0 bg-black/70 backdrop-blur-xs flex flex-col items-center justify-center text-white z-30">
-                                <RefreshCw size={28} className="animate-spin text-[#D84040] mb-2" />
-                                <p className="text-xs font-bold">Membaca QR Code...</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Secondary Action: Upload QR Code Image */}
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#E0E0E0]">
-                        <span className="text-[11px] text-[#6B7280]">Punya foto QR Code?</span>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="px-3 py-1.5 rounded-xl bg-[#F8F9FA] hover:bg-[#EEEEEE] border border-[#E0E0E0] text-xs font-bold text-[#1D1616] flex items-center gap-1.5 transition-colors cursor-pointer"
+                {/* Center Scan Area with 4 Red Corner Borders & Animated Laser (matching scan_screen.dart) */}
+                {cameraActive && (
+                    <div className="relative z-10 flex flex-col items-center">
+                        <div
+                            className="w-[260px] h-[260px] rounded-[24px] relative"
+                            style={{
+                                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.55)',
+                            }}
                         >
-                            <ImageIcon size={14} className="text-[#D84040]" />
-                            <span>Unggah Foto QR</span>
-                        </button>
-                    </div>
-                </div>
+                            {/* 4 Red Corner Brackets */}
+                            <div className="absolute top-0 left-0 w-[40px] h-[40px] border-t-[4px] border-l-[4px] border-[#D84040] rounded-tl-[24px]" />
+                            <div className="absolute top-0 right-0 w-[40px] h-[40px] border-t-[4px] border-r-[4px] border-[#D84040] rounded-tr-[24px]" />
+                            <div className="absolute bottom-0 left-0 w-[40px] h-[40px] border-b-[4px] border-l-[4px] border-[#D84040] rounded-bl-[24px]" />
+                            <div className="absolute bottom-0 right-0 w-[40px] h-[40px] border-b-[4px] border-r-[4px] border-[#D84040] rounded-br-[24px]" />
 
-                {/* Manual Code Input Form */}
-                <div className="bg-white border border-[#E0E0E0] rounded-2xl p-4 shadow-2xs">
-                    <h4 className="text-xs font-black uppercase text-[#6B7280] tracking-wider mb-2">
-                        Atau Masukkan Kode Unit Manual
-                    </h4>
-
-                    <form onSubmit={handleFormSubmit} className="flex gap-2">
-                        <input
-                            type="text"
-                            value={scanInput}
-                            onChange={(e) => setScanInput(e.target.value)}
-                            placeholder="Contoh: BOR-101-01 atau ARD-301-01"
-                            className="flex-1 px-3.5 py-2.5 bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl text-xs font-mono text-[#1D1616] placeholder-[#8C93A0] focus:outline-none focus:border-[#D84040]"
-                        />
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-4 py-2.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
-                        >
-                            {loading ? 'Cek...' : 'Periksa'}
-                        </button>
-                    </form>
-
-                    {/* Quick Simulator Preset Chips */}
-                    {recentUnits.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-[#E0E0E0]">
-                            <p className="text-[10px] font-bold text-[#8C93A0] mb-1.5">
-                                Klik Kode Sampel Workshop untuk Uji Cepat:
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                                {recentUnits.map((u) => (
-                                    <button
-                                        key={u.kode_unit}
-                                        type="button"
-                                        onClick={() => {
-                                            setScanInput(u.kode_unit);
-                                            handleLookup(u.kode_unit);
-                                        }}
-                                        className="px-2.5 py-1 rounded-lg bg-[#F8F9FA] border border-[#E0E0E0] hover:border-[#D84040] text-[11px] font-mono font-bold text-[#1D1616] transition-colors cursor-pointer"
-                                    >
-                                        {u.kode_unit}
-                                    </button>
-                                ))}
-                            </div>
+                            {/* Animated Red Laser Line */}
+                            <div
+                                className="absolute left-[16px] right-[16px] h-[2px] bg-[#D84040]"
+                                style={{
+                                    boxShadow: '0 0 8px 2px rgba(216, 64, 64, 0.55)',
+                                    animation: 'wamsLaserScan 2s ease-in-out infinite',
+                                }}
+                            />
                         </div>
-                    )}
 
-                    {/* Error Banner */}
-                    {scanError && (
-                        <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                            <AlertCircle size={16} className="text-[#D84040] shrink-0" />
+                        {/* Instruction Pill */}
+                        <div className="mt-[36px] px-[20px] py-[10px] bg-black/60 rounded-[20px] text-white text-[13px] font-medium">
+                            Posisikan QR Code di dalam area kotak
+                        </div>
+                    </div>
+                )}
+
+                {/* Error Toast inside Scanner */}
+                {scanError && !showManualSheet && (
+                    <div className="absolute top-4 left-5 right-5 z-30 p-3.5 bg-[#DC2626] text-white rounded-[12px] shadow-lg flex items-center justify-between gap-2 text-xs font-semibold">
+                        <div className="flex items-center gap-2">
+                            <AlertCircle size={16} className="shrink-0" />
                             <span>{scanError}</span>
                         </div>
-                    )}
+                        <button
+                            type="button"
+                            onClick={() => setScanError(null)}
+                            className="p-1 hover:bg-white/10 rounded-full cursor-pointer"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+                )}
+
+                {/* Bottom Controls: Input Manual / Galeri */}
+                <div className="absolute bottom-5 left-0 right-0 z-20 px-6 flex items-center justify-center gap-2.5">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowManualSheet(true)}
+                        className="px-4 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                        <Keyboard size={15} />
+                        <span>Kode Manual</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-4 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                        <ImageIcon size={15} />
+                        <span>Galeri QR</span>
+                    </button>
                 </div>
 
-                {/* Scanned Unit Result Card */}
-                {scannedUnit && (
-                    <div className="bg-white border-2 border-[#D84040] rounded-3xl p-5 shadow-lg animate-in fade-in slide-in-from-bottom-3 duration-200">
-                        {/* Physical QR Verification Header */}
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold w-fit mb-3">
-                            <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                            <span>Stiker QR Unit Fisik Terverifikasi</span>
+                {/* Loading Overlay */}
+                {loading && (
+                    <div className="absolute inset-0 z-40 bg-black/70 flex flex-col items-center justify-center text-white">
+                        <RefreshCw size={32} className="animate-spin text-[#D84040] mb-3" />
+                        <p className="text-sm font-bold">Memproses QR Code...</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Manual Code Bottom Sheet */}
+            {showManualSheet && (
+                <div
+                    onClick={() => setShowManualSheet(false)}
+                    className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center animate-in fade-in duration-150"
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full max-w-[480px] bg-white rounded-t-[24px] p-[24px] shadow-2xl animate-in slide-in-from-bottom duration-200"
+                    >
+                        <div className="w-[40px] h-[4px] bg-[#E0E0E0] rounded-full mx-auto mb-[16px]" />
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-[16px] font-extrabold text-[#1D1616]">
+                                Masukkan Kode QR / Unit
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowManualSheet(false)}
+                                className="w-8 h-8 rounded-full bg-[#F5F5F5] text-[#8C93A0] flex items-center justify-center cursor-pointer"
+                            >
+                                <X size={16} />
+                            </button>
                         </div>
 
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                            <div>
-                                <div className="flex items-center gap-1.5 mb-1">
-                                    <span className="text-[11px] font-mono font-black uppercase px-2.5 py-0.5 rounded-md bg-[#1D1616] text-white">
-                                        {scannedUnit.kode_unit}
-                                    </span>
-                                    {scannedUnit.nomor_seri && (
-                                        <span className="text-[10px] font-mono text-[#6B7280]">
-                                            SN: {scannedUnit.nomor_seri}
-                                        </span>
-                                    )}
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleLookup();
+                            }}
+                            className="flex gap-2"
+                        >
+                            <input
+                                type="text"
+                                value={scanInput}
+                                onChange={(e) => setScanInput(e.target.value)}
+                                placeholder="Contoh: BOR-101-01"
+                                className="flex-1 px-4 py-3 bg-[#F8F9FA] border border-[#E0E0E0] rounded-[12px] text-sm font-mono text-[#1D1616] focus:outline-none focus:border-[#D84040]"
+                            />
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="px-5 py-3 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-[12px] cursor-pointer"
+                            >
+                                Cek
+                            </button>
+                        </form>
+
+                        {recentUnits.length > 0 && (
+                            <div className="mt-4 pt-3 border-t border-[#EEEEEE]">
+                                <p className="text-[11px] font-semibold text-[#8C93A0] mb-2">
+                                    Pilih Cepat Kode Sampel Unit:
+                                </p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {recentUnits.map((u) => (
+                                        <button
+                                            key={u.kode_unit}
+                                            type="button"
+                                            onClick={() => {
+                                                setScanInput(u.kode_unit);
+                                                handleLookup(u.kode_unit);
+                                            }}
+                                            className="px-2.5 py-1 rounded-[8px] bg-[#F8F9FA] border border-[#E0E0E0] hover:border-[#D84040] text-xs font-mono font-bold text-[#1D1616] cursor-pointer"
+                                        >
+                                            {u.kode_unit}
+                                        </button>
+                                    ))}
                                 </div>
-                                <h3 className="text-base font-black text-[#1D1616]">
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Scanned Unit Result Bottom Sheet */}
+            {scannedUnit && (
+                <div className="fixed inset-0 z-50 bg-black/65 flex items-end justify-center animate-in fade-in duration-150">
+                    <div className="w-full max-w-[480px] bg-white rounded-t-[24px] p-[24px] shadow-2xl max-h-[88vh] overflow-y-auto animate-in slide-in-from-bottom duration-200">
+                        <div className="w-[40px] h-[4px] bg-[#E0E0E0] rounded-full mx-auto mb-[16px]" />
+
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ECFDF5] text-[#059669] text-[11px] font-bold w-fit mb-3">
+                            <CheckCircle2 size={14} />
+                            <span>QR Code Unit Terverifikasi</span>
+                        </div>
+
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                            <div>
+                                <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-[6px] bg-[#1D1616] text-white">
+                                    {scannedUnit.kode_unit}
+                                </span>
+                                <h3 className="text-[17px] font-extrabold text-[#1D1616] mt-1.5">
                                     {scannedUnit.barang.nama_barang}
                                 </h3>
-                                <p className="text-xs text-[#6B7280] mt-0.5">
-                                    Kategori: <strong className="text-[#1D1616]">{scannedUnit.barang.kategori}</strong> • Kondisi: <strong className="text-[#1D1616]">{scannedUnit.kondisi === 'baik' ? 'Baik' : scannedUnit.kondisi}</strong>
+                                <p className="text-[12px] text-[#8C93A0] mt-0.5">
+                                    Kategori: {scannedUnit.barang.kategori}
                                 </p>
                             </div>
-
                             <span
-                                className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${
+                                className={`px-[10px] py-[4px] rounded-[8px] text-[11px] font-bold shrink-0 ${
                                     scannedUnit.status === 'tersedia'
-                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        ? 'bg-[#ECFDF5] text-[#059669]'
                                         : scannedUnit.is_borrowed_by_me
-                                        ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                                        ? 'bg-[#EFF6FF] text-[#2563EB]'
+                                        : 'bg-[#FEF2F2] text-[#DC2626]'
                                 }`}
                             >
                                 {scannedUnit.status === 'tersedia'
-                                    ? 'Unit Tersedia'
+                                    ? 'Tersedia'
                                     : scannedUnit.is_borrowed_by_me
-                                    ? 'Sedang Anda Pinjam'
-                                    : 'Sedang Dipinjam Orang Lain'}
+                                    ? 'Dipinjam Anda'
+                                    : 'Dipinjam'}
                             </span>
                         </div>
 
-                        {/* CASE 1: UNIT TERSEDIA -> BISA LANGSUNG DIPINJAM */}
                         {scannedUnit.status === 'tersedia' && (
-                            <form onSubmit={handleConfirmBorrow} className="space-y-3 pt-3 border-t border-[#E0E0E0]">
+                            <form
+                                onSubmit={handleConfirmBorrow}
+                                className="space-y-3 pt-3 border-t border-[#EEEEEE]"
+                            >
                                 {scannedUnit.barang.perlu_persetujuan && (
-                                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
-                                        <ShieldAlert size={16} className="text-amber-600 shrink-0" />
-                                        <span>Perlu persetujuan Admin sebelum dapat diambil.</span>
+                                    <div className="p-3 rounded-[12px] bg-[#FFFBEB] border border-[#FCD34D] text-[#92400E] text-xs flex items-center gap-2">
+                                        <ShieldAlert size={16} className="text-[#D97706] shrink-0" />
+                                        <span>Memerlukan persetujuan Admin sebelum diambil.</span>
                                     </div>
                                 )}
 
-                                {/* Pilihan Preset Durasi Pinjam */}
                                 <div>
                                     <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
-                                        Pilihan Durasi Peminjaman
+                                        Durasi Peminjaman
                                     </label>
                                     <div className="grid grid-cols-4 gap-1.5">
                                         {[
@@ -647,11 +662,13 @@ export default function MobileScanner({
                                             <button
                                                 key={preset.min}
                                                 type="button"
-                                                onClick={() => handleDurationPresetChange(preset.min)}
-                                                className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                                onClick={() =>
+                                                    handleDurationPresetChange(preset.min)
+                                                }
+                                                className={`py-2 rounded-[10px] text-xs font-bold border transition-all cursor-pointer ${
                                                     borrowDurationPreset === preset.min
-                                                        ? 'bg-[#D84040] text-white border-[#D84040] shadow-xs'
-                                                        : 'bg-[#F8F9FA] text-[#1D1616] border-[#E0E0E0] hover:border-[#D84040]'
+                                                        ? 'bg-[#D84040] text-white border-[#D84040]'
+                                                        : 'bg-[#F8F9FA] text-[#1D1616] border-[#E0E0E0]'
                                                 }`}
                                             >
                                                 {preset.label}
@@ -662,94 +679,71 @@ export default function MobileScanner({
 
                                 <div>
                                     <label className="block text-xs font-bold text-[#1D1616] mb-1">
-                                        Keperluan Peminjaman
+                                        Keperluan
                                     </label>
                                     <input
                                         type="text"
                                         value={borrowData.keperluan}
                                         onChange={(e) => setBorrowData('keperluan', e.target.value)}
-                                        placeholder="Contoh: Praktikum Kelistrikan / Pekerjaan Bengkel"
                                         required
-                                        className="w-full px-3 py-2 bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-[#1D1616] mb-1">
-                                        Batas Waktu Pengembalian
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        value={borrowData.batas_kembali}
-                                        onChange={(e) => {
-                                            setBorrowData('batas_kembali', e.target.value);
-                                            setBorrowDurationPreset(0);
-                                        }}
-                                        required
-                                        className="w-full px-3 py-2 bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
+                                        className="w-full px-3.5 py-2.5 bg-[#F8F9FA] border border-[#E0E0E0] rounded-[12px] text-xs text-[#1D1616]"
                                     />
                                 </div>
 
                                 <button
                                     type="submit"
                                     disabled={borrowProcessing}
-                                    className="w-full py-3 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-[#D84040]/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                                    className="w-full py-3.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-[12px] transition-colors cursor-pointer"
                                 >
-                                    {borrowProcessing ? 'Memproses...' : `Konfirmasi Pinjam Unit ${scannedUnit.kode_unit}`}
+                                    {borrowProcessing
+                                        ? 'Memproses...'
+                                        : `Pinjam Unit ${scannedUnit.kode_unit}`}
                                 </button>
                             </form>
                         )}
 
-                        {/* CASE 2: UNIT SEDANG DIPINJAM OLEH USER INI -> BISA LANGSUNG KEMBALIKAN */}
                         {scannedUnit.is_borrowed_by_me && (
-                            <form onSubmit={handleConfirmReturn} className="space-y-3 pt-3 border-t border-[#E0E0E0]">
-                                <p className="text-xs text-[#6B7280]">
-                                    Anda sedang meminjam unit ini. Ingin mengembalikannya sekarang?
-                                </p>
+                            <form
+                                onSubmit={handleConfirmReturn}
+                                className="space-y-3 pt-3 border-t border-[#EEEEEE]"
+                            >
                                 <div>
                                     <label className="block text-xs font-bold text-[#1D1616] mb-1">
-                                        Kondisi Fisik Pengembalian
+                                        Kondisi Saat Dikembalikan
                                     </label>
                                     <select
                                         value={returnData.kondisi_kembali}
-                                        onChange={(e) => setReturnData('kondisi_kembali', e.target.value)}
-                                        className="w-full px-3 py-2 bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
+                                        onChange={(e) =>
+                                            setReturnData('kondisi_kembali', e.target.value)
+                                        }
+                                        className="w-full px-3.5 py-2.5 bg-[#F8F9FA] border border-[#E0E0E0] rounded-[12px] text-xs text-[#1D1616]"
                                     >
-                                        <option value="baik">Kondisi Baik / Normal</option>
-                                        <option value="rusak_ringan">Rusak Ringan</option>
-                                        <option value="rusak_berat">Rusak Berat</option>
+                                        <option value="baik">Baik</option>
+                                        <option value="rusak_ringan">Rusak</option>
                                     </select>
                                 </div>
-
                                 <button
                                     type="submit"
                                     disabled={returnProcessing}
-                                    className="w-full py-2.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                                    className="w-full py-3.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-[12px] cursor-pointer"
                                 >
-                                    {returnProcessing ? 'Memproses...' : 'Kembalikan Unit Ini Sekarang'}
+                                    {returnProcessing
+                                        ? 'Memproses...'
+                                        : 'Konfirmasi Pengembalian Unit'}
                                 </button>
                             </form>
-                        )}
-
-                        {/* CASE 3: UNIT TIDAK TERSEDIA */}
-                        {scannedUnit.status !== 'tersedia' && !scannedUnit.is_borrowed_by_me && (
-                            <div className="pt-3 border-t border-[#E0E0E0]">
-                                <p className="text-xs text-rose-700">
-                                    Unit ini sedang tidak dapat dipinjam saat ini ({scannedUnit.status}). Silakan cari unit lain di katalog.
-                                </p>
-                            </div>
                         )}
 
                         <button
                             type="button"
                             onClick={handleScanAgain}
-                            className="w-full mt-3 py-2 rounded-xl bg-[#EEEEEE] hover:bg-[#E0E0E0] text-[#1D1616] text-xs font-bold transition-colors cursor-pointer"
+                            className="w-full mt-3 py-3 rounded-[12px] bg-[#F5F5F5] hover:bg-[#EEEEEE] text-[#1D1616] text-xs font-bold transition-colors cursor-pointer"
                         >
-                            Scan Unit Lain
+                            Scan QR Lainnya
                         </button>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </UserMobileLayout>
     );
 }

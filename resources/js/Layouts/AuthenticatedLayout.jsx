@@ -799,11 +799,6 @@ export default function AuthenticatedLayout({ title, children }) {
                                 </div>
                             )}
                         </div>
-
-                        {/* User Avatar Badge */}
-                        <div className="w-10 h-10 rounded-xl bg-[#D84040] hover:bg-[#8E1616] text-white flex items-center justify-center font-bold text-sm cursor-pointer transition-colors shadow-xs">
-                            {user?.nama?.charAt(0) || 'A'}
-                        </div>
                     </div>
                 </header>
 

@@ -173,6 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // ignore: unused_element
   void _showServerConfigDialog() {
     final controller = TextEditingController(text: ApiConstants.host);
     bool testing = false;
@@ -484,17 +485,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: Colors.white,
                               letterSpacing: -0.5,
                             ),
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.dns_rounded,
-                              color: Colors.white70,
-                              size: 22,
-                            ),
-                            tooltip: 'Pengaturan Server',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: _showServerConfigDialog,
                           ),
                         ],
                       ).animate().fadeIn(duration: 400.ms),

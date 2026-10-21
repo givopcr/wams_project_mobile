@@ -135,8 +135,8 @@ export default function LogbookIndex({ logs, filters = {}, statusCounts = {} }) 
     ];
 
     return (
-        <AuthenticatedLayout title="Logbook Transaksi Peminjaman & Pengembalian">
-            <Head title="Logbook Transaksi - WAMS" />
+        <AuthenticatedLayout title="Logbook Peminjaman & Pengembalian">
+            <Head title="Logbook Peminjaman & Pengembalian - WAMS" />
 
             <div className="space-y-6 max-w-7xl mx-auto pb-8">
                 {/* Status Tabs Navigation */}
@@ -275,6 +275,30 @@ export default function LogbookIndex({ logs, filters = {}, statusCounts = {} }) 
                                                         <div className="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-md p-1.5 mt-1.5 max-w-xs">
                                                             <span className="font-bold text-gray-700">Keperluan: </span>
                                                             <span>{log.keperluan}</span>
+                                                        </div>
+                                                    )}
+                                                    {(log.foto_pinjam_url || log.foto_kembali_url) && (
+                                                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                                            {log.foto_pinjam_url && (
+                                                                <a
+                                                                    href={log.foto_pinjam_url}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold transition-colors"
+                                                                >
+                                                                    Lihat Foto Pinjam
+                                                                </a>
+                                                            )}
+                                                            {log.foto_kembali_url && (
+                                                                <a
+                                                                    href={log.foto_kembali_url}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold transition-colors"
+                                                                >
+                                                                    Lihat Foto Kembali
+                                                                </a>
+                                                            )}
                                                         </div>
                                                     )}
                                                     {isDitolak && log.alasan_penolakan && (

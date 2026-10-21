@@ -12,16 +12,24 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Root - Selalu arahkan ke Login agar pengguna dapat melihat & memilih portal/akun
+// Root - Arahkan ke dashboard sesuai role jika sudah login, atau ke halaman Login jika belum
 Route::get('/', function () {
+    if (auth()->check()) {
+        return auth()->user()->role === 'admin'
+            ? redirect()->route('admin.dashboard')
+            : redirect()->route('user.dashboard');
+    }
+
     return redirect()->route('login');
 });
 
-// Auth Routes (Universal Login untuk Admin maupun Teknisi/User)
+// Auth Routes (Universal Login & Register untuk Pengguna WAMS dengan proteksi Rate Limit)
 Route::get('/login', [AuthWebController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthWebController::class, 'login'])->name('login.post');
+Route::post('/login', [AuthWebController::class, 'login'])->middleware('throttle:10,1')->name('login.post');
+Route::get('/register', fn () => redirect()->to('/login?tab=register'))->name('register');
+Route::post('/register', [AuthWebController::class, 'register'])->middleware('throttle:10,1')->name('register.post');
 Route::get('/admin/login', fn () => redirect()->route('login'));
-Route::post('/admin/login', [AuthWebController::class, 'login']);
+Route::post('/admin/login', [AuthWebController::class, 'login'])->middleware('throttle:10,1');
 
 // Google OAuth Web Routes
 Route::get('/auth/google', [AuthWebController::class, 'redirectToGoogle'])->name('auth.google');
@@ -37,12 +45,6 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // Dashboard
     Route::get('/dashboard', [AdminWebController::class, 'dashboard'])->name('admin.dashboard');
-
-    // Kategori
-    Route::get('/kategori', [AdminWebController::class, 'kategori'])->name('admin.kategori');
-    Route::post('/kategori', [AdminWebController::class, 'storeKategori'])->name('admin.kategori.store');
-    Route::put('/kategori/{id}', [AdminWebController::class, 'updateKategori'])->name('admin.kategori.update');
-    Route::delete('/kategori/{id}', [AdminWebController::class, 'destroyKategori'])->name('admin.kategori.destroy');
 
     // Master Barang
     Route::get('/barang', [AdminWebController::class, 'barang'])->name('admin.barang');
@@ -100,6 +102,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
 Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserWebController::class, 'dashboard'])->name('dashboard');
     Route::get('/katalog', [UserWebController::class, 'katalog'])->name('katalog');
+    Route::get('/barang/{id}', [UserWebController::class, 'detailBarang'])->name('barang.detail');
     Route::get('/peminjaman', [UserWebController::class, 'peminjaman'])->name('peminjaman');
     Route::post('/pinjam', [UserWebController::class, 'storePinjam'])->name('pinjam.store');
     Route::post('/pakai-bahan', [\App\Http\Controllers\Api\TransaksiStokController::class, 'pakai'])->name('pakai.store');
@@ -109,6 +112,9 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
     Route::get('/scanner', [UserWebController::class, 'scanner'])->name('scanner');
     Route::get('/lookup-unit/{kode_unit}', [UserWebController::class, 'lookupUnit'])->name('lookup.unit');
     Route::get('/profile', [UserWebController::class, 'profile'])->name('profile');
+    Route::post('/profile/update', [UserWebController::class, 'updateProfile'])->name('profile.update');
+    Route::post('/profile/email/send-otp', [\App\Http\Controllers\Api\ProfileController::class, 'sendChangeEmailOtp'])->middleware('throttle:10,1')->name('profile.email.otp');
+    Route::post('/profile/email/verify-otp', [\App\Http\Controllers\Api\ProfileController::class, 'verifyChangeEmailOtp'])->middleware('throttle:10,1')->name('profile.email.verify');
 });
 
 /*
@@ -117,9 +123,9 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/scan/{kode_unit}', [GuestPinjamController::class, 'show'])->name('guest.scan');
-Route::post('/guest/pinjam/{kode_unit}', [GuestPinjamController::class, 'submitBorrow'])->name('guest.borrow.submit');
-Route::post('/guest/pinjam/{kode_unit}/verify-otp', [GuestPinjamController::class, 'verifyOtp'])->name('guest.borrow.verify_otp');
-Route::post('/guest/pinjam/{kode_unit}/resend-otp', [GuestPinjamController::class, 'resendOtp'])->name('guest.borrow.resend_otp');
+Route::post('/guest/pinjam/{kode_unit}', [GuestPinjamController::class, 'submitBorrow'])->middleware('throttle:15,1')->name('guest.borrow.submit');
+Route::post('/guest/pinjam/{kode_unit}/verify-otp', [GuestPinjamController::class, 'verifyOtp'])->middleware('throttle:10,1')->name('guest.borrow.verify_otp');
+Route::post('/guest/pinjam/{kode_unit}/resend-otp', [GuestPinjamController::class, 'resendOtp'])->middleware('throttle:10,1')->name('guest.borrow.resend_otp');
 Route::get('/guest/status/{kode_unit}', [GuestPinjamController::class, 'showStatus'])->name('guest.status');
-Route::post('/guest/return/{kode_unit}', [GuestPinjamController::class, 'submitReturn'])->name('guest.return.submit');
+Route::post('/guest/return/{kode_unit}', [GuestPinjamController::class, 'submitReturn'])->middleware('throttle:15,1')->name('guest.return.submit');
 

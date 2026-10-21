@@ -12,6 +12,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -60,7 +62,7 @@ class GuestPinjamController extends Controller
             ]);
         }
 
-        if ($unit->status === 'dipinjam') {
+        if ($unit->status === 'dipinjam' || $unit->status === 'menunggu_persetujuan') {
             $logbook = $unit->activeLogbook;
             $token = $request->query('token') ?: $request->cookie('wams_guest_token_' . $kode_unit);
             $email = $request->query('email');
@@ -111,6 +113,20 @@ class GuestPinjamController extends Controller
             ]);
         }
 
+        // Cegah bypass persetujuan admin untuk barang khusus pada mode tamu
+        if ($unit->barang?->perlu_persetujuan) {
+            return Inertia::render('Guest/Unavailable', [
+                'type' => 'restricted',
+                'kode_unit' => $kode_unit,
+                'unit' => [
+                    'kode_unit' => $unit->kode_unit,
+                    'nama_barang' => $unit->barang?->nama_barang ?? 'Peralatan Khusus',
+                    'kategori' => $unit->barang?->kategori?->nama_kategori ?? 'Umum',
+                ],
+                'message' => 'Barang ini memerlukan otorisasi khusus Admin Workshop. Silakan login menggunakan akun teknisi terdaftar untuk mengajukan peminjaman.',
+            ]);
+        }
+
         // Unit tersedia untuk dipinjam
         return Inertia::render('Guest/Borrow', [
             'unit' => [
@@ -147,7 +163,33 @@ class GuestPinjamController extends Controller
             'nama' => ['required', 'string', 'min:3', 'max:100'],
             'email' => ['required', 'email', 'max:150'],
             'durasi_menit' => ['required', 'integer', 'min:15', 'max:10080'], // max 7 hari
+            'keperluan' => ['nullable', 'string', 'max:500'],
+            'foto_pinjam' => ['required', 'string'],
+        ], [
+            'foto_pinjam.required' => 'Foto barang sebelum dipinjam wajib diunggah dan tidak boleh dilewati.',
         ]);
+
+        $fotoPinjamPath = null;
+        $rawFoto = $validated['foto_pinjam'];
+        if (preg_match('/^data:image\/(\w+);base64,/', $rawFoto, $typeMatch)) {
+            $ext = strtolower($typeMatch[1]);
+            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                $decoded = base64_decode(substr($rawFoto, strpos($rawFoto, ',') + 1));
+                if ($decoded !== false) {
+                    $fotoPinjamPath = 'peminjaman/guest_borrow_' . $kode_unit . '_' . time() . '_' . uniqid() . '.' . $ext;
+                    Storage::disk('public')->put($fotoPinjamPath, $decoded);
+                }
+            }
+        }
+
+        if (!$fotoPinjamPath) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Foto barang sebelum dipinjam wajib diunggah dengan format gambar yang valid.',
+            ], 422);
+        }
+
+        $keperluanText = !empty($validated['keperluan']) ? trim($validated['keperluan']) : null;
 
         $unit = BarangUnit::with('barang')
             ->where('kode_unit', $kode_unit)
@@ -158,6 +200,13 @@ class GuestPinjamController extends Controller
                 'success' => false,
                 'message' => 'Unit barang tidak tersedia untuk dipinjam saat ini.',
             ], 422);
+        }
+
+        if ($unit->barang?->perlu_persetujuan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Barang ini memerlukan persetujuan Admin Workshop dan hanya dapat diajukan melalui akun teknisi terdaftar.',
+            ], 403);
         }
 
         $durasiMenit = (int) $validated['durasi_menit'];
@@ -172,6 +221,8 @@ class GuestPinjamController extends Controller
                 'guest_nama' => trim($validated['nama']),
                 'kode_unit' => $kode_unit,
                 'durasi_menit' => $durasiMenit,
+                'keperluan' => $keperluanText,
+                'foto_pinjam' => $fotoPinjamPath,
                 'otp_code' => $otp,
                 'expires_at' => now()->addMinutes(10),
                 'is_used' => false,
@@ -201,7 +252,7 @@ class GuestPinjamController extends Controller
         }
 
         // Durasi <= 4 jam: Langsung disetujui tanpa OTP
-        return DB::transaction(function () use ($unit, $validated, $durasiMenit, $kode_unit) {
+        return DB::transaction(function () use ($unit, $validated, $durasiMenit, $kode_unit, $keperluanText, $fotoPinjamPath) {
             $lockedUnit = BarangUnit::where('id', $unit->id)
                 ->where('status', 'tersedia')
                 ->lockForUpdate()
@@ -224,6 +275,8 @@ class GuestPinjamController extends Controller
                 'tipe_peminjam' => 'guest',
                 'guest_nama' => trim($validated['nama']),
                 'guest_email' => strtolower(trim($validated['email'])),
+                'keperluan' => $keperluanText,
+                'foto_pinjam' => $fotoPinjamPath,
                 'tanggal_pinjam' => now(),
                 'batas_kembali' => now()->addMinutes($durasiMenit),
                 'tanggal_kembali' => null,
@@ -264,23 +317,50 @@ class GuestPinjamController extends Controller
             ], 422);
         }
 
+        if ($unit->barang?->perlu_persetujuan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Barang ini memerlukan persetujuan Admin Workshop dan hanya dapat diajukan melalui akun teknisi terdaftar.',
+            ], 403);
+        }
+
         $email = strtolower(trim($validated['email']));
         $otp = trim($validated['otp_code']);
 
-        $otpRecord = GuestOtp::where('email', $email)
+        $latestOtp = GuestOtp::where('email', $email)
             ->where('kode_unit', $kode_unit)
-            ->where('otp_code', $otp)
             ->where('is_used', false)
             ->where('expires_at', '>', now())
             ->latest()
             ->first();
 
-        if (!$otpRecord) {
+        if (!$latestOtp) {
             return response()->json([
                 'success' => false,
-                'message' => 'Kode OTP salah atau telah kedaluwarsa. Silakan minta kode baru.',
+                'message' => 'Kode OTP tidak ditemukan atau telah kedaluwarsa. Silakan minta kode baru.',
             ], 422);
         }
+
+        $hasAttemptsColumn = Schema::hasColumn('guest_otps', 'attempts');
+        if ($hasAttemptsColumn && $latestOtp->attempts >= 5) {
+            $latestOtp->update(['is_used' => true]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Terlalu banyak percobaan OTP yang salah. Silakan minta kode OTP baru.',
+            ], 429);
+        }
+
+        if (!hash_equals((string) $latestOtp->otp_code, $otp)) {
+            if ($hasAttemptsColumn) {
+                $latestOtp->increment('attempts');
+            }
+            return response()->json([
+                'success' => false,
+                'message' => 'Kode OTP salah. Silakan periksa kembali kode Anda.',
+            ], 422);
+        }
+
+        $otpRecord = $latestOtp;
 
         return DB::transaction(function () use ($unit, $otpRecord, $kode_unit) {
             $lockedUnit = BarangUnit::where('id', $unit->id)
@@ -306,6 +386,8 @@ class GuestPinjamController extends Controller
                 'tipe_peminjam' => 'guest',
                 'guest_nama' => $otpRecord->guest_nama,
                 'guest_email' => $otpRecord->email,
+                'keperluan' => $otpRecord->keperluan,
+                'foto_pinjam' => $otpRecord->foto_pinjam,
                 'tanggal_pinjam' => now(),
                 'batas_kembali' => now()->addMinutes($otpRecord->durasi_menit),
                 'tanggal_kembali' => null,
@@ -374,6 +456,8 @@ class GuestPinjamController extends Controller
             'guest_nama' => $latestOtp->guest_nama,
             'kode_unit' => $kode_unit,
             'durasi_menit' => $latestOtp->durasi_menit,
+            'keperluan' => $latestOtp->keperluan,
+            'foto_pinjam' => $latestOtp->foto_pinjam,
             'otp_code' => $newOtp,
             'expires_at' => now()->addMinutes(10),
             'is_used' => false,
@@ -402,7 +486,7 @@ class GuestPinjamController extends Controller
     /**
      * Tiket digital peminjaman aktif tamu
      */
-    public function showStatus(Request $request, string $kode_unit): Response
+    public function showStatus(Request $request, string $kode_unit): Response|RedirectResponse
     {
         $unit = BarangUnit::with(['barang.kategori', 'activeLogbook'])
             ->where('kode_unit', $kode_unit)
@@ -422,6 +506,31 @@ class GuestPinjamController extends Controller
                     'kode_unit' => $unit->kode_unit,
                 ],
                 'message' => 'Unit barang ini sedang tidak dalam status dipinjam.',
+            ]);
+        }
+
+        // Verifikasi otorisasi token atau email sebelum menampilkan tiket pengembalian
+        $token = $request->query('token') ?: $request->cookie('wams_guest_token_' . $kode_unit);
+        $email = $request->query('email');
+
+        $isAuthorized = false;
+        if ($token && $logbook->return_token && hash_equals($logbook->return_token, $token)) {
+            $isAuthorized = true;
+        } elseif ($email && strtolower(trim($email)) === strtolower(trim((string) $logbook->peminjam_email))) {
+            $isAuthorized = true;
+        }
+
+        if (!$isAuthorized) {
+            return Inertia::render('Guest/Unavailable', [
+                'type' => 'borrowed',
+                'kode_unit' => $kode_unit,
+                'unit' => [
+                    'kode_unit' => $unit->kode_unit,
+                    'nama_barang' => $unit->barang?->nama_barang ?? 'Peralatan',
+                    'kategori' => $unit->barang?->kategori?->nama_kategori ?? 'Umum',
+                ],
+                'borrower_hint' => substr((string) $logbook->peminjam_nama, 0, 3) . '***',
+                'message' => 'Unit barang ini sedang dipinjam. Gunakan tautan tiket atau verifikasi email peminjam untuk mengakses halaman pengembalian.',
             ]);
         }
 
@@ -455,8 +564,31 @@ class GuestPinjamController extends Controller
         $validated = $request->validate([
             'kondisi' => ['required', 'in:baik,rusak'],
             'catatan' => ['nullable', 'string', 'max:500'],
+            'foto_kondisi' => ['required', 'string'],
             'token' => ['nullable', 'string'],
+        ], [
+            'foto_kondisi.required' => 'Foto kondisi barang saat dikembalikan wajib diunggah dan tidak boleh dilewati.',
         ]);
+
+        $fotoKembaliPath = null;
+        $rawFoto = $validated['foto_kondisi'];
+        if (preg_match('/^data:image\/(\w+);base64,/', $rawFoto, $typeMatch)) {
+            $ext = strtolower($typeMatch[1]);
+            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                $decoded = base64_decode(substr($rawFoto, strpos($rawFoto, ',') + 1));
+                if ($decoded !== false) {
+                    $fotoKembaliPath = 'pengembalian/guest_return_' . $kode_unit . '_' . time() . '_' . uniqid() . '.' . $ext;
+                    Storage::disk('public')->put($fotoKembaliPath, $decoded);
+                }
+            }
+        }
+
+        if (!$fotoKembaliPath) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Foto kondisi barang saat dikembalikan wajib diunggah dengan format gambar yang valid.',
+            ], 422);
+        }
 
         $unit = BarangUnit::with('activeLogbook')
             ->where('kode_unit', $kode_unit)
@@ -479,14 +611,21 @@ class GuestPinjamController extends Controller
             ], 403);
         }
 
-        DB::transaction(function () use ($unit, $logbook, $validated) {
+        DB::transaction(function () use ($unit, $logbook, $validated, $fotoKembaliPath) {
             $kondisi = $validated['kondisi'];
 
-            $logbook->update([
+            $updateData = [
                 'tanggal_kembali' => now(),
                 'kondisi_kembali' => $kondisi,
+                'foto_kembali' => $fotoKembaliPath,
                 'status_transaksi' => 'dikembalikan',
-            ]);
+            ];
+
+            if (!empty($validated['catatan']) && Schema::hasColumn('logbook', 'catatan_kembali')) {
+                $updateData['catatan_kembali'] = $validated['catatan'];
+            }
+
+            $logbook->update($updateData);
 
             // Jika kondisi rusak, unit masuk status maintenance
             $unit->update([

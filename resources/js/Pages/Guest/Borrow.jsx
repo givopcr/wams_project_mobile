@@ -15,7 +15,9 @@ import {
     Sparkles,
     ChevronRight,
     Info,
-    KeyRound
+    KeyRound,
+    Camera,
+    X
 } from 'lucide-react';
 
 export default function GuestBorrow({
@@ -30,6 +32,19 @@ export default function GuestBorrow({
     const [durasiMenit, setDurasiMenit] = useState(120); // Default 2 jam
     const [isCustomDuration, setIsCustomDuration] = useState(false);
     const [customJam, setCustomJam] = useState(5);
+    const [keperluan, setKeperluan] = useState('');
+    const [fotoPinjam, setFotoPinjam] = useState(null);
+
+    const handleFotoPinjamChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            setFotoPinjam(ev.target.result);
+            setError(null);
+        };
+        reader.readAsDataURL(file);
+    };
 
     // UI & Submission States
     const [loading, setLoading] = useState(false);
@@ -110,6 +125,11 @@ export default function GuestBorrow({
             return;
         }
 
+        if (!fotoPinjam) {
+            setError('Foto barang sebelum dipinjam wajib diunggah dan tidak boleh dilewati.');
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -117,6 +137,8 @@ export default function GuestBorrow({
                 nama: nama.trim(),
                 email: email.trim(),
                 durasi_menit: durasiMenit,
+                keperluan: keperluan.trim() || null,
+                foto_pinjam: fotoPinjam,
             });
 
             if (response.data.success) {
@@ -447,6 +469,71 @@ export default function GuestBorrow({
                                 </p>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Foto Barang Sebelum Dipinjam (Wajib) */}
+                    <div>
+                        <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
+                            Foto Barang Sebelum Dipinjam <span className="text-[#D84040]">* (Wajib)</span>
+                        </label>
+                        <label
+                            className={`w-full h-36 bg-white rounded-xl border flex flex-col items-center justify-center cursor-pointer overflow-hidden relative transition-colors ${
+                                fotoPinjam
+                                    ? 'border-emerald-500'
+                                    : 'border-dashed border-[#D84040]/60 hover:border-[#D84040]'
+                            }`}
+                        >
+                            <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={handleFotoPinjamChange}
+                                className="hidden"
+                            />
+                            {fotoPinjam ? (
+                                <>
+                                    <img
+                                        src={fotoPinjam}
+                                        alt="Foto Barang Sebelum Dipinjam"
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setFotoPinjam(null);
+                                        }}
+                                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center cursor-pointer"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Camera size={28} className="text-[#D84040]" />
+                                    <span className="mt-1.5 text-xs font-bold text-[#1D1616]">
+                                        Ketuk untuk ambil foto barang sebelum dipinjam
+                                    </span>
+                                    <span className="text-[10px] text-[#6B7280] mt-0.5">
+                                        Wajib diisi dan tidak boleh dilewati
+                                    </span>
+                                </>
+                            )}
+                        </label>
+                    </div>
+
+                    {/* Alasan / Keperluan (Opsional) */}
+                    <div>
+                        <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
+                            Keperluan / Alasan <span className="text-[#6B7280] font-normal">(Opsional - Boleh Dikosongkan)</span>
+                        </label>
+                        <textarea
+                            rows={2}
+                            value={keperluan}
+                            onChange={(e) => setKeperluan(e.target.value)}
+                            placeholder="Jelaskan keperluan peminjaman (boleh dikosongkan)..."
+                            className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] placeholder-[#8C93A0] focus:outline-none focus:border-[#D84040]"
+                        />
                     </div>
 
                     {/* Submit Button */}
