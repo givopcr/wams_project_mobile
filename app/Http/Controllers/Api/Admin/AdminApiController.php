@@ -263,7 +263,34 @@ class AdminApiController extends Controller
             'kondisi' => ['required', 'in:baik,rusak'],
         ]);
 
-        $unit->update($validated);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($unit, $validated) {
+            $oldStatus = $unit->status;
+            $newStatus = $validated['status'];
+
+            if (in_array($oldStatus, ['dipinjam', 'menunggu_persetujuan']) && in_array($newStatus, ['tersedia', 'maintenance'])) {
+                $activeLogs = Logbook::where('barang_unit_id', $unit->id)
+                    ->whereIn('status_transaksi', ['dipinjam', 'menunggu_persetujuan'])
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($activeLogs as $log) {
+                    if ($log->status_transaksi === 'dipinjam') {
+                        $log->update([
+                            'status_transaksi' => 'dikembalikan',
+                            'tanggal_kembali' => now(),
+                            'kondisi_kembali' => $validated['kondisi'],
+                        ]);
+                    } else {
+                        $log->update([
+                            'status_transaksi' => 'dibatalkan',
+                            'alasan_penolakan' => 'Status unit diubah secara manual oleh Administrator.',
+                        ]);
+                    }
+                }
+            }
+
+            $unit->update($validated);
+        });
 
         return response()->json([
             'success' => true,

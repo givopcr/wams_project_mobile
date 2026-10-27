@@ -16,12 +16,25 @@ return new class extends Migration
 
             // Sinkronkan tipe barang yang sudah ada berdasarkan tipe kategorinya
             if (Schema::hasColumn('kategori_barang', 'tipe')) {
-                DB::statement("
-                    UPDATE barang b
-                    INNER JOIN kategori_barang k ON b.kategori_id = k.id
-                    SET b.tipe = k.tipe
-                    WHERE k.tipe IN ('aset', 'habis_pakai')
-                ");
+                $kategoriHabisPakaiIds = DB::table('kategori_barang')
+                    ->where('tipe', 'habis_pakai')
+                    ->pluck('id');
+
+                if ($kategoriHabisPakaiIds->isNotEmpty()) {
+                    DB::table('barang')
+                        ->whereIn('kategori_id', $kategoriHabisPakaiIds)
+                        ->update(['tipe' => 'habis_pakai']);
+                }
+
+                $kategoriAsetIds = DB::table('kategori_barang')
+                    ->where('tipe', 'aset')
+                    ->pluck('id');
+
+                if ($kategoriAsetIds->isNotEmpty()) {
+                    DB::table('barang')
+                        ->whereIn('kategori_id', $kategoriAsetIds)
+                        ->update(['tipe' => 'aset']);
+                }
             }
         }
 

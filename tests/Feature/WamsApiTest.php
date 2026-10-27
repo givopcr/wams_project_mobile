@@ -84,6 +84,7 @@ class WamsApiTest extends TestCase
             ->postJson('/api/pengembalian', [
                 'logbook_id' => $logbook->id,
                 'kondisi_kembali' => 'rusak',
+                'foto_kondisi' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
             ]);
 
         $response->assertStatus(200)

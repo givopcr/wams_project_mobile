@@ -58,7 +58,7 @@ class Logbook extends Model
         if ($this->tipe_peminjam === 'guest') {
             return ($this->guest_nama ?: 'Tamu') . ' (Tamu)';
         }
-        return $this->user?->nama ?? 'Pengguna';
+        return $this->user?->nama ?? ($this->guest_nama ?: 'Pengguna');
     }
 
     /**
@@ -69,7 +69,7 @@ class Logbook extends Model
         if ($this->tipe_peminjam === 'guest') {
             return $this->guest_email ?: '-';
         }
-        return $this->user?->email ?? '-';
+        return $this->user?->email ?? ($this->guest_email ?: '-');
     }
 
     /**

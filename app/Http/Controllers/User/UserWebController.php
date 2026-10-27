@@ -202,11 +202,12 @@ class UserWebController extends Controller
             'barang_unit_ids' => ['nullable', 'array'],
             'barang_unit_ids.*' => ['exists:barang_unit,id'],
             'keperluan' => ['nullable', 'string', 'max:500'],
-            'foto_pinjam' => ['required', 'string'],
+            'foto_pinjam' => ['required', 'string', 'max:7000000'],
             'batas_kembali' => ['required', 'date'],
             'tanggal_pinjam' => ['nullable', 'date'],
         ], [
             'foto_pinjam.required' => 'Foto barang sebelum dipinjam wajib diunggah dan tidak boleh dilewati.',
+            'foto_pinjam.max' => 'Ukuran foto barang terlalu besar (maksimal 5MB).',
         ]);
 
         $fotoPinjamPath = null;
@@ -214,8 +215,8 @@ class UserWebController extends Controller
         if ($rawFotoPinjam && preg_match('/^data:image\/(\w+);base64,/', $rawFotoPinjam, $typeMatch)) {
             $ext = strtolower($typeMatch[1]);
             if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                $decoded = base64_decode(substr($rawFotoPinjam, strpos($rawFotoPinjam, ',') + 1));
-                if ($decoded !== false) {
+                $decoded = base64_decode(substr($rawFotoPinjam, strpos($rawFotoPinjam, ',') + 1), true);
+                if ($decoded !== false && strlen($decoded) > 0 && strlen($decoded) <= 5 * 1024 * 1024) {
                     $fotoPinjamPath = 'peminjaman/borrow_' . auth()->id() . '_' . time() . '_' . uniqid() . '.' . $ext;
                     Storage::disk('public')->put($fotoPinjamPath, $decoded);
                 }
@@ -230,7 +231,13 @@ class UserWebController extends Controller
         }
 
         $user = auth()->user();
-        $barang = Barang::findOrFail($request->barang_id);
+        $barang = Barang::with('kategori')->findOrFail($request->barang_id);
+        if ($barang->isHabisPakai()) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Barang habis pakai tidak dapat dipinjam sebagai unit aset.'], 422);
+            }
+            return back()->with('error', 'Barang habis pakai tidak dapat dipinjam sebagai unit aset.');
+        }
         $requiresApproval = (bool) $barang->perlu_persetujuan;
         $targetStatus = $requiresApproval ? 'menunggu_persetujuan' : 'dipinjam';
 
@@ -346,9 +353,10 @@ class UserWebController extends Controller
         $request->validate([
             'kondisi_kembali' => ['required', 'in:baik,rusak,rusak_ringan,rusak_berat'],
             'catatan' => ['nullable', 'string', 'max:500'],
-            'foto_kondisi' => ['required', 'string'],
+            'foto_kondisi' => ['required', 'string', 'max:7000000'],
         ], [
             'foto_kondisi.required' => 'Foto kondisi barang saat dikembalikan wajib diunggah dan tidak boleh dilewati.',
+            'foto_kondisi.max' => 'Ukuran foto kondisi barang terlalu besar (maksimal 5MB).',
         ]);
 
         $rawFoto = $request->input('foto_kondisi');
@@ -486,14 +494,28 @@ class UserWebController extends Controller
      */
     public function scanner(Request $request): Response
     {
-        $categories = KategoriBarang::all();
+        $categories = KategoriBarang::withCount('barang')
+            ->with(['units'])
+            ->get()
+            ->map(fn ($k) => [
+                'id' => $k->id,
+                'nama_kategori' => $k->nama_kategori,
+                'qr_code' => $k->qr_code ?: "/scan/kategori/{$k->id}",
+                'tipe' => $k->tipe ?? 'aset',
+                'is_habis_pakai' => $k->isHabisPakai(),
+                'total_barang' => $k->barang_count,
+                'total_unit' => $k->units->count(),
+                'tersedia' => $k->units->where('status', 'tersedia')->count(),
+            ]);
+
         $recentUnits = BarangUnit::with('barang')
             ->where('status', 'tersedia')
-            ->take(6)
+            ->take(8)
             ->get()
             ->map(fn ($u) => [
                 'kode_unit' => $u->kode_unit,
                 'nama_barang' => $u->barang?->nama_barang,
+                'kategori' => $u->barang?->kategori?->nama_kategori ?? 'Umum',
             ]);
 
         return Inertia::render('User/MobileScanner', [
@@ -507,14 +529,40 @@ class UserWebController extends Controller
     /**
      * Lookup Cepat saat Scan QR Code (Mendukung QR Kategori maupun QR Unit Fisik)
      */
-    public function lookupUnit(string $kode_unit): JsonResponse
+    public function lookupUnit(Request $request, ?string $kode_unit = null): JsonResponse
     {
         $user = auth()->user();
-        $raw = trim(urldecode($kode_unit));
+        
+        // 1. Ambil input dari query parameter ?code= atau dari path parameter {kode_unit}
+        $raw = (string) $request->query('code', $kode_unit ?? '');
+        $raw = trim(urldecode($raw));
 
-        // 1. Cek apakah QR adalah QR Kategori (/scan/kategori/{id} atau ID/qr_code kategori)
-        if (preg_match('#scan/kategori/(\d+)#i', $raw, $katMatch)) {
-            $kat = KategoriBarang::find((int) $katMatch[1]);
+        if (empty($raw)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kode QR tidak boleh kosong.',
+            ], 400);
+        }
+
+        // Jika berbentuk URL lengkap (contoh: http://localhost:8000/scan/...)
+        if (str_starts_with($raw, 'http://') || str_starts_with($raw, 'https://') || filter_var($raw, FILTER_VALIDATE_URL)) {
+            $parsedPath = parse_url($raw, PHP_URL_PATH) ?? '';
+            $raw = trim($parsedPath, '/');
+        }
+
+        // Hapus query params jika ada
+        if (str_contains($raw, '?')) {
+            $raw = explode('?', $raw)[0];
+        }
+
+        // 2. Cek apakah QR adalah QR Kategori
+        // Format didukung: /scan/kategori/{id}, scan/kategori/{id}, kategori/{id}, kat-1, ID numerik, atau nama kategori
+        if (
+            preg_match('#(?:^|/)scan/kategori/(\d+)#i', $raw, $katMatch) ||
+            preg_match('#^kategori/(\d+)#i', $raw, $katMatch) ||
+            preg_match('#^(?:kategori|kat)[-_\s]?(\d+)$#i', $raw, $katMatch)
+        ) {
+            $kat = KategoriBarang::withCount('barang')->with('units')->find((int) $katMatch[1]);
             if ($kat) {
                 return response()->json([
                     'success' => true,
@@ -522,13 +570,19 @@ class UserWebController extends Controller
                     'data' => [
                         'id' => $kat->id,
                         'nama_kategori' => $kat->nama_kategori,
+                        'tipe' => $kat->tipe ?? 'aset',
+                        'is_habis_pakai' => $kat->isHabisPakai(),
+                        'total_barang' => $kat->barang_count,
+                        'total_unit' => $kat->units->count(),
+                        'tersedia' => $kat->units->where('status', 'tersedia')->count(),
+                        'qr_code' => $kat->qr_code ?: "/scan/kategori/{$kat->id}",
                     ],
                 ]);
             }
         }
 
         if (is_numeric($raw)) {
-            $kat = KategoriBarang::find((int) $raw);
+            $kat = KategoriBarang::withCount('barang')->with('units')->find((int) $raw);
             if ($kat) {
                 return response()->json([
                     'success' => true,
@@ -536,13 +590,22 @@ class UserWebController extends Controller
                     'data' => [
                         'id' => $kat->id,
                         'nama_kategori' => $kat->nama_kategori,
+                        'tipe' => $kat->tipe ?? 'aset',
+                        'is_habis_pakai' => $kat->isHabisPakai(),
+                        'total_barang' => $kat->barang_count,
+                        'total_unit' => $kat->units->count(),
+                        'tersedia' => $kat->units->where('status', 'tersedia')->count(),
+                        'qr_code' => $kat->qr_code ?: "/scan/kategori/{$kat->id}",
                     ],
                 ]);
             }
         }
 
-        $katByCode = KategoriBarang::where('qr_code', $raw)
+        $katByCode = KategoriBarang::withCount('barang')->with('units')
+            ->where('qr_code', $raw)
             ->orWhere('qr_code', '/' . ltrim($raw, '/'))
+            ->orWhere('nama_kategori', $raw)
+            ->orWhere('nama_kategori', 'like', "%{$raw}%")
             ->first();
         if ($katByCode) {
             return response()->json([
@@ -551,23 +614,32 @@ class UserWebController extends Controller
                 'data' => [
                     'id' => $katByCode->id,
                     'nama_kategori' => $katByCode->nama_kategori,
+                    'tipe' => $katByCode->tipe ?? 'aset',
+                    'is_habis_pakai' => $katByCode->isHabisPakai(),
+                    'total_barang' => $katByCode->barang_count,
+                    'total_unit' => $katByCode->units->count(),
+                    'tersedia' => $katByCode->units->where('status', 'tersedia')->count(),
+                    'qr_code' => $katByCode->qr_code ?: "/scan/kategori/{$katByCode->id}",
                 ],
             ]);
         }
 
-        // 2. Normalisasi format QR Unit Fisik
+        // 3. Normalisasi format QR Unit Fisik
+        // Payload dari admin bisa berbentuk:
+        // - "http://localhost:8000/scan/3D Printer Anet LCD/SLA"
+        // - "/scan/3D Printer Anet LCD/SLA"
+        // - "scan/3D Printer Anet LCD/SLA"
+        // - "3D Printer Anet LCD/SLA" (kode unit langsung)
         $cleanKode = $raw;
-        if (str_contains($cleanKode, '?')) {
-            $cleanKode = explode('?', $cleanKode)[0];
-        }
-        if (preg_match('#/(?:scan)/([A-Za-z0-9_\-]+)#i', $cleanKode, $matches)) {
-            $cleanKode = $matches[1];
-        } elseif (preg_match('#^scan/([A-Za-z0-9_\-]+)#i', $cleanKode, $matches)) {
-            $cleanKode = $matches[1];
+        if (preg_match('#(?:^|/)scan/(.+)$#i', $cleanKode, $matches)) {
+            $cleanKode = trim($matches[1]);
         }
 
+        // Cari unit berdasarkan kode_unit (exact match atau decode)
         $unit = BarangUnit::with(['barang.kategori', 'activeLogbook'])
             ->where('kode_unit', $cleanKode)
+            ->orWhere('kode_unit', urldecode($cleanKode))
+            ->orWhere('kode_unit', rawurldecode($cleanKode))
             ->first();
 
         if (!$unit) {

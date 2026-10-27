@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,9 +15,15 @@ class AuthWebController extends Controller
 {
     public function showLogin(Request $request): Response
     {
+        $safeRedirect = $this->sanitizeRedirectUrl($request, $request->query('redirect'));
+        if ($safeRedirect) {
+            $request->session()->put('url.intended', $safeRedirect);
+        }
+
         return Inertia::render('Auth/Login', [
-            'status' => session('status'),
+            'status' => session('status') ?? $request->query('message'),
             'initialTab' => $request->query('tab', 'login'),
+            'redirect' => $safeRedirect,
         ]);
     }
 
@@ -50,7 +58,9 @@ class AuthWebController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('user.dashboard')->with('success', 'Registrasi berhasil! Selamat datang di WAMS, ' . $user->nama . '.');
+        $targetUrl = $this->resolvePostAuthRedirect($request, $user);
+
+        return redirect()->to($targetUrl)->with('success', 'Registrasi berhasil! Selamat datang di WAMS, ' . $user->nama . '.');
     }
 
     public function login(Request $request)
@@ -60,7 +70,11 @@ class AuthWebController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $loginField = filter_var($credentials['login'], FILTER_VALIDATE_EMAIL) ? 'email' : 'nip';
+        $loginInput = trim($credentials['login']);
+
+        // Prioritaskan pencarian berdasarkan identifier unik (email atau nip) terlebih dahulu,
+        // baru fallback ke nama agar perubahan nama user tidak bisa membajak/mengunci login email/NIP akun lain
+        $user = $this->findAndVerifyUser($loginInput, $credentials['password']);
 
         // Jika sebelumnya sudah ada sesi aktif, bersihkan agar login baru bersih
         if (Auth::check()) {
@@ -69,19 +83,22 @@ class AuthWebController extends Controller
             $request->session()->regenerateToken();
         }
 
-        if (Auth::attempt([$loginField => $credentials['login'], 'password' => $credentials['password']], $request->boolean('remember'))) {
+        if ($user) {
+            Auth::login($user, $request->boolean('remember'));
             $request->session()->regenerate();
-            Auth::user()->recordPlainPassword($credentials['password']);
+            $user->recordPlainPassword($credentials['password']);
 
-            if (Auth::user()->role === 'admin') {
-                return redirect()->route('admin.dashboard')->with('success', 'Selamat datang kembali, Administrator!');
+            $targetUrl = $this->resolvePostAuthRedirect($request, $user);
+
+            if ($user->role === 'admin') {
+                return redirect()->to($targetUrl)->with('success', 'Selamat datang kembali, Administrator!');
             }
 
-            return redirect()->route('user.dashboard')->with('success', 'Selamat datang di WAMS Mobile, ' . Auth::user()->nama . '!');
+            return redirect()->to($targetUrl)->with('success', 'Selamat datang di WAMS Mobile, ' . $user->nama . '!');
         }
 
         throw ValidationException::withMessages([
-            'login' => 'Email/NIP atau password yang Anda masukkan tidak sesuai.',
+            'login' => 'Email/Nama/NIP atau password yang Anda masukkan tidak sesuai.',
         ]);
     }
 
@@ -123,15 +140,30 @@ class AuthWebController extends Controller
             ]);
         }
 
-        // Cari user berdasarkan google_id atau email
-        $user = \App\Models\User::where('google_id', $googleUser->getId())
-            ->orWhere('email', $googleUser->getEmail())
-            ->first();
+        // Cari user berdasarkan google_id terlebih dahulu, lalu email
+        $user = \App\Models\User::where('google_id', $googleUser->getId())->first();
+
+        if (! $user && $googleUser->getEmail()) {
+            $emailVerified = $googleUser->user['email_verified'] ?? ($googleUser->user['verified_email'] ?? true);
+            if (! $emailVerified) {
+                return redirect()->route('login')->withErrors([
+                    'login' => 'Email akun Google Anda belum terverifikasi.',
+                ]);
+            }
+
+            $user = \App\Models\User::where('email', $googleUser->getEmail())->first();
+
+            if ($user && ! empty($user->google_id) && $user->google_id !== $googleUser->getId()) {
+                return redirect()->route('login')->withErrors([
+                    'login' => 'Email ini sudah terhubung dengan akun Google yang berbeda.',
+                ]);
+            }
+        }
 
         if ($user) {
             // Update google_id dan avatar jika belum ada
             $user->update([
-                'google_id' => $googleUser->getId(),
+                'google_id' => $user->google_id ?: $googleUser->getId(),
                 'avatar' => $googleUser->getAvatar() ?: $user->avatar,
             ]);
         } else {
@@ -148,10 +180,93 @@ class AuthWebController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
+        $targetUrl = $this->resolvePostAuthRedirect($request, $user);
+
         if ($user->role === 'admin') {
-            return redirect()->route('admin.dashboard')->with('success', 'Selamat datang kembali, Administrator!');
+            return redirect()->to($targetUrl)->with('success', 'Selamat datang kembali, Administrator!');
         }
 
-        return redirect()->route('user.dashboard')->with('success', 'Selamat datang di WAMS Mobile, ' . $user->nama . '!');
+        return redirect()->to($targetUrl)->with('success', 'Selamat datang di WAMS Mobile, ' . $user->nama . '!');
+    }
+
+    /**
+     * Cari user dengan prioritas email/NIP (unik) sebelum fallback ke nama
+     */
+    private function findAndVerifyUser(string $loginInput, string $password): ?User
+    {
+        $uniqueCandidates = User::where('email', $loginInput)
+            ->orWhere('nip', $loginInput)
+            ->get();
+
+        if ($uniqueCandidates->isNotEmpty()) {
+            foreach ($uniqueCandidates as $candidate) {
+                if (! empty($candidate->password) && Hash::check($password, $candidate->password)) {
+                    return $candidate;
+                }
+            }
+
+            return null;
+        }
+
+        $nameCandidates = User::where('nama', $loginInput)->get();
+        foreach ($nameCandidates as $candidate) {
+            if (! empty($candidate->password) && Hash::check($password, $candidate->password)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Validasi URL redirect agar hanya mengizinkan path internal aplikasi
+     */
+    private function sanitizeRedirectUrl(Request $request, ?string $redirect): ?string
+    {
+        if (! $redirect || ! is_string($redirect)) {
+            return null;
+        }
+
+        $redirect = trim($redirect);
+        if (str_starts_with($redirect, 'http://') || str_starts_with($redirect, 'https://')) {
+            $parsedHost = parse_url($redirect, PHP_URL_HOST);
+            if ($parsedHost && strtolower($parsedHost) === strtolower($request->getHost())) {
+                $path = parse_url($redirect, PHP_URL_PATH) ?: '/';
+                $query = parse_url($redirect, PHP_URL_QUERY);
+
+                return $query ? "{$path}?{$query}" : $path;
+            }
+
+            return null;
+        }
+
+        if (str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
+            return $redirect;
+        }
+
+        return null;
+    }
+
+    /**
+     * Tentukan halaman tujuan setelah login/registrasi sesuai role
+     */
+    private function resolvePostAuthRedirect(Request $request, User $user): string
+    {
+        $rawRedirect = $request->input('redirect') ?: $request->session()->pull('url.intended');
+        $safeRedirect = $this->sanitizeRedirectUrl($request, $rawRedirect);
+
+        if ($user->role === 'admin') {
+            if ($safeRedirect && str_starts_with($safeRedirect, '/admin')) {
+                return $safeRedirect;
+            }
+
+            return route('admin.dashboard');
+        }
+
+        if ($safeRedirect && (str_starts_with($safeRedirect, '/user') || str_starts_with($safeRedirect, '/scan'))) {
+            return $safeRedirect;
+        }
+
+        return route('user.dashboard');
     }
 }

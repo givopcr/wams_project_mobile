@@ -796,14 +796,14 @@ export default function CalendarIndex({
                     {/* (MATCHING 'YOU ARE GOING TO' SECTION IN REFERENCE IMAGE)     */}
                     {/* ============================================================ */}
                     <div className="bg-white rounded-2xl border border-[#E0E0E0] p-6 shadow-2xs w-full xl:w-88 shrink-0 space-y-5">
-                        {/* Top Action Button: + Add New Event / Catat Peminjaman */}
+                        {/* Top Action Button: Tambah Jadwal Baru */}
                         <button
                             type="button"
                             onClick={() => setCreateModalOpen(true)}
                             className="w-full py-3 px-4 bg-[#3B82F6] hover:bg-[#2563EB] text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
                         >
                             <Plus size={16} />
-                            <span>+ Add New Event</span>
+                            <span>Tambah Jadwal Baru</span>
                         </button>
 
                         {/* List of upcoming items with avatars matching reference */}

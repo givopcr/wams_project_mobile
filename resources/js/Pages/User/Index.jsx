@@ -13,8 +13,7 @@ import {
     Mail,
     CreditCard,
     Eye,
-    EyeOff,
-    Lock
+    EyeOff
 } from 'lucide-react';
 import ConfirmModal from '@/Components/ConfirmModal';
 
@@ -26,7 +25,6 @@ export default function UserIndex({ users, filters }) {
     const [selectedRole, setSelectedRole] = useState(filters.role || '');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
-    const [visiblePasswords, setVisiblePasswords] = useState({});
     const [showModalPassword, setShowModalPassword] = useState(false);
 
     // Auto-refresh daftar user agar akun baru (mis. login via Google dari mobile/web)
@@ -40,13 +38,6 @@ export default function UserIndex({ users, filters }) {
         role: 'user',
         password: '',
     });
-
-    const togglePasswordVisibility = (userId) => {
-        setVisiblePasswords((prev) => ({
-            ...prev,
-            [userId]: !prev[userId],
-        }));
-    };
 
     const handleQuickRoleChange = (u, newRole) => {
         if (u.role === newRole) return;
@@ -184,7 +175,6 @@ export default function UserIndex({ users, filters }) {
                                 <tr>
                                     <th className="p-4">Pengguna</th>
                                     <th className="p-4">NIP</th>
-                                    <th className="p-4">Password</th>
                                     <th className="p-4">Role Akun</th>
                                     <th className="p-4 text-center">Riwayat Pinjam</th>
                                     <th className="p-4 text-center">Pinjaman Aktif</th>
@@ -194,13 +184,12 @@ export default function UserIndex({ users, filters }) {
                             <tbody className="divide-y divide-[#E0E0E0]">
                                 {users.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="p-8 text-center text-[#6B7280] bg-white">
+                                        <td colSpan={6} className="p-8 text-center text-[#6B7280] bg-white">
                                             Tidak ada user ditemukan.
                                         </td>
                                     </tr>
                                 ) : (
                                     users.data.map((u) => {
-                                        const isPwShown = Boolean(visiblePasswords[u.id]);
                                         const isSelf = Number(u.id) === Number(currentAdminId);
                                         return (
                                             <tr key={u.id} className="hover:bg-[#EEEEEE]/50 bg-white transition-colors">
@@ -239,21 +228,6 @@ export default function UserIndex({ users, filters }) {
                                                 </td>
                                                 <td className="p-4 font-mono text-[#1D1616] font-semibold">
                                                     {u.nip || '-'}
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#F8F9FA] border border-[#E0E0E0]">
-                                                        <span className="font-mono text-xs font-semibold text-[#1D1616] select-all">
-                                                            {isPwShown ? (u.visible_password || '-') : '••••••••'}
-                                                        </span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => togglePasswordVisibility(u.id)}
-                                                            className="text-[#6B7280] hover:text-[#D84040] transition-colors cursor-pointer"
-                                                            title={isPwShown ? 'Sembunyikan Password' : 'Lihat Password User'}
-                                                        >
-                                                            {isPwShown ? <EyeOff size={14} /> : <Eye size={14} />}
-                                                        </button>
-                                                    </div>
                                                 </td>
                                                 <td className="p-4">
                                                     <div className="inline-flex items-center gap-1.5">
@@ -384,40 +358,11 @@ export default function UserIndex({ users, filters }) {
                                 </div>
                             </div>
 
-                            <div>
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <label className="block text-xs font-bold text-[#1D1616]">
+                            {!editingUser && (
+                                <div>
+                                    <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
                                         Password Pengguna
                                     </label>
-                                    {editingUser && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-800">
-                                            <Lock size={10} /> Hanya Lihat (Tidak Dapat Diubah)
-                                        </span>
-                                    )}
-                                </div>
-
-                                {editingUser ? (
-                                    <div className="relative">
-                                        <input
-                                            type={showModalPassword ? 'text' : 'password'}
-                                            value={editingUser.visible_password || '-'}
-                                            readOnly
-                                            disabled
-                                            className="w-full pl-3.5 pr-10 py-2.5 bg-[#F3F4F6] border border-[#E0E0E0] rounded-xl text-xs font-mono font-semibold text-[#1D1616] cursor-not-allowed select-all"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowModalPassword(!showModalPassword)}
-                                            className="absolute right-3 top-2.5 text-[#6B7280] hover:text-[#D84040] cursor-pointer"
-                                            title={showModalPassword ? 'Sembunyikan Password' : 'Lihat Password'}
-                                        >
-                                            {showModalPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                                        </button>
-                                        <p className="text-[10.5px] text-[#6B7280] mt-1">
-                                            Admin dapat melihat password pengguna di sini, namun perubahan password hanya dapat dilakukan oleh pemilik akun.
-                                        </p>
-                                    </div>
-                                ) : (
                                     <div className="relative">
                                         <input
                                             type={showModalPassword ? 'text' : 'password'}
@@ -436,8 +381,8 @@ export default function UserIndex({ users, filters }) {
                                         </button>
                                         {errors.password && <p className="text-[#D84040] text-xs mt-1">{errors.password}</p>}
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
 
                             <div className="flex justify-end gap-2 pt-2">
                                 <button

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import UserMobileLayout from '@/Layouts/UserMobileLayout';
 import axios from 'axios';
@@ -34,6 +34,23 @@ export default function MobileKatalog({
         filters.mode === 'category_list' && Boolean(filters.kategori_id)
     );
     const [filterAvailableOnly, setFilterAvailableOnly] = useState(false);
+
+    // Sinkronkan state saat props filters berubah (misal dari scanner redirect)
+    useEffect(() => {
+        if (filters.kategori_id) {
+            setSelectedCategoryId(Number(filters.kategori_id));
+        } else {
+            setSelectedCategoryId(null);
+        }
+        if (filters.mode === 'category_list' && Boolean(filters.kategori_id)) {
+            setIsCategoryListMode(true);
+        } else if (filters.mode !== 'category_list') {
+            setIsCategoryListMode(false);
+        }
+        if (filters.q !== undefined) {
+            setSearchQuery(filters.q || '');
+        }
+    }, [filters.kategori_id, filters.mode, filters.q]);
 
     // Bottom Sheet Pakai Bahan (Matching BarangKategoriScreen._showPakaiBahanBottomSheet)
     const [pakaiModalItem, setPakaiModalItem] = useState(null);
@@ -173,7 +190,11 @@ export default function MobileKatalog({
                 onBack={() => {
                     setIsCategoryListMode(false);
                     setSelectedCategoryId(null);
-                    router.visit('/user/dashboard');
+                    if (typeof window !== 'undefined' && window.history.length > 2) {
+                        window.history.back();
+                    } else {
+                        router.visit('/user/katalog');
+                    }
                 }}
             >
                 <Head title={`${categoryName} - WAMS Mobile`} />

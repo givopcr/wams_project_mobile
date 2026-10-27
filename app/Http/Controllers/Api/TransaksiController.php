@@ -55,19 +55,25 @@ class TransaksiController extends Controller
             ], 422);
         }
 
-        $barang = Barang::findOrFail($barangId);
+        $barang = Barang::with('kategori')->findOrFail($barangId);
+        if ($barang->isHabisPakai()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Barang habis pakai tidak dapat dipinjam sebagai unit aset.',
+            ], 422);
+        }
         $requiresApproval = (bool) $barang->perlu_persetujuan;
         $targetStatus = $requiresApproval ? 'menunggu_persetujuan' : 'dipinjam';
 
         $fotoPinjamPath = null;
         if ($request->filled('foto_pinjam')) {
             $fotoData = $request->input('foto_pinjam');
-            if (str_starts_with($fotoData, 'data:image')) {
-                $parts = explode(',', $fotoData, 2);
-                if (count($parts) === 2) {
-                    $decoded = base64_decode($parts[1]);
-                    if ($decoded !== false) {
-                        $fotoPinjamPath = 'peminjaman/' . uniqid('bor_') . '.jpg';
+            if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $typeMatch)) {
+                $ext = strtolower($typeMatch[1]);
+                if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                    $decoded = base64_decode(substr($fotoData, strpos($fotoData, ',') + 1), true);
+                    if ($decoded !== false && strlen($decoded) > 0 && strlen($decoded) <= 5 * 1024 * 1024) {
+                        $fotoPinjamPath = 'peminjaman/' . uniqid('bor_') . '.' . $ext;
                         Storage::disk('public')->put($fotoPinjamPath, $decoded);
                     }
                 }
@@ -236,12 +242,12 @@ class TransaksiController extends Controller
 
             if ($request->filled('foto_kondisi') && Schema::hasColumn('logbook', 'foto_kembali')) {
                 $fotoData = $request->input('foto_kondisi');
-                if (str_starts_with($fotoData, 'data:image')) {
-                    $parts = explode(',', $fotoData, 2);
-                    if (count($parts) === 2) {
-                        $decoded = base64_decode($parts[1]);
-                        if ($decoded !== false) {
-                            $filename = 'pengembalian/' . uniqid('ret_') . '.jpg';
+                if (preg_match('/^data:image\/(\w+);base64,/', $fotoData, $typeMatch)) {
+                    $ext = strtolower($typeMatch[1]);
+                    if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                        $decoded = base64_decode(substr($fotoData, strpos($fotoData, ',') + 1), true);
+                        if ($decoded !== false && strlen($decoded) > 0 && strlen($decoded) <= 5 * 1024 * 1024) {
+                            $filename = 'pengembalian/' . uniqid('ret_') . '.' . $ext;
                             Storage::disk('public')->put($filename, $decoded);
                             $updatePayload['foto_kembali'] = $filename;
                         }

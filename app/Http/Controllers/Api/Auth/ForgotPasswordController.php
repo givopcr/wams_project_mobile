@@ -135,8 +135,8 @@ class ForgotPasswordController extends Controller
             ], 422);
         }
 
-        // Cek kecocokan OTP
-        if ($otpRecord->otp_code !== $otpCode) {
+        // Cek kecocokan OTP secara constant-time
+        if (! hash_equals((string) $otpRecord->otp_code, $otpCode)) {
             $otpRecord->increment('attempts');
             $sisaPercobaan = 5 - $otpRecord->attempts;
 

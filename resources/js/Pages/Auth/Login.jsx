@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm, Head } from '@inertiajs/react';
 import { User, Lock, Eye, EyeOff, ShieldAlert, KeyRound, Mail, X, CheckCircle2, RefreshCw, IdCard, UserPlus } from 'lucide-react';
 
-export default function Login({ status, initialTab = 'login' }) {
+export default function Login({ status, initialTab = 'login', redirect = null }) {
     const [activeTab, setActiveTab] = useState(initialTab || 'login');
     const [showPassword, setShowPassword] = useState(false);
     const [showRegPassword, setShowRegPassword] = useState(false);
@@ -35,6 +35,7 @@ export default function Login({ status, initialTab = 'login' }) {
         nip: '',
         password: '',
         password_confirmation: '',
+        redirect: redirect || '',
     });
 
     const handleRegisterSubmit = (e) => {
@@ -65,6 +66,7 @@ export default function Login({ status, initialTab = 'login' }) {
         login: '',
         password: '',
         remember: false,
+        redirect: redirect || '',
     });
 
     const submit = (e) => {
@@ -292,10 +294,10 @@ export default function Login({ status, initialTab = 'login' }) {
 
                                 {/* Main Form */}
                                 <form onSubmit={submit} className="space-y-4">
-                                    {/* Input Email / NIP */}
+                                    {/* Input Email / Nama / NIP */}
                                     <div>
                                         <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
-                                            Email atau NIP
+                                            Email, Nama Lengkap, atau NIP
                                         </label>
                                         <div className="relative">
                                             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
@@ -305,7 +307,7 @@ export default function Login({ status, initialTab = 'login' }) {
                                                 type="text"
                                                 value={data.login}
                                                 onChange={(e) => setData('login', e.target.value)}
-                                                placeholder="nama@instansi.com atau NIP"
+                                                placeholder="Email, nama, atau NIP"
                                                 required
                                                 className="w-full pl-10 pr-4 py-3 bg-white border border-[#E0E0E0] rounded-xl text-sm focus:outline-none focus:border-[#D84040] focus:ring-1 focus:ring-[#D84040] transition-colors"
                                             />

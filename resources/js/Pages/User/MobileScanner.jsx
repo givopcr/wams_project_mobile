@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import UserMobileLayout from '@/Layouts/UserMobileLayout';
 import {
     Zap,
@@ -12,7 +12,12 @@ import {
     AlertCircle,
     ShieldAlert,
     Image as ImageIcon,
-    Keyboard
+    Keyboard,
+    Boxes,
+    Wrench,
+    ChevronRight,
+    ArrowRight,
+    Layers
 } from 'lucide-react';
 import axios from 'axios';
 import jsQR from 'jsqr';
@@ -23,9 +28,11 @@ export default function MobileScanner({
     initialCode = '',
     targetName = '',
 }) {
+    const [scanMode, setScanMode] = useState('all'); // 'all' | 'category' | 'unit'
     const [scanInput, setScanInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [scannedUnit, setScannedUnit] = useState(null);
+    const [scannedCategory, setScannedCategory] = useState(null);
     const [scanError, setScanError] = useState(null);
     const [cameraActive, setCameraActive] = useState(false);
     const [facingMode, setFacingMode] = useState('environment');
@@ -211,7 +218,7 @@ export default function MobileScanner({
         const scan = () => {
             if (!isScanningRef.current) return;
             const video = videoRef.current;
-            if (video && video.readyState === video.HAVE_ENOUGH_DATA && !loading && !scannedUnit) {
+            if (video && video.readyState === video.HAVE_ENOUGH_DATA && !loading && !scannedUnit && !scannedCategory) {
                 canvas.height = video.videoHeight;
                 canvas.width = video.videoWidth;
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -246,7 +253,7 @@ export default function MobileScanner({
         return () => {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
         };
-    }, [cameraActive, loading, scannedUnit]);
+    }, [cameraActive, loading, scannedUnit, scannedCategory]);
 
     const handleImageUpload = (e) => {
         const file = e.target.files?.[0];
@@ -284,33 +291,31 @@ export default function MobileScanner({
     const handleLookup = async (codeToLookup) => {
         let code = (codeToLookup || scanInput).trim();
         if (!code) {
-            setScanError('Masukkan kode QR atau kode unit.');
+            setScanError('Masukkan kode QR kategori atau kode unit.');
             return;
-        }
-
-        if (code.includes('?')) {
-            code = code.split('?')[0];
-        }
-        const scanMatch = code.match(/(?:\/|^)scan\/([A-Za-z0-9_\-]+)/i);
-        if (scanMatch) {
-            code = scanMatch[1];
         }
 
         setLoading(true);
         setScanError(null);
         setScannedUnit(null);
+        setScannedCategory(null);
 
         try {
-            const res = await axios.get(`/user/lookup-unit/${encodeURIComponent(code)}`);
+            // Gunakan query param code agar kode unit dengan spasi/garis miring tidak terpotong oleh routing
+            const res = await axios.get('/user/lookup-unit', {
+                params: { code: code }
+            });
+
             if (res.data.success) {
+                // Tipe 1: QR Kategori (Rak Workshop)
                 if (res.data.type === 'kategori') {
                     stopCamera();
-                    router.visit(
-                        `/user/katalog?kategori_id=${res.data.data.id}&mode=category_list`
-                    );
+                    setScannedCategory(res.data.data);
+                    setShowManualSheet(false);
                     return;
                 }
 
+                // Tipe 2: QR Unit Fisik (Peralatan)
                 const u = res.data.data;
                 setScannedUnit(u);
                 setShowManualSheet(false);
@@ -356,6 +361,7 @@ export default function MobileScanner({
 
     const handleScanAgain = () => {
         setScannedUnit(null);
+        setScannedCategory(null);
         setScanError(null);
         setScanInput('');
         startCamera(facingMode);
@@ -419,14 +425,14 @@ export default function MobileScanner({
                 />
 
                 {/* Fallback when camera is off */}
-                {!cameraActive && !scannedUnit && (
+                {!cameraActive && !scannedUnit && !scannedCategory && (
                     <div className="relative z-20 flex flex-col items-center text-center px-6">
                         <div className="w-16 h-16 rounded-2xl bg-white/10 text-white flex items-center justify-center mb-3">
                             <Camera size={30} />
                         </div>
                         <p className="text-white font-bold text-sm">Kamera Belum Aktif</p>
-                        <p className="text-white/60 text-xs mt-1 mb-4 max-w-[240px]">
-                            Aktifkan kamera untuk memindai stiker QR Code kategori atau unit barang
+                        <p className="text-white/60 text-xs mt-1 mb-4 max-w-[260px]">
+                            Aktifkan kamera untuk memindai QR Kategori (Rak Workshop) atau QR Unit Fisik Peralatan
                         </p>
                         <button
                             type="button"
@@ -435,6 +441,49 @@ export default function MobileScanner({
                         >
                             Aktifkan Kamera
                         </button>
+                    </div>
+                )}
+
+                {/* Top Scan Mode Switcher (Semua | Per Kategori | Per Barang) */}
+                {cameraActive && !scannedUnit && !scannedCategory && (
+                    <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-center">
+                        <div className="flex items-center gap-1 p-1 bg-black/60 backdrop-blur-md rounded-full border border-white/20 shadow-lg">
+                            <button
+                                type="button"
+                                onClick={() => setScanMode('all')}
+                                className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                                    scanMode === 'all'
+                                        ? 'bg-[#D84040] text-white shadow-xs'
+                                        : 'text-white/70 hover:text-white'
+                                }`}
+                            >
+                                Semua QR
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setScanMode('category')}
+                                className={`px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                    scanMode === 'category'
+                                        ? 'bg-[#D84040] text-white shadow-xs'
+                                        : 'text-white/70 hover:text-white'
+                                }`}
+                            >
+                                <Boxes size={13} />
+                                <span>Per Kategori</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setScanMode('unit')}
+                                className={`px-3 py-1.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                    scanMode === 'unit'
+                                        ? 'bg-[#D84040] text-white shadow-xs'
+                                        : 'text-white/70 hover:text-white'
+                                }`}
+                            >
+                                <Wrench size={13} />
+                                <span>Per Unit Alat</span>
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -464,15 +513,36 @@ export default function MobileScanner({
                         </div>
 
                         {/* Instruction Pill */}
-                        <div className="mt-[36px] px-[20px] py-[10px] bg-black/60 rounded-[20px] text-white text-[13px] font-medium">
-                            Posisikan QR Code di dalam area kotak
+                        <div className="mt-[28px] px-[16px] py-[8px] bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-[12px] font-medium text-center max-w-[320px]">
+                            {scanMode === 'category'
+                                ? 'Arahkan kamera ke stiker QR Kategori pada rak workshop'
+                                : scanMode === 'unit'
+                                ? 'Arahkan kamera ke stiker QR unit pada fisik alat'
+                                : 'Arahkan kamera ke QR Kategori (Rak) atau QR Unit (Alat)'}
                         </div>
+
+                        {/* Quick Category Chips under viewfinder */}
+                        {categories.length > 0 && !scannedUnit && !scannedCategory && (
+                            <div className="mt-3 flex items-center gap-1.5 overflow-x-auto max-w-[340px] px-2 py-1 no-scrollbar">
+                                {categories.map((kat) => (
+                                    <button
+                                        key={kat.id}
+                                        type="button"
+                                        onClick={() => handleLookup(kat.qr_code || `/scan/kategori/${kat.id}`)}
+                                        className="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/30 backdrop-blur-md border border-white/20 text-white text-[11px] font-bold flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                                    >
+                                        <Boxes size={11} className="text-amber-300" />
+                                        <span>{kat.nama_kategori}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
                 {/* Error Toast inside Scanner */}
                 {scanError && !showManualSheet && (
-                    <div className="absolute top-4 left-5 right-5 z-30 p-3.5 bg-[#DC2626] text-white rounded-[12px] shadow-lg flex items-center justify-between gap-2 text-xs font-semibold">
+                    <div className="absolute top-16 left-5 right-5 z-30 p-3.5 bg-[#DC2626] text-white rounded-[12px] shadow-lg flex items-center justify-between gap-2 text-xs font-semibold">
                         <div className="flex items-center gap-2">
                             <AlertCircle size={16} className="shrink-0" />
                             <span>{scanError}</span>
@@ -499,15 +569,15 @@ export default function MobileScanner({
                     <button
                         type="button"
                         onClick={() => setShowManualSheet(true)}
-                        className="px-4 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                        className="px-4 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer shadow-lg"
                     >
                         <Keyboard size={15} />
-                        <span>Kode Manual</span>
+                        <span>Kode Manual / Kategori</span>
                     </button>
                     <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-4 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                        className="px-4 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer shadow-lg"
                     >
                         <ImageIcon size={15} />
                         <span>Galeri QR</span>
@@ -523,21 +593,26 @@ export default function MobileScanner({
                 )}
             </div>
 
-            {/* Manual Code Bottom Sheet */}
+            {/* Manual Code & Category Selector Bottom Sheet */}
             {showManualSheet && (
                 <div
                     onClick={() => setShowManualSheet(false)}
-                    className="fixed inset-0 z-50 bg-black/60 flex items-end justify-center animate-in fade-in duration-150"
+                    className="fixed inset-0 z-[9999] bg-black/60 flex items-end justify-center animate-in fade-in duration-150"
                 >
                     <div
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full max-w-[480px] bg-white rounded-t-[24px] p-[24px] shadow-2xl animate-in slide-in-from-bottom duration-200"
+                        className="w-full max-w-[480px] bg-white rounded-t-[24px] p-[24px] shadow-2xl max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
                     >
                         <div className="w-[40px] h-[4px] bg-[#E0E0E0] rounded-full mx-auto mb-[16px]" />
                         <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-[16px] font-extrabold text-[#1D1616]">
-                                Masukkan Kode QR / Unit
-                            </h3>
+                            <div>
+                                <h3 className="text-[16px] font-extrabold text-[#1D1616]">
+                                    Pilih Kategori atau Kode Unit
+                                </h3>
+                                <p className="text-[11px] text-[#6B7280]">
+                                    Ketik manual atau pilih kategori rak workshop
+                                </p>
+                            </div>
                             <button
                                 type="button"
                                 onClick={() => setShowManualSheet(false)}
@@ -552,14 +627,14 @@ export default function MobileScanner({
                                 e.preventDefault();
                                 handleLookup();
                             }}
-                            className="flex gap-2"
+                            className="flex gap-2 mb-4"
                         >
                             <input
                                 type="text"
                                 value={scanInput}
                                 onChange={(e) => setScanInput(e.target.value)}
-                                placeholder="Contoh: BOR-101-01"
-                                className="flex-1 px-4 py-3 bg-[#F8F9FA] border border-[#E0E0E0] rounded-[12px] text-sm font-mono text-[#1D1616] focus:outline-none focus:border-[#D84040]"
+                                placeholder="Contoh: /scan/kategori/1 atau BOR-101-01"
+                                className="flex-1 px-4 py-3 bg-[#F8F9FA] border border-[#E0E0E0] rounded-[12px] text-xs font-mono text-[#1D1616] focus:outline-none focus:border-[#D84040]"
                             />
                             <button
                                 type="submit"
@@ -570,10 +645,50 @@ export default function MobileScanner({
                             </button>
                         </form>
 
+                        {/* Section 1: Kategori Workshop (Rak) */}
+                        {categories.length > 0 && (
+                            <div className="mb-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[11px] font-bold text-[#1D1616] flex items-center gap-1.5">
+                                        <Boxes size={13} className="text-[#D84040]" />
+                                        <span>Kategori Workshop (Rak):</span>
+                                    </span>
+                                    <span className="text-[10px] text-[#6B7280]">
+                                        Tap untuk buka katalog
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {categories.map((kat) => (
+                                        <button
+                                            key={kat.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setShowManualSheet(false);
+                                                handleLookup(kat.qr_code || `/scan/kategori/${kat.id}`);
+                                            }}
+                                            className="p-3 rounded-xl border border-[#E0E0E0] bg-[#F8F9FA] hover:border-[#D84040] hover:bg-red-50/50 flex flex-col items-center text-center transition-all cursor-pointer group"
+                                        >
+                                            <div className="w-9 h-9 rounded-lg bg-red-100 text-[#D84040] flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                                                <Boxes size={18} />
+                                            </div>
+                                            <span className="text-xs font-bold text-[#1D1616] leading-tight line-clamp-1">
+                                                {kat.nama_kategori}
+                                            </span>
+                                            <span className="text-[10px] text-[#6B7280] mt-0.5">
+                                                {kat.total_barang ?? 0} Alat
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Section 2: Sampel Unit Fisik */}
                         {recentUnits.length > 0 && (
-                            <div className="mt-4 pt-3 border-t border-[#EEEEEE]">
-                                <p className="text-[11px] font-semibold text-[#8C93A0] mb-2">
-                                    Pilih Cepat Kode Sampel Unit:
+                            <div className="pt-3 border-t border-[#EEEEEE]">
+                                <p className="text-[11px] font-bold text-[#1D1616] flex items-center gap-1.5 mb-2">
+                                    <Wrench size={13} className="text-[#D84040]" />
+                                    <span>Pilih Cepat Sampel Unit Alat:</span>
                                 </p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {recentUnits.map((u) => (
@@ -596,10 +711,105 @@ export default function MobileScanner({
                 </div>
             )}
 
+            {/* Scanned Category Result Bottom Sheet */}
+            {scannedCategory && (
+                <div
+                    onClick={() => {
+                        setScannedCategory(null);
+                        handleScanAgain();
+                    }}
+                    className="fixed inset-0 z-[9999] bg-black/65 flex items-end justify-center animate-in fade-in duration-150"
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ paddingBottom: 'max(28px, env(safe-area-inset-bottom, 28px))' }}
+                        className="w-full max-w-[480px] bg-white rounded-t-[24px] p-[24px] shadow-2xl animate-in slide-in-from-bottom duration-200 relative z-10"
+                    >
+                        <div className="w-[40px] h-[4px] bg-[#E0E0E0] rounded-full mx-auto mb-[16px]" />
+
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ECFDF5] text-[#059669] text-[11px] font-bold w-fit">
+                                <CheckCircle2 size={14} />
+                                <span>QR Kategori Workshop Terverifikasi</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setScannedCategory(null);
+                                    handleScanAgain();
+                                }}
+                                className="w-8 h-8 rounded-full bg-[#F5F5F5] hover:bg-[#EAEAEA] text-[#8C93A0] hover:text-[#1D1616] flex items-center justify-center cursor-pointer transition-colors"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        {/* Interactive Clickable Category Info Card */}
+                        <Link
+                            href={`/user/katalog?kategori_id=${scannedCategory.id}&mode=category_list`}
+                            className="w-full flex items-center gap-3.5 mb-4 p-3.5 rounded-2xl bg-[#F8F9FA] hover:bg-red-50/40 active:scale-[0.99] border border-[#E0E0E0] hover:border-[#D84040] transition-all cursor-pointer group touch-manipulation block text-left"
+                        >
+                            <div className="w-13 h-13 rounded-2xl bg-red-100 text-[#D84040] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                <Boxes size={28} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-[#1D1616] text-white">
+                                        ID #{scannedCategory.id}
+                                    </span>
+                                    <span className="text-[11px] text-[#6B7280] font-mono truncate">
+                                        {scannedCategory.qr_code}
+                                    </span>
+                                </div>
+                                <h3 className="text-[18px] font-extrabold text-[#1D1616] truncate mt-1 group-hover:text-[#D84040] transition-colors">
+                                    {scannedCategory.nama_kategori}
+                                </h3>
+                                <p className="text-[12px] text-[#6B7280] mt-0.5">
+                                    {scannedCategory.total_barang ?? 0} Jenis Peralatan • {scannedCategory.tersedia ?? scannedCategory.total_unit ?? 0} Unit Tersedia
+                                </p>
+                            </div>
+                            <ChevronRight size={18} className="text-[#9CA3AF] group-hover:text-[#D84040] shrink-0" />
+                        </Link>
+
+                        <div className="space-y-2 pt-1">
+                            {/* Primary Navigation Link Button */}
+                            <Link
+                                href={`/user/katalog?kategori_id=${scannedCategory.id}&mode=category_list`}
+                                className="w-full py-3.5 bg-[#D84040] hover:bg-[#8E1616] active:bg-[#701010] active:scale-[0.98] text-white text-xs font-bold rounded-[12px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-red-500/20 touch-manipulation select-none"
+                            >
+                                <span>Lihat Daftar Alat ({scannedCategory.total_barang ?? 0} Barang)</span>
+                                <ChevronRight size={16} />
+                            </Link>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setScannedCategory(null);
+                                    handleScanAgain();
+                                }}
+                                className="w-full py-3 rounded-[12px] bg-[#F5F5F5] hover:bg-[#EEEEEE] active:bg-[#E5E5E5] text-[#1D1616] text-xs font-bold transition-all cursor-pointer touch-manipulation select-none"
+                            >
+                                Pindai QR Lainnya
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Scanned Unit Result Bottom Sheet */}
             {scannedUnit && (
-                <div className="fixed inset-0 z-50 bg-black/65 flex items-end justify-center animate-in fade-in duration-150">
-                    <div className="w-full max-w-[480px] bg-white rounded-t-[24px] p-[24px] shadow-2xl max-h-[88vh] overflow-y-auto animate-in slide-in-from-bottom duration-200">
+                <div
+                    onClick={() => {
+                        setScannedUnit(null);
+                        handleScanAgain();
+                    }}
+                    className="fixed inset-0 z-[9999] bg-black/65 flex items-end justify-center animate-in fade-in duration-150"
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ paddingBottom: 'max(28px, env(safe-area-inset-bottom, 28px))' }}
+                        className="w-full max-w-[480px] bg-white rounded-t-[24px] p-[24px] shadow-2xl max-h-[88vh] overflow-y-auto animate-in slide-in-from-bottom duration-200 relative z-10"
+                    >
                         <div className="w-[40px] h-[4px] bg-[#E0E0E0] rounded-full mx-auto mb-[16px]" />
 
                         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ECFDF5] text-[#059669] text-[11px] font-bold w-fit mb-3">

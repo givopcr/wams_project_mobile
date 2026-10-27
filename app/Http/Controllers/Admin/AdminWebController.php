@@ -320,7 +320,13 @@ class AdminWebController extends Controller
      */
     public function barang(Request $request): Response
     {
-        $query = Barang::with(['kategori', 'units']);
+        $query = Barang::with([
+            'kategori',
+            'units' => function ($q) {
+                $q->withCount('validLogbooks as total_peminjaman')
+                  ->with(['latestUsageLogbook.user', 'activeLogbook.user']);
+            }
+        ]);
 
         if ($request->filled('kategori_id')) {
             $query->where('kategori_id', $request->kategori_id);
@@ -371,6 +377,26 @@ class AdminWebController extends Controller
                 'maintenance' => $b->units->where('status', 'maintenance')->count(),
                 'perlu_persetujuan' => (bool) $b->perlu_persetujuan,
                 'units' => $b->units->map(function ($u) use ($b) {
+                    $latestLog = $u->latestUsageLogbook;
+                    $isCurrentlyBorrowed = $u->status === 'dipinjam' || ($latestLog && $latestLog->status_transaksi === 'dipinjam');
+
+                    $lastUsage = null;
+                    if ($latestLog) {
+                        $lastUsage = [
+                            'id' => $latestLog->id,
+                            'peminjam_nama' => $latestLog->peminjam_nama,
+                            'tipe_peminjam' => $latestLog->tipe_peminjam,
+                            'tanggal_pinjam' => $latestLog->tanggal_pinjam ? $latestLog->tanggal_pinjam->format('d-m-Y') : null,
+                            'tanggal_kembali' => $latestLog->tanggal_kembali ? $latestLog->tanggal_kembali->format('d-m-Y') : null,
+                            'tanggal_display' => $latestLog->tanggal_kembali ? $latestLog->tanggal_kembali->format('d-m-Y') : ($latestLog->tanggal_pinjam ? $latestLog->tanggal_pinjam->format('d-m-Y') : '-'),
+                            'kondisi_kembali' => $latestLog->kondisi_kembali ?: ($isCurrentlyBorrowed ? 'Sedang Dipinjam' : ($u->kondisi ?: 'baik')),
+                            'catatan_kembali' => $latestLog->catatan_kembali,
+                            'foto_kembali_url' => $latestLog->foto_kembali_url ?: ($isCurrentlyBorrowed ? $latestLog->foto_pinjam_url : null),
+                            'foto_pinjam_url' => $latestLog->foto_pinjam_url,
+                            'is_active' => $isCurrentlyBorrowed,
+                        ];
+                    }
+
                     return [
                         'id' => $u->id,
                         'kode_unit' => $u->kode_unit,
@@ -379,6 +405,8 @@ class AdminWebController extends Controller
                         'gambar' => $u->gambar,
                         'unit_gambar_url' => $u->gambar ? asset('storage/'.$u->gambar) : null,
                         'gambar_url' => $u->gambar ? asset('storage/'.$u->gambar) : ($b->gambar ? asset('storage/'.$b->gambar) : null),
+                        'total_peminjaman' => (int) ($u->total_peminjaman ?? 0),
+                        'last_usage' => $lastUsage,
                     ];
                 })->values(),
             ];
@@ -630,7 +658,8 @@ class AdminWebController extends Controller
      */
     public function unit(Request $request): Response
     {
-        $query = BarangUnit::with(['barang.kategori', 'activeLogbook.user']);
+        $query = BarangUnit::with(['barang.kategori', 'activeLogbook.user', 'latestUsageLogbook.user'])
+            ->withCount('validLogbooks as total_peminjaman');
 
         if ($request->filled('barang_id')) {
             $query->where('barang_id', $request->barang_id);
@@ -655,6 +684,26 @@ class AdminWebController extends Controller
         $units = $query->latest()->paginate(10)->withQueryString();
 
         $units->getCollection()->transform(function ($u) {
+            $latestLog = $u->latestUsageLogbook;
+            $isCurrentlyBorrowed = $u->status === 'dipinjam' || ($latestLog && $latestLog->status_transaksi === 'dipinjam');
+
+            $lastUsage = null;
+            if ($latestLog) {
+                $lastUsage = [
+                    'id' => $latestLog->id,
+                    'peminjam_nama' => $latestLog->peminjam_nama,
+                    'tipe_peminjam' => $latestLog->tipe_peminjam,
+                    'tanggal_pinjam' => $latestLog->tanggal_pinjam ? $latestLog->tanggal_pinjam->format('d-m-Y') : null,
+                    'tanggal_kembali' => $latestLog->tanggal_kembali ? $latestLog->tanggal_kembali->format('d-m-Y') : null,
+                    'tanggal_display' => $latestLog->tanggal_kembali ? $latestLog->tanggal_kembali->format('d-m-Y') : ($latestLog->tanggal_pinjam ? $latestLog->tanggal_pinjam->format('d-m-Y') : '-'),
+                    'kondisi_kembali' => $latestLog->kondisi_kembali ?: ($isCurrentlyBorrowed ? 'Sedang Dipinjam' : ($u->kondisi ?: 'baik')),
+                    'catatan_kembali' => $latestLog->catatan_kembali,
+                    'foto_kembali_url' => $latestLog->foto_kembali_url ?: ($isCurrentlyBorrowed ? $latestLog->foto_pinjam_url : null),
+                    'foto_pinjam_url' => $latestLog->foto_pinjam_url,
+                    'is_active' => $isCurrentlyBorrowed,
+                ];
+            }
+
             return [
                 'id' => $u->id,
                 'barang_id' => $u->barang_id,
@@ -669,6 +718,8 @@ class AdminWebController extends Controller
                 'gambar_url' => $u->gambar ? asset('storage/'.$u->gambar) : ($u->barang && $u->barang->gambar ? asset('storage/'.$u->barang->gambar) : null),
                 'borrower' => $u->activeLogbook ? $u->activeLogbook->peminjam_nama : null,
                 'borrow_date' => $u->activeLogbook ? $u->activeLogbook->tanggal_pinjam->format('d M Y H:i') : null,
+                'total_peminjaman' => (int) ($u->total_peminjaman ?? 0),
+                'last_usage' => $lastUsage,
                 'created_at' => $u->created_at->format('d M Y'),
             ];
         });
@@ -694,6 +745,9 @@ class AdminWebController extends Controller
             ]);
 
             $barang = Barang::findOrFail($validated['barang_id']);
+            if ($barang->isHabisPakai()) {
+                return back()->with('error', 'Barang habis pakai menggunakan sistem stok dan tidak memiliki unit fisik.');
+            }
             $existingCount = $barang->units()->count();
 
             $createdCount = 0;
@@ -725,6 +779,11 @@ class AdminWebController extends Controller
             'kondisi' => ['required', 'in:baik,rusak'],
             'gambar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ]);
+
+        $barang = Barang::findOrFail($validated['barang_id']);
+        if ($barang->isHabisPakai()) {
+            return back()->with('error', 'Barang habis pakai menggunakan sistem stok dan tidak memiliki unit fisik.');
+        }
 
         if ($request->hasFile('gambar')) {
             $validated['gambar'] = $request->file('gambar')->store('unit', 'public');
@@ -760,7 +819,35 @@ class AdminWebController extends Controller
             unset($validated['gambar']);
         }
 
-        $unit->update($validated);
+        DB::transaction(function () use ($unit, $validated) {
+            $oldStatus = $unit->status;
+            $newStatus = $validated['status'];
+
+            // Sinkronkan Logbook aktif jika Admin mengubah status unit dari dipinjam/menunggu_persetujuan ke tersedia/maintenance
+            if (in_array($oldStatus, ['dipinjam', 'menunggu_persetujuan']) && in_array($newStatus, ['tersedia', 'maintenance'])) {
+                $activeLogs = Logbook::where('barang_unit_id', $unit->id)
+                    ->whereIn('status_transaksi', ['dipinjam', 'menunggu_persetujuan'])
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($activeLogs as $log) {
+                    if ($log->status_transaksi === 'dipinjam') {
+                        $log->update([
+                            'status_transaksi' => 'dikembalikan',
+                            'tanggal_kembali' => now(),
+                            'kondisi_kembali' => $validated['kondisi'],
+                        ]);
+                    } else {
+                        $log->update([
+                            'status_transaksi' => 'dibatalkan',
+                            'alasan_penolakan' => 'Status unit diubah secara manual oleh Administrator.',
+                        ]);
+                    }
+                }
+            }
+
+            $unit->update($validated);
+        });
 
         return back()->with('success', 'Unit fisik berhasil diperbarui.');
     }
@@ -782,6 +869,53 @@ class AdminWebController extends Controller
         $unit->delete();
 
         return back()->with('success', 'Unit fisik berhasil dihapus.');
+    }
+
+    /**
+     * API JSON: Riwayat Lengkap Siklus Peminjaman Unit Fisik
+     */
+    public function unitHistoryJson($id): JsonResponse
+    {
+        $unit = BarangUnit::with(['barang.kategori'])->findOrFail($id);
+
+        $history = Logbook::with(['user', 'approver'])
+            ->where('barang_unit_id', $id)
+            ->whereIn('status_transaksi', ['dipinjam', 'dikembalikan'])
+            ->orderByDesc('tanggal_pinjam')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'peminjam_nama' => $log->peminjam_nama,
+                    'peminjam_email' => $log->peminjam_email,
+                    'tipe_peminjam' => $log->tipe_peminjam,
+                    'keperluan' => $log->keperluan ?: '-',
+                    'status_transaksi' => $log->status_transaksi,
+                    'tanggal_pinjam' => $log->tanggal_pinjam ? $log->tanggal_pinjam->format('d M Y, H:i') : '-',
+                    'tanggal_kembali' => $log->tanggal_kembali ? $log->tanggal_kembali->format('d M Y, H:i') : null,
+                    'batas_kembali' => $log->batas_kembali ? $log->batas_kembali->format('d M Y, H:i') : null,
+                    'kondisi_kembali' => $log->kondisi_kembali ?: 'baik',
+                    'catatan_kembali' => $log->catatan_kembali,
+                    'foto_pinjam_url' => $log->foto_pinjam_url,
+                    'foto_kembali_url' => $log->foto_kembali_url,
+                    'approver_nama' => $log->approver ? $log->approver->nama : null,
+                ];
+            });
+
+        return response()->json([
+            'unit' => [
+                'id' => $unit->id,
+                'kode_unit' => $unit->kode_unit,
+                'nama_barang' => $unit->barang ? $unit->barang->nama_barang : '-',
+                'nama_kategori' => $unit->barang && $unit->barang->kategori ? $unit->barang->kategori->nama_kategori : '-',
+                'status' => $unit->status,
+                'kondisi' => $unit->kondisi,
+                'gambar_url' => $unit->gambar_url,
+                'total_peminjaman' => $history->count(),
+            ],
+            'history' => $history,
+        ]);
     }
 
     /**
@@ -923,7 +1057,6 @@ class AdminWebController extends Controller
                 'google_id' => $u->google_id,
                 'total_transaksi' => $u->total_transaksi,
                 'transaksi_aktif' => $u->transaksi_aktif,
-                'visible_password' => $u->getAdminVisiblePassword(),
                 'created_at' => $u->created_at?->format('d M Y'),
             ];
         });
@@ -1004,15 +1137,35 @@ class AdminWebController extends Controller
 
         DB::transaction(function () use ($user) {
             // Kembalikan unit yang masih berstatus dipinjam/menunggu_persetujuan oleh user ini ke 'tersedia'
+            // dan selesaikan transaksi aktifnya
             $activeLogs = Logbook::where('user_id', $user->id)
                 ->whereIn('status_transaksi', ['dipinjam', 'menunggu_persetujuan'])
+                ->lockForUpdate()
                 ->get();
 
             foreach ($activeLogs as $log) {
                 if ($log->barang_unit_id) {
                     BarangUnit::where('id', $log->barang_unit_id)->update(['status' => 'tersedia']);
                 }
+                if ($log->status_transaksi === 'dipinjam') {
+                    $log->update([
+                        'status_transaksi' => 'dikembalikan',
+                        'tanggal_kembali' => now(),
+                        'kondisi_kembali' => 'baik',
+                    ]);
+                } else {
+                    $log->update([
+                        'status_transaksi' => 'dibatalkan',
+                    ]);
+                }
             }
+
+            // Pertahankan histori logbook masa lalu dengan menyimpan nama & email terakhir sebelum user dihapus
+            Logbook::where('user_id', $user->id)->update([
+                'user_id' => null,
+                'guest_nama' => $user->nama,
+                'guest_email' => $user->email,
+            ]);
 
             $user->tokens()->delete();
             $user->delete();
@@ -1496,15 +1649,40 @@ class AdminWebController extends Controller
 
         return DB::transaction(function () use ($validated) {
             $unit = BarangUnit::where('id', $validated['barang_unit_id'])
-                ->where('status', 'tersedia')
+                ->where('status', '!=', 'maintenance')
                 ->lockForUpdate()
                 ->first();
 
             if (!$unit) {
-                return back()->with('error', 'Unit barang sedang dipinjam atau tidak tersedia.');
+                return back()->with('error', 'Unit barang sedang dalam perbaikan atau tidak tersedia.');
             }
 
-            $unit->update(['status' => 'dipinjam']);
+            $tglPinjam = Carbon::parse($validated['tanggal_pinjam'])->startOfDay();
+            $batasKembali = Carbon::parse($validated['batas_kembali'])->endOfDay();
+
+            // Cek bentrok jadwal peminjaman pada rentang tanggal tersebut
+            $hasConflict = Logbook::where('barang_unit_id', $unit->id)
+                ->whereIn('status_transaksi', ['dipinjam', 'menunggu_persetujuan'])
+                ->where(function ($q) use ($tglPinjam, $batasKembali) {
+                    $q->where('tanggal_pinjam', '<=', $batasKembali)
+                      ->where(function ($sub) use ($tglPinjam) {
+                          $sub->whereNull('batas_kembali')
+                              ->orWhere('batas_kembali', '>=', $tglPinjam);
+                      });
+                })
+                ->exists();
+
+            if ($hasConflict) {
+                return back()->with('error', 'Unit barang sudah memiliki jadwal peminjaman aktif pada rentang tanggal tersebut.');
+            }
+
+            // Hanya ubah status unit fisik menjadi dipinjam saat ini jika tanggal pinjam adalah hari ini atau sebelumnya
+            if ($tglPinjam->lte(now()->endOfDay())) {
+                if ($unit->status !== 'tersedia') {
+                    return back()->with('error', 'Unit barang sedang dipinjam atau tidak tersedia hari ini.');
+                }
+                $unit->update(['status' => 'dipinjam']);
+            }
 
             Logbook::create([
                 'user_id' => $validated['user_id'],

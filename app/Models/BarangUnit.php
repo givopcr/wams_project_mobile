@@ -74,4 +74,23 @@ class BarangUnit extends Model
     {
         return $this->hasOne(Logbook::class, 'barang_unit_id')->where('status_transaksi', 'dipinjam')->latestOfMany();
     }
+
+    /**
+     * Seluruh transaksi peminjaman valid untuk unit ini
+     */
+    public function validLogbooks(): HasMany
+    {
+        return $this->hasMany(Logbook::class, 'barang_unit_id')
+            ->whereIn('status_transaksi', ['dipinjam', 'dikembalikan']);
+    }
+
+    /**
+     * Transaksi peminjaman terakhir (sedang dipinjam atau telah selesai)
+     */
+    public function latestUsageLogbook()
+    {
+        return $this->hasOne(Logbook::class, 'barang_unit_id')
+            ->whereIn('status_transaksi', ['dipinjam', 'dikembalikan'])
+            ->latestOfMany('tanggal_pinjam');
+    }
 }

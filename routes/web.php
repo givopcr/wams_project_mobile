@@ -23,17 +23,19 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// Auth Routes (Universal Login & Register untuk Pengguna WAMS dengan proteksi Rate Limit)
-Route::get('/login', [AuthWebController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthWebController::class, 'login'])->middleware('throttle:10,1')->name('login.post');
-Route::get('/register', fn () => redirect()->to('/login?tab=register'))->name('register');
-Route::post('/register', [AuthWebController::class, 'register'])->middleware('throttle:10,1')->name('register.post');
-Route::get('/admin/login', fn () => redirect()->route('login'));
-Route::post('/admin/login', [AuthWebController::class, 'login'])->middleware('throttle:10,1');
+// Auth Routes (Universal Login & Register untuk Pengguna WAMS dengan proteksi Guest & Rate Limit)
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthWebController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthWebController::class, 'login'])->middleware('throttle:10,1')->name('login.post');
+    Route::get('/register', fn () => redirect()->to('/login?tab=register'))->name('register');
+    Route::post('/register', [AuthWebController::class, 'register'])->middleware('throttle:10,1')->name('register.post');
+    Route::get('/admin/login', fn () => redirect()->route('login'));
+    Route::post('/admin/login', [AuthWebController::class, 'login'])->middleware('throttle:10,1');
 
-// Google OAuth Web Routes
-Route::get('/auth/google', [AuthWebController::class, 'redirectToGoogle'])->name('auth.google');
-Route::get('/auth/google/callback', [AuthWebController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+    // Google OAuth Web Routes
+    Route::get('/auth/google', [AuthWebController::class, 'redirectToGoogle'])->name('auth.google');
+    Route::get('/auth/google/callback', [AuthWebController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+});
 
 // Universal Logout (Bisa diakses oleh role admin maupun user tanpa terblokir middleware)
 Route::middleware('auth')->group(function () {
@@ -59,6 +61,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::post('/unit', [AdminWebController::class, 'storeUnit'])->name('admin.unit.store');
     Route::match(['put', 'post'], '/unit/{id}', [AdminWebController::class, 'updateUnit'])->name('admin.unit.update');
     Route::delete('/unit/{id}', [AdminWebController::class, 'destroyUnit'])->name('admin.unit.destroy');
+    Route::get('/unit/{id}/history', [AdminWebController::class, 'unitHistoryJson'])->name('admin.unit.history');
 
     // Transaksi & Logbook
     Route::get('/logbook', [AdminWebController::class, 'logbook'])->name('admin.logbook');
@@ -99,7 +102,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
 | User Mobile Web Routes (Mobile-Friendly Portal for Workshop Users)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
+Route::middleware(['auth', 'user'])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserWebController::class, 'dashboard'])->name('dashboard');
     Route::get('/katalog', [UserWebController::class, 'katalog'])->name('katalog');
     Route::get('/barang/{id}', [UserWebController::class, 'detailBarang'])->name('barang.detail');
@@ -110,7 +113,7 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
     Route::post('/batalkan/{id}', [UserWebController::class, 'cancelPinjam'])->name('pinjam.cancel');
     Route::get('/riwayat', [UserWebController::class, 'riwayat'])->name('riwayat');
     Route::get('/scanner', [UserWebController::class, 'scanner'])->name('scanner');
-    Route::get('/lookup-unit/{kode_unit}', [UserWebController::class, 'lookupUnit'])->name('lookup.unit');
+    Route::get('/lookup-unit/{kode_unit?}', [UserWebController::class, 'lookupUnit'])->where('kode_unit', '.*')->name('lookup.unit');
     Route::get('/profile', [UserWebController::class, 'profile'])->name('profile');
     Route::post('/profile/update', [UserWebController::class, 'updateProfile'])->name('profile.update');
     Route::post('/profile/email/send-otp', [\App\Http\Controllers\Api\ProfileController::class, 'sendChangeEmailOtp'])->middleware('throttle:10,1')->name('profile.email.otp');
@@ -122,10 +125,10 @@ Route::middleware(['auth'])->prefix('user')->name('user.')->group(function () {
 | Public Guest Borrowing (Scan QR via Mobile Web)
 |--------------------------------------------------------------------------
 */
-Route::get('/scan/{kode_unit}', [GuestPinjamController::class, 'show'])->name('guest.scan');
-Route::post('/guest/pinjam/{kode_unit}', [GuestPinjamController::class, 'submitBorrow'])->middleware('throttle:15,1')->name('guest.borrow.submit');
-Route::post('/guest/pinjam/{kode_unit}/verify-otp', [GuestPinjamController::class, 'verifyOtp'])->middleware('throttle:10,1')->name('guest.borrow.verify_otp');
-Route::post('/guest/pinjam/{kode_unit}/resend-otp', [GuestPinjamController::class, 'resendOtp'])->middleware('throttle:10,1')->name('guest.borrow.resend_otp');
-Route::get('/guest/status/{kode_unit}', [GuestPinjamController::class, 'showStatus'])->name('guest.status');
-Route::post('/guest/return/{kode_unit}', [GuestPinjamController::class, 'submitReturn'])->middleware('throttle:15,1')->name('guest.return.submit');
+Route::get('/scan/{kode_unit}', [GuestPinjamController::class, 'show'])->where('kode_unit', '.*')->name('guest.scan');
+Route::post('/guest/pinjam/{kode_unit}', [GuestPinjamController::class, 'submitBorrow'])->where('kode_unit', '.*')->middleware('throttle:15,1')->name('guest.borrow.submit');
+Route::post('/guest/pinjam/{kode_unit}/verify-otp', [GuestPinjamController::class, 'verifyOtp'])->where('kode_unit', '.*')->middleware('throttle:10,1')->name('guest.borrow.verify_otp');
+Route::post('/guest/pinjam/{kode_unit}/resend-otp', [GuestPinjamController::class, 'resendOtp'])->where('kode_unit', '.*')->middleware('throttle:10,1')->name('guest.borrow.resend_otp');
+Route::get('/guest/status/{kode_unit}', [GuestPinjamController::class, 'showStatus'])->where('kode_unit', '.*')->name('guest.status');
+Route::post('/guest/return/{kode_unit}', [GuestPinjamController::class, 'submitReturn'])->where('kode_unit', '.*')->middleware('throttle:15,1')->name('guest.return.submit');
 

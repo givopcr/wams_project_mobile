@@ -207,7 +207,7 @@ class ProfileController extends Controller
             ], 422);
         }
 
-        if ($otpRecord->otp_code !== $otpCode) {
+        if (! hash_equals((string) $otpRecord->otp_code, $otpCode)) {
             $otpRecord->increment('attempts');
             $sisa = 5 - $otpRecord->attempts;
             if ($sisa <= 0) {

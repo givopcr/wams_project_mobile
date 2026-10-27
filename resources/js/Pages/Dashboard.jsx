@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
     Boxes,
@@ -205,6 +205,18 @@ export default function Dashboard({
             gradientId: 'grad-komponen',
         },
     };
+
+    // Silent background auto-polling every 20 seconds so real-time loans from Flutter/Mobile update automatically
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.reload({
+                only: ['stats', 'categoryCharts', 'recentUsersActivity', 'topBarangDipinjam', 'topUnitMaintenance', 'overdueStats'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, 20000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <AuthenticatedLayout title="Dashboard">

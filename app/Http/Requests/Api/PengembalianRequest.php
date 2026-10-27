@@ -17,7 +17,7 @@ class PengembalianRequest extends FormRequest
             'logbook_id' => ['required', 'exists:logbook,id'],
             'kondisi_kembali' => ['required', 'in:baik,rusak,rusak_ringan,rusak_berat'],
             'catatan' => ['nullable', 'string', 'max:500'],
-            'foto_kondisi' => ['required', 'string'],
+            'foto_kondisi' => ['required', 'string', 'max:7000000'],
         ];
     }
 }

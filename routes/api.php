@@ -47,8 +47,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile & Change Email via OTP
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
-    Route::post('/profile/change-email/send-otp', [ProfileController::class, 'sendChangeEmailOtp']);
-    Route::post('/profile/change-email/verify-otp', [ProfileController::class, 'verifyChangeEmailOtp']);
+    Route::post('/profile/change-email/send-otp', [ProfileController::class, 'sendChangeEmailOtp'])->middleware('throttle:10,1');
+    Route::post('/profile/change-email/verify-otp', [ProfileController::class, 'verifyChangeEmailOtp'])->middleware('throttle:10,1');
 
     // Transaksi Aset (Peminjaman, Pengembalian, Riwayat, Pembatalan)
     Route::post('/peminjaman', [TransaksiController::class, 'pinjam']);

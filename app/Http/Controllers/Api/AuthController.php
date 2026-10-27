@@ -53,16 +53,35 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request): JsonResponse
     {
-        $loginInput = $request->input('login');
+        $loginInput = trim($request->input('login'));
+        $password = (string) $request->input('password');
 
-        // Cari user berdasarkan email atau NIP
-        $user = User::where('email', $loginInput)
+        // Prioritaskan pencarian berdasarkan identifier unik (email atau NIP) sebelum fallback ke nama
+        $user = null;
+        $uniqueCandidates = User::where('email', $loginInput)
             ->orWhere('nip', $loginInput)
-            ->first();
+            ->get();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
+        if ($uniqueCandidates->isNotEmpty()) {
+            foreach ($uniqueCandidates as $candidate) {
+                if (! empty($candidate->password) && Hash::check($password, $candidate->password)) {
+                    $user = $candidate;
+                    break;
+                }
+            }
+        } else {
+            $nameCandidates = User::where('nama', $loginInput)->get();
+            foreach ($nameCandidates as $candidate) {
+                if (! empty($candidate->password) && Hash::check($password, $candidate->password)) {
+                    $user = $candidate;
+                    break;
+                }
+            }
+        }
+
+        if (! $user) {
             throw ValidationException::withMessages([
-                'login' => ['Kredensial yang diberikan tidak cocok dengan data kami.'],
+                'login' => ['Email/Nama/NIP atau password yang Anda masukkan tidak sesuai.'],
             ]);
         }
 
@@ -157,6 +176,7 @@ class AuthController extends Controller
 
             $googleId = $payload['sub'] ?? null;
             $email = $payload['email'] ?? null;
+            $emailVerified = filter_var($payload['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $name = $payload['name'] ?? 'User Google';
             $avatar = $payload['picture'] ?? null;
 
@@ -167,14 +187,29 @@ class AuthController extends Controller
                 ], 422);
             }
 
-            // Cari user berdasarkan google_id atau email
-            $user = User::where('google_id', $googleId)
-                ->orWhere('email', $email)
-                ->first();
+            if (! $emailVerified) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email akun Google Anda belum terverifikasi.',
+                ], 403);
+            }
+
+            // Cari user berdasarkan google_id terlebih dahulu, lalu email
+            $user = User::where('google_id', $googleId)->first();
+
+            if (! $user) {
+                $user = User::where('email', $email)->first();
+                if ($user && ! empty($user->google_id) && $user->google_id !== $googleId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Email ini sudah terhubung dengan akun Google yang berbeda.',
+                    ], 403);
+                }
+            }
 
             if ($user) {
                 $user->update([
-                    'google_id' => $googleId,
+                    'google_id' => $user->google_id ?: $googleId,
                     'avatar' => $avatar ?: $user->avatar,
                 ]);
             } else {

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ConfirmModal from '@/Components/ConfirmModal';
+import UnitHistoryModal from '@/Components/UnitHistoryModal';
 import {
     Package,
     Plus,
@@ -28,7 +29,8 @@ import {
     Image as ImageIcon,
     Eye,
     ShieldAlert,
-    ShieldCheck
+    ShieldCheck,
+    History
 } from 'lucide-react';
 
 export default function BarangIndex({ barangList, categories = [], categoryStats = [], globalTabCounts = null, filters }) {
@@ -154,6 +156,12 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
         loading: false,
         barang: null,
         mutasi: [],
+    });
+
+    // Modal Riwayat Siklus Hidup & Peminjaman Unit Fisik
+    const [unitHistoryModal, setUnitHistoryModal] = useState({
+        isOpen: false,
+        unit: null,
     });
 
     // Prevent background scrolling while any modal is open
@@ -643,20 +651,9 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                             <div className="w-12 h-12 rounded-xl bg-[#EEEEEE] flex items-center justify-center border border-[#E0E0E0]">
                                                 {getCategoryIcon(cat.nama_kategori)}
                                             </div>
-                                            <div className="flex flex-col items-end gap-1">
-                                                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#EEEEEE] text-[#1D1616]">
-                                                    {cat.total_barang} {isCatHabisPakai ? 'Jenis Bahan' : 'Model Barang'}
-                                                </span>
-                                                <span
-                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                                        isCatHabisPakai
-                                                            ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                                            : 'bg-rose-50 text-[#D84040] border-rose-200'
-                                                    }`}
-                                                >
-                                                    {isCatHabisPakai ? 'Habis Pakai' : 'Aset Peminjaman'}
-                                                </span>
-                                            </div>
+                                            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#EEEEEE] text-[#1D1616]">
+                                                {cat.total_barang} {isCatHabisPakai ? 'Jenis Bahan' : 'Model Barang'}
+                                            </span>
                                         </div>
 
                                         <div className="mt-4">
@@ -950,7 +947,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                                 <div className="flex flex-wrap items-center gap-2">
                                                                                     <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
                                                                                         <Boxes size={12} className="text-amber-600" />
-                                                                                        Bahan Habis Pakai (Monitoring Stok)
+                                                                                        Bahan Habis Pakai
                                                                                     </span>
                                                                                     {item.is_low_stock && (
                                                                                         <span className="text-[10px] font-extrabold text-red-700 bg-red-100 border border-red-300 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
@@ -960,7 +957,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                                 </div>
                                                                             ) : (
                                                                                 <>
-                                                                                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                                                                                    <div className={`flex items-center justify-between gap-2 ${isExpanded ? 'mb-1.5' : ''}`}>
                                                                                         <span className="text-[10px] font-extrabold text-[#6B7280] uppercase tracking-wider flex items-center gap-1">
                                                                                             <Layers size={12} className="text-[#D84040]" />
                                                                                             Unit Terdaftar ({item.units?.length || 0}):
@@ -978,35 +975,37 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                                         </button>
                                                                                     </div>
 
-                                                                                    {item.units && item.units.length > 0 ? (
-                                                                                        <div className="flex flex-wrap items-center gap-1.5">
-                                                                                            {item.units.map((u) => {
-                                                                                                const isAvailable = u.status === 'tersedia';
-                                                                                                const isBorrowed = u.status === 'dipinjam';
-                                                                                                const badgeCls = isAvailable
-                                                                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                                                                    : isBorrowed
-                                                                                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                                                                                    : 'bg-rose-50 text-[#D84040] border-rose-200';
-                                                                                                const dotCls = isAvailable ? 'bg-emerald-500' : isBorrowed ? 'bg-amber-500' : 'bg-[#D84040]';
+                                                                                    {isExpanded && (
+                                                                                        item.units && item.units.length > 0 ? (
+                                                                                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                                                                                {item.units.map((u) => {
+                                                                                                    const isAvailable = u.status === 'tersedia';
+                                                                                                    const isBorrowed = u.status === 'dipinjam';
+                                                                                                    const badgeCls = isAvailable
+                                                                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                                                                        : isBorrowed
+                                                                                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                                                                        : 'bg-rose-50 text-[#D84040] border-rose-200';
+                                                                                                    const dotCls = isAvailable ? 'bg-emerald-500' : isBorrowed ? 'bg-amber-500' : 'bg-[#D84040]';
 
-                                                                                                return (
-                                                                                                    <span
-                                                                                                        key={u.id}
-                                                                                                        onClick={() => openEditUnitModal(item, u)}
-                                                                                                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold border ${badgeCls} cursor-pointer hover:shadow-xs transition-shadow`}
-                                                                                                        title={`Klik untuk edit status unit: ${u.kode_unit} | Status: ${u.status} | Kondisi: ${u.kondisi}`}
-                                                                                                    >
-                                                                                                        <span className={`w-1.5 h-1.5 rounded-full ${dotCls}`} />
-                                                                                                        {u.kode_unit}
-                                                                                                    </span>
-                                                                                                );
-                                                                                            })}
-                                                                                        </div>
-                                                                                    ) : (
-                                                                                        <span className="text-[11px] text-[#8C93A0] italic">
-                                                                                            Belum ada unit fisik terdaftar
-                                                                                        </span>
+                                                                                                    return (
+                                                                                                        <span
+                                                                                                            key={u.id}
+                                                                                                            onClick={() => openEditUnitModal(item, u)}
+                                                                                                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold border ${badgeCls} cursor-pointer hover:shadow-xs transition-shadow`}
+                                                                                                            title={`Klik untuk edit status unit: ${u.kode_unit} | Status: ${u.status} | Kondisi: ${u.kondisi}`}
+                                                                                                        >
+                                                                                                            <span className={`w-1.5 h-1.5 rounded-full ${dotCls}`} />
+                                                                                                            {u.kode_unit}
+                                                                                                        </span>
+                                                                                                    );
+                                                                                                })}
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <span className="text-[11px] text-[#8C93A0] italic mt-1 block">
+                                                                                                Belum ada unit fisik terdaftar
+                                                                                            </span>
+                                                                                        )
                                                                                     )}
                                                                                 </>
                                                                             )}
@@ -1170,8 +1169,9 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                                     <thead>
                                                                                         <tr className="border-b border-[#E0E0E0] text-[10px] text-[#6B7280] uppercase tracking-wider font-bold">
                                                                                             <th className="pb-2">Foto & Kode Unit Fisik</th>
-                                                                                            <th className="pb-2">Status Peminjaman</th>
-                                                                                            <th className="pb-2">Kondisi Fisik</th>
+                                                                                            <th className="pb-2">Status</th>
+                                                                                            <th className="pb-2">Total Pinjam</th>
+                                                                                            <th className="pb-2">Penggunaan & Kondisi Terakhir</th>
                                                                                             <th className="pb-2 text-right">Aksi Unit</th>
                                                                                         </tr>
                                                                                     </thead>
@@ -1217,16 +1217,90 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                                                     {getStatusBadge(u.status)}
                                                                                                 </td>
                                                                                                 <td className="py-2.5">
-                                                                                                    <span
-                                                                                                        className={`inline-flex items-center gap-1 text-[11px] font-bold ${
-                                                                                                            u.kondisi === 'baik' ? 'text-emerald-700' : 'text-[#D84040]'
-                                                                                                        }`}
-                                                                                                    >
-                                                                                                        {u.kondisi === 'baik' ? 'Layak / Baik' : 'Rusak / Perlu Servis'}
+                                                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-bold">
+                                                                                                        <Clock size={11} />
+                                                                                                        {u.total_peminjaman || 0}x Dipinjam
                                                                                                     </span>
+                                                                                                </td>
+                                                                                                <td className="py-2.5">
+                                                                                                    {u.last_usage ? (
+                                                                                                        <div className="flex items-center gap-2.5">
+                                                                                                            {u.last_usage.foto_kembali_url ? (
+                                                                                                                <div
+                                                                                                                    onClick={() => setPreviewModalImage({
+                                                                                                                        url: u.last_usage.foto_kembali_url,
+                                                                                                                        nama: `Bukti Selesai Pinjam ${item.nama_barang} (${u.kode_unit})`,
+                                                                                                                        kode: u.last_usage.peminjam_nama,
+                                                                                                                        kategori: `Kondisi: ${u.last_usage.kondisi_kembali}`
+                                                                                                                    })}
+                                                                                                                    className="w-8 h-8 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden shrink-0 relative group cursor-pointer hover:ring-2 hover:ring-blue-400"
+                                                                                                                    title="Foto kondisi setelah dipinjam (Klik untuk perbesar)"
+                                                                                                                >
+                                                                                                                    <img
+                                                                                                                        src={u.last_usage.foto_kembali_url}
+                                                                                                                        alt="Foto Selesai"
+                                                                                                                        className="w-full h-full object-cover"
+                                                                                                                    />
+                                                                                                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                                                                                                        <Eye size={10} />
+                                                                                                                    </div>
+                                                                                                                </div>
+                                                                                                            ) : (
+                                                                                                                <div className="w-8 h-8 rounded-lg bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-[9px] text-gray-400 shrink-0" title="Tanpa foto fisik">
+                                                                                                                    <ImageIcon size={12} />
+                                                                                                                </div>
+                                                                                                            )}
+
+                                                                                                            <div className="min-w-0">
+                                                                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                                                                    <span className="font-bold text-[#1D1616] text-[11px] truncate">
+                                                                                                                        {u.last_usage.peminjam_nama}
+                                                                                                                    </span>
+                                                                                                                    {u.last_usage.tipe_peminjam === 'guest' && (
+                                                                                                                        <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-purple-100 text-purple-700">
+                                                                                                                            Tamu
+                                                                                                                        </span>
+                                                                                                                    )}
+                                                                                                                    <span className="text-[10px] text-gray-400">•</span>
+                                                                                                                    <span className="text-[10.5px] text-gray-500 font-medium">
+                                                                                                                        {u.last_usage.tanggal_display}
+                                                                                                                    </span>
+                                                                                                                </div>
+                                                                                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                                                                                    <span
+                                                                                                                        className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-bold ${
+                                                                                                                            u.last_usage.is_active
+                                                                                                                                ? 'bg-amber-100 text-amber-800'
+                                                                                                                                : u.last_usage.kondisi_kembali?.toLowerCase() === 'rusak'
+                                                                                                                                ? 'bg-rose-100 text-rose-800'
+                                                                                                                                : 'bg-emerald-100 text-emerald-800'
+                                                                                                                        }`}
+                                                                                                                    >
+                                                                                                                        {u.last_usage.is_active ? 'Sedang Dipinjam' : u.last_usage.kondisi_kembali?.toLowerCase() === 'rusak' ? 'Rusak' : 'Baik'}
+                                                                                                                    </span>
+                                                                                                                    {u.last_usage.catatan_kembali && (
+                                                                                                                        <span className="text-[10px] text-gray-500 truncate max-w-[140px]" title={u.last_usage.catatan_kembali}>
+                                                                                                                            - {u.last_usage.catatan_kembali}
+                                                                                                                        </span>
+                                                                                                                    )}
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    ) : (
+                                                                                                        <span className="text-[11px] text-[#8C93A0] italic">
+                                                                                                            Belum pernah dipinjam
+                                                                                                        </span>
+                                                                                                    )}
                                                                                                 </td>
                                                                                                 <td className="py-2.5 text-right">
                                                                                                     <div className="flex items-center justify-end gap-1.5">
+                                                                                                        <button
+                                                                                                            onClick={() => setUnitHistoryModal({ isOpen: true, unit: { ...u, nama_barang: item.nama_barang, nama_kategori: item.nama_kategori } })}
+                                                                                                            className="p-1 rounded text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
+                                                                                                            title="Lihat Riwayat Lengkap Unit Ini"
+                                                                                                        >
+                                                                                                            <History size={13} />
+                                                                                                        </button>
                                                                                                         <button
                                                                                                             onClick={() => openEditUnitModal(item, u)}
                                                                                                             className="p-1 rounded text-[#6B7280] hover:text-[#1D1616] hover:bg-gray-100 transition-colors"
@@ -2354,6 +2428,13 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                 </div>,
                 document.body
             )}
+            {/* Modal Riwayat Siklus Hidup & Peminjaman Unit Fisik */}
+            <UnitHistoryModal
+                isOpen={unitHistoryModal.isOpen}
+                onClose={() => setUnitHistoryModal({ isOpen: false, unit: null })}
+                unitId={unitHistoryModal.unit?.id}
+                initialUnit={unitHistoryModal.unit}
+            />
         </AuthenticatedLayout>
     );
 }

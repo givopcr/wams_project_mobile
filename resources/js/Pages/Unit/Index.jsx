@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ConfirmModal from '@/Components/ConfirmModal';
+import UnitHistoryModal from '@/Components/UnitHistoryModal';
 import {
     Layers,
     Plus,
@@ -17,7 +18,8 @@ import {
     Image as ImageIcon,
     UploadCloud,
     Eye,
-    Tag
+    Tag,
+    History
 } from 'lucide-react';
 
 export default function UnitIndex({ units, barangList, filters }) {
@@ -29,6 +31,7 @@ export default function UnitIndex({ units, barangList, filters }) {
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, itemBadge: null });
     const [imagePreview, setImagePreview] = useState(null);
     const [previewModalImage, setPreviewModalImage] = useState(null);
+    const [unitHistoryModal, setUnitHistoryModal] = useState({ isOpen: false, unit: null });
     const fileInputRef = useRef(null);
 
     const { data, setData, post, processing, reset, errors, clearErrors } = useForm({
@@ -233,8 +236,8 @@ export default function UnitIndex({ units, barangList, filters }) {
                                 <th className="p-4">Foto & Kode Unit</th>
                                 <th className="p-4">Master Barang</th>
                                 <th className="p-4">Status</th>
-                                <th className="p-4">Kondisi Fisik</th>
-                                <th className="p-4">Peminjam Aktif</th>
+                                <th className="p-4">Total Pinjam</th>
+                                <th className="p-4">Penggunaan & Kondisi Terakhir</th>
                                 <th className="p-4 text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -290,30 +293,93 @@ export default function UnitIndex({ units, barangList, filters }) {
                                             {getStatusBadge(u.status)}
                                         </td>
                                         <td className="p-4">
-                                            <span
-                                                className={`font-semibold capitalize ${
-                                                    u.kondisi === 'baik' ? 'text-emerald-700' : 'text-[#D84040]'
-                                                }`}
-                                            >
-                                                {u.kondisi}
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-bold">
+                                                <Clock size={12} />
+                                                {u.total_peminjaman || 0}x Dipinjam
                                             </span>
                                         </td>
                                         <td className="p-4">
-                                            {u.borrower ? (
-                                                <div className="flex items-center gap-1.5 text-amber-700 font-medium">
-                                                    <UserCheck size={14} className="text-amber-700" />
-                                                    <span>{u.borrower}</span>
-                                                    <span className="text-[10px] text-[#6B7280] font-normal">({u.borrow_date})</span>
+                                            {u.last_usage ? (
+                                                <div className="flex items-center gap-2.5">
+                                                    {u.last_usage.foto_kembali_url ? (
+                                                        <div
+                                                            onClick={() => setPreviewModalImage({
+                                                                url: u.last_usage.foto_kembali_url,
+                                                                nama: `Bukti Selesai Pinjam ${u.nama_barang} (${u.kode_unit})`,
+                                                                kode: u.last_usage.peminjam_nama,
+                                                                kategori: `Kondisi: ${u.last_usage.kondisi_kembali}`
+                                                            })}
+                                                            className="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden shrink-0 relative group cursor-pointer hover:ring-2 hover:ring-blue-400"
+                                                            title="Foto kondisi setelah dipinjam (Klik untuk perbesar)"
+                                                        >
+                                                            <img
+                                                                src={u.last_usage.foto_kembali_url}
+                                                                alt="Foto Selesai"
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                                                <Eye size={12} />
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="w-9 h-9 rounded-lg bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-[9px] text-gray-400 shrink-0" title="Tanpa foto fisik">
+                                                            <ImageIcon size={14} />
+                                                        </div>
+                                                    )}
+
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <span className="font-bold text-[#1D1616] text-[11px] truncate">
+                                                                {u.last_usage.peminjam_nama}
+                                                            </span>
+                                                            {u.last_usage.tipe_peminjam === 'guest' && (
+                                                                <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-purple-100 text-purple-700">
+                                                                    Tamu
+                                                                </span>
+                                                            )}
+                                                            <span className="text-[10px] text-gray-400">•</span>
+                                                            <span className="text-[10.5px] text-gray-500 font-medium">
+                                                                {u.last_usage.tanggal_display}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            <span
+                                                                className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-bold ${
+                                                                    u.last_usage.is_active
+                                                                        ? 'bg-amber-100 text-amber-800'
+                                                                        : u.last_usage.kondisi_kembali?.toLowerCase() === 'rusak'
+                                                                        ? 'bg-rose-100 text-rose-800'
+                                                                        : 'bg-emerald-100 text-emerald-800'
+                                                                }`}
+                                                            >
+                                                                {u.last_usage.is_active ? 'Sedang Dipinjam' : u.last_usage.kondisi_kembali?.toLowerCase() === 'rusak' ? 'Rusak' : 'Baik'}
+                                                            </span>
+                                                            {u.last_usage.catatan_kembali && (
+                                                                <span className="text-[10px] text-gray-500 truncate max-w-[140px]" title={u.last_usage.catatan_kembali}>
+                                                                    - {u.last_usage.catatan_kembali}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ) : (
-                                                <span className="text-[#6B7280]">-</span>
+                                                <span className="text-[11px] text-[#8C93A0] italic">
+                                                    Belum pernah dipinjam
+                                                </span>
                                             )}
                                         </td>
                                         <td className="p-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <button
+                                                    onClick={() => setUnitHistoryModal({ isOpen: true, unit: u })}
+                                                    className="p-1.5 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
+                                                    title="Lihat Riwayat Lengkap Unit Ini"
+                                                >
+                                                    <History size={15} />
+                                                </button>
                                                 <button
                                                     onClick={() => openEditModal(u)}
-                                                    className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1D1616] hover:bg-[#EEEEEE] transition-colors"
+                                                    className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1D1616] hover:bg-[#EEEEEE] transition-colors cursor-pointer"
                                                     title="Edit Status & Kondisi"
                                                 >
                                                     <Edit2 size={15} />
@@ -634,6 +700,14 @@ export default function UnitIndex({ units, barangList, filters }) {
                 confirmText="Hapus"
                 cancelText="Batal"
                 variant="danger"
+            />
+
+            {/* Modal Riwayat Siklus Hidup & Peminjaman Unit Fisik */}
+            <UnitHistoryModal
+                isOpen={unitHistoryModal.isOpen}
+                onClose={() => setUnitHistoryModal({ isOpen: false, unit: null })}
+                unitId={unitHistoryModal.unit?.id}
+                initialUnit={unitHistoryModal.unit}
             />
         </AuthenticatedLayout>
     );

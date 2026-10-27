@@ -695,8 +695,8 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Email / Username
-          _fieldLabel('Email atau Username'),
+          // Email / Nama / NIP
+          _fieldLabel('Email, Nama, atau NIP'),
           TextFormField(
             controller: _loginController,
             style: const TextStyle(
@@ -705,10 +705,10 @@ class _LoginScreenState extends State<LoginScreen> {
               fontWeight: FontWeight.w500,
             ),
             decoration: _fieldDecoration(
-              hintText: 'admin@wams.test',
+              hintText: 'Email, nama, atau NIP',
             ),
             validator: (v) => v == null || v.trim().isEmpty
-                ? 'Email atau Username wajib diisi'
+                ? 'Email, Nama, atau NIP wajib diisi'
                 : null,
           ),
 
