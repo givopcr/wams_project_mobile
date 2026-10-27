@@ -252,6 +252,19 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
         return list;
     }, [barangList?.data, activeTab]);
 
+    // Pagination untuk Mode Tampilan Unit Fisik
+    const [unitCurrentPage, setUnitCurrentPage] = useState(1);
+    const unitPerPage = 10;
+    const unitTotal = allFlatUnits.length;
+    const unitTotalPages = Math.ceil(unitTotal / unitPerPage);
+    const unitFrom = unitTotal > 0 ? (unitCurrentPage - 1) * unitPerPage + 1 : 0;
+    const unitTo = Math.min(unitCurrentPage * unitPerPage, unitTotal);
+    const paginatedFlatUnits = allFlatUnits.slice((unitCurrentPage - 1) * unitPerPage, unitCurrentPage * unitPerPage);
+
+    useEffect(() => {
+        setUnitCurrentPage(1);
+    }, [activeTab, search, selectedCategory]);
+
     const handleSearch = (e) => {
         e.preventDefault();
         const params = { q: search };
@@ -814,7 +827,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                     title={activeTab === 'habis_pakai' ? 'Bahan habis pakai tidak memiliki unit fisik individual' : 'Lihat daftar per unit fisik'}
                                 >
                                     <Layers size={14} />
-                                    <span>Tiap Unit Fisik ({allFlatUnits.length})</span>
+                                    <span>Unit Fisik ({allFlatUnits.length})</span>
                                 </button>
                             </div>
                         </div>
@@ -960,7 +973,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                                     <div className={`flex items-center justify-between gap-2 ${isExpanded ? 'mb-1.5' : ''}`}>
                                                                                         <span className="text-[10px] font-extrabold text-[#6B7280] uppercase tracking-wider flex items-center gap-1">
                                                                                             <Layers size={12} className="text-[#D84040]" />
-                                                                                            Unit Terdaftar ({item.units?.length || 0}):
+                                                                                            Unit ({item.units?.length || 0}):
                                                                                         </span>
                                                                                         <button
                                                                                             type="button"
@@ -1110,7 +1123,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                                 title="Buka / Tutup Rincian Unit Fisik"
                                                                             >
                                                                                 <Layers size={13} className={isExpanded ? 'text-white' : 'text-[#D84040]'} />
-                                                                                <span>Detail Unit ({item.units?.length || 0})</span>
+                                                                                <span>Detail ({item.units?.length || 0})</span>
                                                                                 {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                                                                             </button>
                                                                             <Link
@@ -1377,8 +1390,9 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                             <th className="p-4">Kode Unit Fisik</th>
                                             <th className="p-4">Nama Barang</th>
                                             <th className="p-4">Kategori & Lokasi</th>
-                                            <th className="p-4 text-center">Status Unit</th>
-                                            <th className="p-4 text-center">Kondisi</th>
+                                            <th className="p-4 text-center">Status</th>
+                                            <th className="p-4 text-center">Total Pinjam</th>
+                                            <th className="p-4">Penggunaan & Kondisi Terakhir</th>
                                             <th className="p-4 text-right">Aksi Unit</th>
                                         </tr>
                                     </thead>
@@ -1405,13 +1419,23 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                         </div>
                                                     </td>
                                                     <td className="p-4 text-center">
-                                                        <div className="w-24 h-6 mx-auto rounded-full shimmer-box" />
+                                                        <div className="w-20 h-6 mx-auto rounded-full shimmer-box" />
                                                     </td>
                                                     <td className="p-4 text-center">
-                                                        <div className="w-16 h-6 mx-auto rounded-full shimmer-box" />
+                                                        <div className="w-20 h-6 mx-auto rounded-lg shimmer-box" />
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-8 h-8 rounded-lg shimmer-box shrink-0" />
+                                                            <div className="space-y-1 flex-1">
+                                                                <div className="w-28 h-3 rounded shimmer-box" />
+                                                                <div className="w-20 h-2.5 rounded shimmer-box opacity-50" />
+                                                            </div>
+                                                        </div>
                                                     </td>
                                                     <td className="p-4 text-right">
                                                         <div className="flex items-center justify-end gap-1.5">
+                                                            <div className="w-7 h-7 rounded-lg shimmer-box" />
                                                             <div className="w-7 h-7 rounded-lg shimmer-box" />
                                                             <div className="w-7 h-7 rounded-lg shimmer-box" />
                                                         </div>
@@ -1420,12 +1444,12 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                             ))
                                         ) : allFlatUnits.length === 0 ? (
                                             <tr>
-                                                <td colSpan={6} className="p-8 text-center text-[#6B7280] bg-white">
+                                                <td colSpan={7} className="p-8 text-center text-[#6B7280] bg-white">
                                                     Tidak ada unit fisik ditemukan.
                                                 </td>
                                             </tr>
                                         ) : (
-                                            allFlatUnits.map((unit) => (
+                                            paginatedFlatUnits.map((unit) => (
                                                 <tr key={unit.id} className="hover:bg-[#EEEEEE]/40 bg-white transition-colors">
                                                     {/* Kode Unit */}
                                                     <td className="p-4 font-mono">
@@ -1478,20 +1502,90 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                         {getStatusBadge(unit.status)}
                                                     </td>
 
-                                                    {/* Kondisi */}
+                                                    {/* Total Pinjam */}
                                                     <td className="p-4 text-center">
-                                                        <span
-                                                            className={`font-bold capitalize text-xs ${
-                                                                unit.kondisi === 'baik' ? 'text-emerald-700' : 'text-[#D84040]'
-                                                            }`}
-                                                        >
-                                                            {unit.kondisi}
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-bold">
+                                                            <Clock size={11} />
+                                                            {unit.total_peminjaman || 0}x Dipinjam
                                                         </span>
+                                                    </td>
+
+                                                    {/* Penggunaan & Kondisi Terakhir */}
+                                                    <td className="p-4">
+                                                        {unit.last_usage ? (
+                                                            <div className="flex items-center gap-2.5">
+                                                                {unit.last_usage.foto_kembali_url ? (
+                                                                    <div
+                                                                        onClick={() => setPreviewModalImage({
+                                                                            url: unit.last_usage.foto_kembali_url,
+                                                                            nama: `Bukti Selesai Pinjam ${unit.nama_barang} (${unit.kode_unit})`,
+                                                                            kode: unit.last_usage.peminjam_nama,
+                                                                            kategori: `Kondisi: ${unit.last_usage.kondisi_kembali}`
+                                                                        })}
+                                                                        className="w-8 h-8 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden shrink-0 relative group cursor-pointer hover:ring-2 hover:ring-blue-400"
+                                                                        title="Foto kondisi setelah dipinjam (Klik untuk perbesar)"
+                                                                    >
+                                                                        <img
+                                                                            src={unit.last_usage.foto_kembali_url}
+                                                                            alt="Foto Selesai"
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                                                            <Eye size={10} />
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="w-8 h-8 rounded-lg bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-[9px] text-gray-400 shrink-0" title="Tanpa foto fisik">
+                                                                        <ImageIcon size={12} />
+                                                                    </div>
+                                                                )}
+                                                                <div className="min-w-0">
+                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                        <span className="font-bold text-[#1D1616] text-xs">
+                                                                            {unit.last_usage.peminjam_nama}
+                                                                        </span>
+                                                                        <span className="text-[10px] text-gray-400">•</span>
+                                                                        <span className="text-[10.5px] text-gray-500 font-medium">
+                                                                            {unit.last_usage.tanggal_display}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                                        <span
+                                                                            className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-bold ${
+                                                                                unit.last_usage.is_active
+                                                                                    ? 'bg-amber-100 text-amber-800'
+                                                                                    : unit.last_usage.kondisi_kembali?.toLowerCase() === 'rusak'
+                                                                                    ? 'bg-rose-100 text-rose-800'
+                                                                                    : 'bg-emerald-100 text-emerald-800'
+                                                                            }`}
+                                                                        >
+                                                                            {unit.last_usage.is_active ? 'Sedang Dipinjam' : unit.last_usage.kondisi_kembali?.toLowerCase() === 'rusak' ? 'Rusak' : 'Baik'}
+                                                                        </span>
+                                                                        {unit.last_usage.catatan_kembali && (
+                                                                            <span className="text-[10px] text-gray-500 truncate max-w-[140px]" title={unit.last_usage.catatan_kembali}>
+                                                                                - {unit.last_usage.catatan_kembali}
+                                                                        </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-[11px] text-[#8C93A0] italic">
+                                                                Belum pernah dipinjam
+                                                            </span>
+                                                        )}
                                                     </td>
 
                                                     {/* Aksi Unit */}
                                                     <td className="p-4 text-right">
                                                         <div className="flex items-center justify-end gap-1.5">
+                                                            <button
+                                                                onClick={() => setUnitHistoryModal({ isOpen: true, unit: { ...unit, nama_barang: unit.nama_barang, nama_kategori: unit.nama_kategori } })}
+                                                                className="p-1.5 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
+                                                                title="Lihat Riwayat Lengkap Unit Ini"
+                                                            >
+                                                                <History size={14} />
+                                                            </button>
                                                             <button
                                                                 onClick={() => openEditUnitModal(unit.parentBarang, unit)}
                                                                 className="p-1.5 rounded-lg text-[#6B7280] hover:text-[#1D1616] hover:bg-[#EEEEEE] transition-colors"
@@ -1514,6 +1608,57 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Pagination Unit Fisik - Sama seperti di page barang master */}
+                            {unitTotalPages > 1 && (
+                                <div className="p-4 border-t border-[#E0E0E0] flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
+                                    <span className="text-xs text-[#6B7280]">
+                                        Menampilkan <span className="font-bold text-[#1D1616]">{unitFrom}</span> sampai{' '}
+                                        <span className="font-bold text-[#1D1616]">{unitTo}</span> dari{' '}
+                                        <span className="font-bold text-[#1D1616]">{unitTotal}</span> unit fisik
+                                    </span>
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                        <button
+                                            type="button"
+                                            onClick={() => setUnitCurrentPage((p) => Math.max(1, p - 1))}
+                                            disabled={unitCurrentPage === 1}
+                                            className={`px-3 py-1 text-xs rounded-lg font-bold transition-colors cursor-pointer ${
+                                                unitCurrentPage === 1
+                                                    ? 'text-gray-300 pointer-events-none cursor-not-allowed'
+                                                    : 'text-[#1D1616] hover:bg-[#EEEEEE]'
+                                            }`}
+                                        >
+                                            &laquo; Sebelumnya
+                                        </button>
+                                        {Array.from({ length: unitTotalPages }, (_, i) => i + 1).map((p) => (
+                                            <button
+                                                key={p}
+                                                type="button"
+                                                onClick={() => setUnitCurrentPage(p)}
+                                                className={`px-3 py-1 text-xs rounded-lg font-bold transition-colors cursor-pointer ${
+                                                    unitCurrentPage === p
+                                                        ? 'bg-[#D84040] text-white'
+                                                        : 'text-[#1D1616] hover:bg-[#EEEEEE]'
+                                                }`}
+                                            >
+                                                {p}
+                                            </button>
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => setUnitCurrentPage((p) => Math.min(unitTotalPages, p + 1))}
+                                            disabled={unitCurrentPage === unitTotalPages}
+                                            className={`px-3 py-1 text-xs rounded-lg font-bold transition-colors cursor-pointer ${
+                                                unitCurrentPage === unitTotalPages
+                                                    ? 'text-gray-300 pointer-events-none cursor-not-allowed'
+                                                    : 'text-[#1D1616] hover:bg-[#EEEEEE]'
+                                            }`}
+                                        >
+                                            Berikutnya &raquo;
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

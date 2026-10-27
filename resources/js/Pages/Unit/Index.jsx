@@ -402,7 +402,12 @@ export default function UnitIndex({ units, barangList, filters }) {
 
                 {/* Pagination */}
                 {units.links && units.links.length > 3 && (
-                    <div className="p-4 border-t border-[#E0E0E0] flex items-center justify-end gap-3 bg-white">
+                    <div className="p-4 border-t border-[#E0E0E0] flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
+                        <span className="text-xs text-[#6B7280]">
+                            Menampilkan <span className="font-bold text-[#1D1616]">{units.from || 0}</span> sampai{' '}
+                            <span className="font-bold text-[#1D1616]">{units.to || 0}</span> dari{' '}
+                            <span className="font-bold text-[#1D1616]">{units.total || 0}</span> unit fisik
+                        </span>
                         <div className="flex items-center gap-1 flex-wrap">
                             {units.links.map((link, idx) => (
                                 <Link

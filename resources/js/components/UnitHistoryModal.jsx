@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
     X,
@@ -20,11 +20,15 @@ export default function UnitHistoryModal({ isOpen, onClose, unitId, initialUnit 
     const [unitInfo, setUnitInfo] = useState(initialUnit);
     const [historyList, setHistoryList] = useState([]);
     const [zoomedImage, setZoomedImage] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const perPage = 5;
+    const bodyScrollRef = useRef(null);
 
     useEffect(() => {
         if (!isOpen || !unitId) return;
 
         setLoading(true);
+        setCurrentPage(1);
         if (initialUnit) setUnitInfo(initialUnit);
 
         fetch(`/admin/unit/${unitId}/history`)
@@ -43,6 +47,37 @@ export default function UnitHistoryModal({ isOpen, onClose, unitId, initialUnit 
                 setLoading(false);
             });
     }, [isOpen, unitId]);
+
+    const totalItems = historyList.length;
+    const totalPages = Math.ceil(totalItems / perPage);
+    const from = totalItems > 0 ? (currentPage - 1) * perPage + 1 : 0;
+    const to = Math.min(currentPage * perPage, totalItems);
+    const paginatedHistory = historyList.slice((currentPage - 1) * perPage, currentPage * perPage);
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+        if (bodyScrollRef.current) {
+            bodyScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
+    const getPaginationPages = () => {
+        const pages = [];
+        if (totalPages <= 5) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            if (currentPage > 3) pages.push('...');
+            const start = Math.max(2, currentPage - 1);
+            const end = Math.min(totalPages - 1, currentPage + 1);
+            for (let i = start; i <= end; i++) {
+                if (!pages.includes(i)) pages.push(i);
+            }
+            if (currentPage < totalPages - 2) pages.push('...');
+            if (!pages.includes(totalPages)) pages.push(totalPages);
+        }
+        return pages;
+    };
 
     if (!isOpen) return null;
 
@@ -102,7 +137,7 @@ export default function UnitHistoryModal({ isOpen, onClose, unitId, initialUnit 
                 </div>
 
                 {/* Body Content / Timeline */}
-                <div className="overflow-y-auto flex-1 p-4 sm:p-6 bg-white space-y-6">
+                <div ref={bodyScrollRef} className="overflow-y-auto flex-1 p-4 sm:p-6 bg-white space-y-6">
                     {loading ? (
                         <div className="space-y-4 py-4">
                             {[1, 2, 3].map((i) => (
@@ -128,7 +163,7 @@ export default function UnitHistoryModal({ isOpen, onClose, unitId, initialUnit 
                         </div>
                     ) : (
                         <div className="relative pl-6 sm:pl-8 border-l-2 border-gray-200 space-y-6 ml-2 sm:ml-4">
-                            {historyList.map((item, idx) => {
+                            {paginatedHistory.map((item, idx) => {
                                 const isReturned = item.status_transaksi === 'dikembalikan';
                                 const isRusak = item.kondisi_kembali?.toLowerCase() === 'rusak';
 
@@ -301,6 +336,65 @@ export default function UnitHistoryModal({ isOpen, onClose, unitId, initialUnit 
                         </div>
                     )}
                 </div>
+
+                {/* Pagination Riwayat - Sama seperti di page barang */}
+                {totalPages > 1 && (
+                    <div className="p-3 sm:p-4 border-t border-[#E0E0E0] flex flex-col sm:flex-row items-center justify-between gap-3 bg-white shrink-0">
+                        <span className="text-xs text-[#6B7280]">
+                            Menampilkan <span className="font-bold text-[#1D1616]">{from}</span> sampai{' '}
+                            <span className="font-bold text-[#1D1616]">{to}</span> dari{' '}
+                            <span className="font-bold text-[#1D1616]">{totalItems}</span> riwayat
+                        </span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                            <button
+                                type="button"
+                                onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                                disabled={currentPage === 1}
+                                className={`px-3 py-1 text-xs rounded-lg font-bold transition-colors cursor-pointer ${
+                                    currentPage === 1
+                                        ? 'text-gray-300 pointer-events-none cursor-not-allowed'
+                                        : 'text-[#1D1616] hover:bg-[#EEEEEE]'
+                                }`}
+                            >
+                                &laquo; Sebelumnya
+                            </button>
+
+                            {getPaginationPages().map((p, idx) => (
+                                p === '...' ? (
+                                    <span key={`dots-${idx}`} className="px-2 py-1 text-xs text-gray-400 font-bold select-none">
+                                        ...
+                                    </span>
+                                ) : (
+                                    <button
+                                        key={p}
+                                        type="button"
+                                        onClick={() => handlePageChange(p)}
+                                        className={`px-3 py-1 text-xs rounded-lg font-bold transition-colors cursor-pointer ${
+                                            currentPage === p
+                                                ? 'bg-[#D84040] text-white'
+                                                : 'text-[#1D1616] hover:bg-[#EEEEEE]'
+                                        }`}
+                                    >
+                                        {p}
+                                    </button>
+                                )
+                            ))}
+
+                            <button
+                                type="button"
+                                onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                                disabled={currentPage === totalPages}
+                                className={`px-3 py-1 text-xs rounded-lg font-bold transition-colors cursor-pointer ${
+                                    currentPage === totalPages
+                                        ? 'text-gray-300 pointer-events-none cursor-not-allowed'
+                                        : 'text-[#1D1616] hover:bg-[#EEEEEE]'
+                                }`}
+                            >
+                                Berikutnya &raquo;
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Footer */}
                 <div className="p-3 sm:p-4 border-t border-[#E0E0E0] bg-[#FDFDFC] flex justify-end shrink-0">
