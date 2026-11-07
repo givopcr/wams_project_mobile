@@ -214,7 +214,6 @@ class ForgotPasswordController extends Controller
         $user->update([
             'password' => Hash::make($request->password),
         ]);
-        $user->recordPlainPassword($request->password);
         $user->tokens()->delete();
 
         // Tandai OTP telah digunakan

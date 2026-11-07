@@ -27,8 +27,6 @@ class AuthController extends Controller
             'role' => 'user', // Default role always user
         ]);
 
-        $user->recordPlainPassword($request->password);
-
         $token = $user->createToken('mobile_app_token')->plainTextToken;
 
         return response()->json([
@@ -84,8 +82,6 @@ class AuthController extends Controller
                 'login' => ['Email/Nama/NIP atau password yang Anda masukkan tidak sesuai.'],
             ]);
         }
-
-        $user->recordPlainPassword($request->password);
 
         // Generate Sanctum Token
         $token = $user->createToken('auth_token')->plainTextToken;

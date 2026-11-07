@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, ArrowRight, AlertTriangle, Clock } from 'lucide-react';
+import { X, ArrowRight, Clock } from 'lucide-react';
 import { router } from '@inertiajs/react';
 
 /**

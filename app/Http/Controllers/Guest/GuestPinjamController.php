@@ -69,12 +69,20 @@ class GuestPinjamController extends Controller
             ]);
         }
 
+        // Jika meminta mode login secara eksplisit lewat query (?mode=login)
+        if ($request->query('mode') === 'login') {
+            return redirect()->route('login', [
+                'redirect' => route('guest.scan', ['kode_unit' => $kode_unit]),
+            ]);
+        }
+
         // Jika pengguna terautentikasi, langsung arahkan sesuai role (User ke scanner mobile, Admin ke manajemen barang/unit)
-        if (auth()->check()) {
+        // Kecuali jika secara eksplisit meminta preview mode tamu (?guest_preview=1 atau ?mode=guest)
+        if (auth()->check() && ! $request->boolean('guest_preview') && $request->query('mode') !== 'guest') {
             if (auth()->user()->role === 'user') {
                 return redirect()->route('user.scanner', ['code' => $kode_unit]);
             }
-            if (auth()->user()->role === 'admin' && ! $request->boolean('guest_preview')) {
+            if (auth()->user()->role === 'admin') {
                 return redirect()->route('admin.barang', ['q' => $kode_unit]);
             }
         }
@@ -84,11 +92,14 @@ class GuestPinjamController extends Controller
             ->orWhere('kode_unit', rawurldecode($kode_unit))
             ->first();
 
+        $loginUrl = route('login', ['redirect' => route('guest.scan', ['kode_unit' => $kode_unit])]);
+
         if (!$unit) {
             return Inertia::render('Guest/Unavailable', [
                 'type' => 'not_found',
                 'kode_unit' => $kode_unit,
                 'message' => "Unit dengan kode '{$kode_unit}' tidak terdaftar di sistem WAMS.",
+                'login_url' => $loginUrl,
             ]);
         }
 
@@ -103,6 +114,7 @@ class GuestPinjamController extends Controller
                     'kategori' => $unit->barang?->kategori?->nama_kategori ?? 'Umum',
                 ],
                 'message' => 'Unit barang ini sedang dalam perbaikan/pemeliharaan teknisi dan tidak dapat dipinjam.',
+                'login_url' => $loginUrl,
             ]);
         }
 
@@ -154,6 +166,7 @@ class GuestPinjamController extends Controller
                 ],
                 'borrower_hint' => $logbook ? substr($logbook->peminjam_nama, 0, 3) . '***' : 'Pengguna lain',
                 'message' => 'Unit barang ini sedang dipinjam.',
+                'login_url' => $loginUrl,
             ]);
         }
 
@@ -167,7 +180,8 @@ class GuestPinjamController extends Controller
                     'nama_barang' => $unit->barang?->nama_barang ?? 'Peralatan Khusus',
                     'kategori' => $unit->barang?->kategori?->nama_kategori ?? 'Umum',
                 ],
-                'message' => 'Barang ini memerlukan otorisasi khusus Admin Workshop. Silakan login menggunakan akun teknisi terdaftar untuk mengajukan peminjaman.',
+                'message' => 'Barang ini memerlukan otorisasi khusus Admin Workshop. Silakan login menggunakan akun terdaftar untuk mengajukan peminjaman.',
+                'login_url' => $loginUrl,
             ]);
         }
 
@@ -195,6 +209,7 @@ class GuestPinjamController extends Controller
                 ['label' => '1 Hari', 'minutes' => 1440, 'requires_otp' => true],
                 ['label' => '3 Hari', 'minutes' => 4320, 'requires_otp' => true],
             ],
+            'login_url' => $loginUrl,
         ]);
     }
 

@@ -3,9 +3,7 @@ import { Link, usePage, router } from '@inertiajs/react';
 import {
     LayoutDashboard,
     Calendar,
-    Boxes,
     Package,
-    Layers,
     BookOpen,
     QrCode,
     Users,
@@ -15,19 +13,15 @@ import {
     X,
     Bell,
     Settings,
-    Search,
     CheckCircle2,
     AlertCircle,
-    Scan,
     Shield,
-    Sparkles,
     ArrowUpRight,
-    RefreshCw,
     AlertTriangle,
     Clock
 } from 'lucide-react';
-import NotificationToastContainer from '@/Components/NotificationToast';
-import PageSkeleton from '@/Components/PageSkeleton';
+import NotificationToastContainer from '@/components/NotificationToast';
+import PageSkeleton from '@/components/PageSkeleton';
 
 // Module-level global state: survives Inertia client-side page transitions
 // so the notification doesn't re-trigger when clicking around/switching pages
@@ -48,7 +42,6 @@ export default function AuthenticatedLayout({ title, children }) {
     const [unreadCount, setUnreadCount] = useState(globalUnreadCount);
     const [showNotifDropdown, setShowNotifDropdown] = useState(false);
     const [bellClicked, setBellClicked] = useState(globalBellClicked);
-    const [isTesting, setIsTesting] = useState(false);
     const [currentTime, setCurrentTime] = useState(Date.now());
     const [isPageLoading, setIsPageLoading] = useState(false);
     const [loadingPath, setLoadingPath] = useState('');
@@ -119,13 +112,14 @@ export default function AuthenticatedLayout({ title, children }) {
         { name: 'Laporan', href: '/admin/reports', icon: BarChart3 },
     ];
 
-    // Live ticking timer every second for real-time overdue counting
+    // Live ticking timer only when dropdown is open and there are overdue loans
     useEffect(() => {
+        if (!showNotifDropdown || overdueLoans.length === 0) return;
         const timer = setInterval(() => {
             setCurrentTime(Date.now());
         }, 1000);
         return () => clearInterval(timer);
-    }, []);
+    }, [showNotifDropdown, overdueLoans.length]);
 
     // Format elapsed overdue time in real-time ("Terlambat 9 Jam 24 menit")
     const formatOverdueElapsed = (batasKembaliStr) => {
@@ -235,6 +229,10 @@ export default function AuthenticatedLayout({ title, children }) {
         let isMounted = true;
 
         const pollTransactions = async () => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+                return;
+            }
+
             try {
                 const sinceParam = globalLastCheckedTime
                     ? `?since=${encodeURIComponent(globalLastCheckedTime)}`
@@ -324,12 +322,21 @@ export default function AuthenticatedLayout({ title, children }) {
         // Initial setup poll
         pollTransactions();
 
-        // Interval poll every 3.5 seconds
-        const intervalId = setInterval(pollTransactions, 3500);
+        // Polling adaptif setiap 12 detik
+        const intervalId = setInterval(pollTransactions, 12000);
+
+        // Langsung cek ketika tab aktif kembali
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                pollTransactions();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             isMounted = false;
             clearInterval(intervalId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, []);
 
@@ -357,98 +364,6 @@ export default function AuthenticatedLayout({ title, children }) {
     const badgeCount = unreadCount > 0
         ? unreadCount
         : (toasts.length > 0 ? toasts.length : overdueLoans.length);
-
-    // Trigger test simulated notification
-    const handleTriggerTest = async (type = 'borrow', kondisi = 'baik') => {
-        globalBellClicked = false;
-        setBellClicked(false);
-        setIsTesting(true);
-        try {
-            const res = await fetch(`/admin/notifications/test?type=${type}&kondisi=${kondisi}`, {
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                if (data.notification) {
-                    if (type === 'overdue') {
-                        playAlarmSound();
-                        setOverdueLoans((prev) => [data.notification, ...prev.filter((o) => o.id !== data.notification.id)]);
-                    } else {
-                        playNotificationSound();
-                        setNotificationHistory((prev) => [data.notification, ...prev].slice(0, 15));
-                        globalNotificationHistory = [data.notification, ...globalNotificationHistory].slice(0, 15);
-                    }
-                    globalAlertedToastIds.add(data.notification.id);
-                    setToasts((prev) => [data.notification, ...prev.filter((t) => t.id !== data.notification.id)].slice(0, 6));
-                    globalAlertedOverdueIds.add(data.notification.id);
-                    setIsTesting(false);
-                    return;
-                }
-            }
-        } catch (err) {
-            console.error('Test notification fetch error:', err);
-        }
-
-        // Guaranteed instant fallback
-        const isReturn = type === 'return';
-        const isOverdue = type === 'overdue';
-
-        if (isOverdue) {
-            const simulatedBatas = new Date(Date.now() - 14 * 60 * 1000 - 22 * 1000).toISOString();
-            const fallbackOverdue = {
-                id: 'sim_overdue_' + Date.now(),
-                logbook_id: 999,
-                type: 'overdue',
-                title: 'Peringatan: Melebihi Batas Waktu!',
-                user_name: user?.nama || 'Ahmad Syarifudin',
-                user_nip: '199503152020011002',
-                barang_name: 'Mesin Bor Cordless 18V',
-                kode_unit: 'BOR-101-01',
-                kondisi: 'baik',
-                status_transaksi: 'dipinjam',
-                batas_kembali: simulatedBatas,
-                batas_kembali_formatted: 'Hari ini, ' + new Date(simulatedBatas).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-                seconds_overdue: 862,
-                message: `Peminjaman Mesin Bor Cordless 18V (BOR-101-01) oleh ${user?.nama || 'Ahmad Syarifudin'} telah melebihi batas waktu.`,
-                time: '14 menit lalu',
-                timestamp: simulatedBatas,
-            };
-
-            playAlarmSound();
-            setToasts((prev) => [fallbackOverdue, ...prev].slice(0, 6));
-            setOverdueLoans((prev) => [fallbackOverdue, ...prev.filter((o) => !o.id.startsWith('sim_'))]);
-            globalAlertedOverdueIds.add(fallbackOverdue.id);
-            setIsTesting(false);
-            return;
-        }
-
-        const fallbackNotif = {
-            id: 'sim_' + Date.now(),
-            logbook_id: 999,
-            type,
-            title: isReturn ? 'Pengembalian Barang Selesai' : 'Peminjaman Barang Baru',
-            user_name: user?.nama || 'Ahmad Syarifudin',
-            user_nip: '199503152020011002',
-            barang_name: 'Mesin Bor Cordless 18V',
-            kode_unit: 'BOR-101-01',
-            kondisi: kondisi,
-            status_transaksi: isReturn ? 'dikembalikan' : 'dipinjam',
-            message: isReturn
-                ? `${user?.nama || 'Ahmad Syarifudin'} telah mengembalikan Mesin Bor Cordless 18V (BOR-101-01). Kondisi unit: ${kondisi === 'rusak' ? 'Rusak' : 'Baik'}.`
-                : `${user?.nama || 'Ahmad Syarifudin'} (NIP: 199503152020011002) baru saja meminjam Mesin Bor Cordless 18V (BOR-101-01).`,
-            time: 'Baru saja',
-            timestamp: new Date().toISOString(),
-        };
-
-        playNotificationSound();
-        setToasts((prev) => [fallbackNotif, ...prev].slice(0, 5));
-        setNotificationHistory((prev) => [fallbackNotif, ...prev].slice(0, 15));
-        setIsTesting(false);
-    };
 
     const handleLogout = () => {
         router.post('/logout');
@@ -682,59 +597,6 @@ export default function AuthenticatedLayout({ title, children }) {
                                             </div>
                                         </div>
                                     )}
-
-                                    {/* Quick Simulation Buttons inside dropdown */}
-                                    <div className="mt-3 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
-                                        <div className="text-[11px] font-semibold text-gray-500 mb-2">
-                                            Uji Coba Tampilan Toast:
-                                        </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    handleTriggerTest('borrow', 'baik');
-                                                    setShowNotifDropdown(false);
-                                                }}
-                                                className="py-1.5 px-1 bg-white hover:bg-gray-100 text-[#1D1616] border border-gray-300 rounded-lg text-[10.5px] font-bold transition-colors shadow-2xs text-center cursor-pointer"
-                                                title="Peminjaman (Ikon Hitam)"
-                                            >
-                                                • Pinjam
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    handleTriggerTest('return', 'baik');
-                                                    setShowNotifDropdown(false);
-                                                }}
-                                                className="py-1.5 px-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-lg text-[10.5px] font-bold transition-colors shadow-2xs text-center cursor-pointer"
-                                                title="Pengembalian Baik (Ikon Hijau)"
-                                            >
-                                                ✓ Kembali
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    handleTriggerTest('return', 'rusak');
-                                                    setShowNotifDropdown(false);
-                                                }}
-                                                className="py-1.5 px-1 bg-white hover:bg-red-50 text-[#D84040] border border-red-300 rounded-lg text-[10.5px] font-bold transition-colors shadow-2xs text-center cursor-pointer"
-                                                title="Pengembalian Rusak (Ikon Merah)"
-                                            >
-                                                ✕ Rusak
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    handleTriggerTest('overdue');
-                                                    setShowNotifDropdown(false);
-                                                }}
-                                                className="py-1.5 px-1 bg-rose-50 hover:bg-rose-100 text-[#D84040] border border-rose-300 rounded-lg text-[10.5px] font-bold transition-colors shadow-2xs text-center cursor-pointer"
-                                                title="Keterlambatan / Overdue (Alarm)"
-                                            >
-                                                ⚠️ Terlambat
-                                            </button>
-                                        </div>
-                                    </div>
 
                                     {/* Recent Log History */}
                                     <div className="mt-3 max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">

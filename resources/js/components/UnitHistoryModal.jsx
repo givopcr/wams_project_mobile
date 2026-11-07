@@ -3,16 +3,10 @@ import { createPortal } from 'react-dom';
 import {
     X,
     Clock,
-    User,
-    Calendar,
-    Tag,
     Layers,
     CheckCircle2,
     AlertTriangle,
-    Image as ImageIcon,
-    ZoomIn,
-    FileText,
-    ShieldCheck
+    ZoomIn
 } from 'lucide-react';
 
 export default function UnitHistoryModal({ isOpen, onClose, unitId, initialUnit = null }) {

@@ -50,73 +50,166 @@ export default function QrCodeIndex({ categories = [], units = [] }) {
         const url = URL.createObjectURL(svgBlob);
 
         img.onload = () => {
-            // Label dimensi 700 x 850
-            const width = 700;
-            const height = 850;
+            const width = 540;
+            const height = 670;
             canvas.width = width;
             canvas.height = height;
 
-            // Background
+            const drawRoundedRect = (c, x, y, w, h, r) => {
+                c.beginPath();
+                if (c.roundRect) {
+                    c.roundRect(x, y, w, h, r);
+                } else {
+                    const radius = typeof r === 'number' ? r : (Array.isArray(r) ? r[0] : 8);
+                    c.moveTo(x + radius, y);
+                    c.lineTo(x + w - radius, y);
+                    c.arcTo(x + w, y, x + w, y + radius, radius);
+                    c.lineTo(x + w, y + h - radius);
+                    c.arcTo(x + w, y + h, x + w - radius, y + h, radius);
+                    c.lineTo(x + radius, y + h);
+                    c.arcTo(x, y + h, x, y + h - radius, radius);
+                    c.lineTo(x, y + radius);
+                    c.arcTo(x, y, x + radius, y, radius);
+                    c.closePath();
+                }
+            };
+
+            // 1. Bersihkan Canvas (Transparan di luar box stiker)
+            ctx.clearRect(0, 0, width, height);
+
+            const cardRadius = 18;
+
+            // Clip ke bentuk box stiker ber-radius
+            ctx.save();
+            drawRoundedRect(ctx, 0, 0, width, height, cardRadius);
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, width, height);
-
-            // Outer Border
-            ctx.strokeStyle = '#E0E0E0';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(20, 20, width - 40, height - 40);
-
-            // Header Banner Merah WAMS
-            ctx.fillStyle = '#D84040';
-            ctx.fillRect(20, 20, width - 40, 75);
-
-            // Header Text
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 28px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('WAMS WORKSHOP • PINJAM TAMU', width / 2, 68);
-
-            // Kode Unit Badge
-            ctx.fillStyle = '#1D1616';
-            ctx.beginPath();
-            ctx.roundRect(width / 2 - 120, 115, 240, 42, 8);
             ctx.fill();
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 22px monospace';
-            ctx.fillText(unit.kode_unit, width / 2, 144);
+            ctx.clip();
 
-            // Draw QR Code Image (centered)
-            const qrSize = 400;
+            // 2. Header Banner Merah WAMS (Menempel pas di batas atas box stiker)
+            const bannerH = 70;
+            ctx.fillStyle = '#D84040';
+            ctx.fillRect(0, 0, width, bannerH);
+
+            // Judul Besar WAMS
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('WAMS', width / 2, bannerH / 2);
+            ctx.textBaseline = 'alphabetic';
+
+            // 3. Kode Unit Badge (Hitam)
+            const codeText = unit.kode_unit || 'KODE-UNIT';
+
+            let codeFontSize = 17;
+            ctx.font = `bold ${codeFontSize}px "SF Mono", "Courier New", monospace`;
+            let codeMetrics = ctx.measureText(codeText);
+
+            while (codeMetrics.width > width - 80 && codeFontSize > 11) {
+                codeFontSize -= 1;
+                ctx.font = `bold ${codeFontSize}px "SF Mono", "Courier New", monospace`;
+                codeMetrics = ctx.measureText(codeText);
+            }
+
+            const badgePaddingX = 28;
+            const badgeWidth = Math.min(width - 40, Math.max(codeMetrics.width + badgePaddingX, 160));
+            const badgeHeight = 38;
+            const badgeX = (width - badgeWidth) / 2;
+            const badgeY = 88;
+
+            ctx.fillStyle = '#1D1616';
+            drawRoundedRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 8);
+            ctx.fill();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = `bold ${codeFontSize}px "SF Mono", "Courier New", monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(codeText, width / 2, badgeY + (badgeHeight / 2));
+            ctx.textBaseline = 'alphabetic';
+
+            // 4. Container & QR Code (Di tengah dan terbingkai rapi)
+            const qrCardSize = 380;
+            const qrCardX = (width - qrCardSize) / 2;
+            const qrCardY = 142;
+
+            ctx.fillStyle = '#F8FAFC';
+            drawRoundedRect(ctx, qrCardX, qrCardY, qrCardSize, qrCardSize, 16);
+            ctx.fill();
+            ctx.strokeStyle = '#E2E8F0';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Draw QR Code
+            const qrSize = 340;
             const qrX = (width - qrSize) / 2;
-            const qrY = 180;
+            const qrY = qrCardY + (qrCardSize - qrSize) / 2;
             ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
 
-            // Nama Barang
+            // 5. Nama / Jenis Barang (Tetap Dipertahankan)
+            const rawNama = unit.nama_barang || 'Peralatan Workshop';
+            let namaFontSize = 26;
+            ctx.font = `900 ${namaFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            while (ctx.measureText(rawNama).width > width - 60 && namaFontSize > 15) {
+                namaFontSize -= 1;
+                ctx.font = `900 ${namaFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            }
+
             ctx.fillStyle = '#1D1616';
-            ctx.font = 'bold 34px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(unit.nama_barang, width / 2, 630);
+            ctx.fillText(rawNama, width / 2, 558);
 
-            // Kategori
-            ctx.fillStyle = '#6B7280';
-            ctx.font = '20px sans-serif';
-            ctx.fillText(`Kategori: ${unit.kategori}`, width / 2, 670);
+            // 6. Kategori Badge Pill (Tetap Dipertahankan)
+            const kategoriLabel = `Kategori: ${unit.kategori || 'Peralatan'}`;
+            ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            const katMetrics = ctx.measureText(kategoriLabel);
+            const katPillW = katMetrics.width + 24;
+            const katPillX = (width - katPillW) / 2;
+            const katPillY = 576;
+            const katPillH = 25;
 
-            // Footer / Instruksi
-            ctx.fillStyle = '#D84040';
-            ctx.font = 'bold 18px sans-serif';
-            ctx.fillText('Arahkan Kamera HP untuk Meminjam via Web', width / 2, 730);
+            ctx.fillStyle = '#F1F5F9';
+            drawRoundedRect(ctx, katPillX, katPillY, katPillW, katPillH, 6);
+            ctx.fill();
+            ctx.strokeStyle = '#CBD5E1';
+            ctx.lineWidth = 1;
+            ctx.stroke();
 
-            ctx.fillStyle = '#9CA3AF';
-            ctx.font = '14px monospace';
-            ctx.fillText(unit.qr_payload, width / 2, 780);
+            ctx.fillStyle = '#475569';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(kategoriLabel, width / 2, katPillY + (katPillH / 2));
+            ctx.textBaseline = 'alphabetic';
+
+            // 7. Footer Watermark
+            ctx.fillStyle = '#94A3B8';
+            ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('WAMS • WORKSHOP ASSET MANAGEMENT SYSTEM', width / 2, 636);
+            ctx.textBaseline = 'alphabetic';
+
+            ctx.restore();
+
+            // 8. Garis Tepi Box Stiker (Border Luar)
+            ctx.strokeStyle = '#CBD5E1';
+            ctx.lineWidth = 2;
+            drawRoundedRect(ctx, 1, 1, width - 2, height - 2, cardRadius);
+            ctx.stroke();
 
             const pngFile = canvas.toDataURL('image/png');
             const downloadLink = document.createElement('a');
-            downloadLink.download = `WAMS_QR_${unit.kode_unit}.png`;
+            const safeFileName = codeText.replace(/[^a-zA-Z0-9_-]/g, '_');
+            downloadLink.download = `Stiker_QR_${safeFileName}.png`;
             downloadLink.href = pngFile;
             downloadLink.click();
             URL.revokeObjectURL(url);
             setDownloadingId(null);
+        };
+
+        img.onerror = () => {
+            setDownloadingId(null);
+            URL.revokeObjectURL(url);
         };
 
         img.src = url;
@@ -139,59 +232,144 @@ export default function QrCodeIndex({ categories = [], units = [] }) {
         const url = URL.createObjectURL(svgBlob);
 
         img.onload = () => {
-            const width = 700;
-            const height = 850;
+            const width = 540;
+            const height = 670;
             canvas.width = width;
             canvas.height = height;
 
+            const drawRoundedRect = (c, x, y, w, h, r) => {
+                c.beginPath();
+                if (c.roundRect) {
+                    c.roundRect(x, y, w, h, r);
+                } else {
+                    const radius = typeof r === 'number' ? r : (Array.isArray(r) ? r[0] : 8);
+                    c.moveTo(x + radius, y);
+                    c.lineTo(x + w - radius, y);
+                    c.arcTo(x + w, y, x + w, y + radius, radius);
+                    c.lineTo(x + w, y + h - radius);
+                    c.arcTo(x + w, y + h, x + w - radius, y + h, radius);
+                    c.lineTo(x + radius, y + h);
+                    c.arcTo(x, y + h, x, y + h - radius, radius);
+                    c.lineTo(x, y + radius);
+                    c.arcTo(x, y, x + radius, y, radius);
+                    c.closePath();
+                }
+            };
+
+            // 1. Bersihkan Canvas (Transparan di luar box stiker)
+            ctx.clearRect(0, 0, width, height);
+
+            const cardRadius = 18;
+
+            // Clip ke bentuk box stiker ber-radius
+            ctx.save();
+            drawRoundedRect(ctx, 0, 0, width, height, cardRadius);
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, width, height);
-
-            ctx.strokeStyle = '#E0E0E0';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(20, 20, width - 40, height - 40);
-
-            ctx.fillStyle = '#D84040';
-            ctx.fillRect(20, 20, width - 40, 70);
-
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 28px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('WAMS WORKSHOP QR', width / 2, 65);
-
-            ctx.fillStyle = '#EEEEEE';
-            ctx.beginPath();
-            ctx.roundRect(width / 2 - 60, 110, 120, 34, 8);
             ctx.fill();
-            ctx.fillStyle = '#1D1616';
-            ctx.font = 'bold 18px monospace';
-            ctx.fillText(`ID: #${kat.id}`, width / 2, 134);
+            ctx.clip();
 
-            const qrSize = 420;
+            // 2. Header Banner Merah WAMS
+            const bannerH = 70;
+            ctx.fillStyle = '#D84040';
+            ctx.fillRect(0, 0, width, bannerH);
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('WAMS', width / 2, bannerH / 2);
+            ctx.textBaseline = 'alphabetic';
+
+            // 3. ID Badge
+            const idText = `KATEGORI ID #${kat.id}`;
+            ctx.fillStyle = '#1D1616';
+            drawRoundedRect(ctx, width / 2 - 90, 88, 180, 38, 8);
+            ctx.fill();
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 16px "SF Mono", "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(idText, width / 2, 88 + 19);
+            ctx.textBaseline = 'alphabetic';
+
+            // 4. QR Card
+            const qrCardSize = 380;
+            const qrCardX = (width - qrCardSize) / 2;
+            const qrCardY = 142;
+            ctx.fillStyle = '#F8FAFC';
+            drawRoundedRect(ctx, qrCardX, qrCardY, qrCardSize, qrCardSize, 16);
+            ctx.fill();
+            ctx.strokeStyle = '#E2E8F0';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            const qrSize = 340;
             const qrX = (width - qrSize) / 2;
-            const qrY = 165;
+            const qrY = qrCardY + (qrCardSize - qrSize) / 2;
             ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
 
+            // 5. Nama Kategori (Auto-scaled)
+            const namaKat = kat.nama_kategori || 'Kategori';
+            let katFontSize = 26;
+            ctx.font = `900 ${katFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            while (ctx.measureText(namaKat).width > width - 60 && katFontSize > 15) {
+                katFontSize -= 1;
+                ctx.font = `900 ${katFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            }
             ctx.fillStyle = '#1D1616';
-            ctx.font = 'bold 36px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(kat.nama_kategori, width / 2, 630);
+            ctx.fillText(namaKat, width / 2, 558);
 
-            ctx.fillStyle = '#D84040';
-            ctx.font = 'bold 22px monospace';
-            ctx.fillText(kat.qr_code, width / 2, 670);
+            // 6. Info Count Pill
+            const infoText = `${kat.total_barang} Model Barang • ${kat.total_unit} Unit`;
+            ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            const infoMetrics = ctx.measureText(infoText);
+            const infoPillW = infoMetrics.width + 24;
+            const infoPillX = (width - infoPillW) / 2;
+            const infoPillY = 576;
+            const infoPillH = 25;
 
-            ctx.fillStyle = '#6B7280';
-            ctx.font = '18px sans-serif';
-            ctx.fillText(`${kat.total_barang} Barang • ${kat.total_unit} Total Unit`, width / 2, 715);
+            ctx.fillStyle = '#F1F5F9';
+            drawRoundedRect(ctx, infoPillX, infoPillY, infoPillW, infoPillH, 6);
+            ctx.fill();
+            ctx.strokeStyle = '#CBD5E1';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = '#475569';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(infoText, width / 2, infoPillY + (infoPillH / 2));
+            ctx.textBaseline = 'alphabetic';
+
+            // 7. Footer Watermark
+            ctx.fillStyle = '#94A3B8';
+            ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('WAMS • WORKSHOP ASSET MANAGEMENT SYSTEM', width / 2, 636);
+            ctx.textBaseline = 'alphabetic';
+
+            ctx.restore();
+
+            // 8. Garis Tepi Box Stiker (Border Luar)
+            ctx.strokeStyle = '#CBD5E1';
+            ctx.lineWidth = 2;
+            drawRoundedRect(ctx, 1, 1, width - 2, height - 2, cardRadius);
+            ctx.stroke();
 
             const pngFile = canvas.toDataURL('image/png');
             const downloadLink = document.createElement('a');
-            downloadLink.download = `WAMS_QR_${kat.nama_kategori.replace(/[^a-zA-Z0-9]/g, '_')}_ID${kat.id}.png`;
+            const safeName = kat.nama_kategori.replace(/[^a-zA-Z0-9_-]/g, '_');
+            downloadLink.download = `Stiker_QR_Kategori_${safeName}_ID${kat.id}.png`;
             downloadLink.href = pngFile;
             downloadLink.click();
             URL.revokeObjectURL(url);
             setDownloadingId(null);
+        };
+
+        img.onerror = () => {
+            setDownloadingId(null);
+            URL.revokeObjectURL(url);
         };
 
         img.src = url;

@@ -68,10 +68,6 @@ class ProfileController extends Controller
 
         $user->save();
 
-        if ($request->filled('new_password')) {
-            $user->recordPlainPassword($request->new_password);
-        }
-
         return response()->json([
             'success' => true,
             'message' => 'Profil berhasil diperbarui.',

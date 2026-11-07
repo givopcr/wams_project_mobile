@@ -1,7 +1,12 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminWebController;
 use App\Http\Controllers\Admin\AuthWebController;
+use App\Http\Controllers\Admin\BarangController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LogbookController;
+use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Guest\GuestPinjamController;
 use App\Http\Controllers\User\UserWebController;
 use Illuminate\Support\Facades\Route;
@@ -46,55 +51,56 @@ Route::middleware('auth')->group(function () {
 // Admin Protected Routes
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     // Dashboard
-    Route::get('/dashboard', [AdminWebController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
     // Master Barang
-    Route::get('/barang', [AdminWebController::class, 'barang'])->name('admin.barang');
-    Route::post('/barang', [AdminWebController::class, 'storeBarang'])->name('admin.barang.store');
-    Route::post('/barang/{id}', [AdminWebController::class, 'updateBarang'])->name('admin.barang.update'); // Form data with file
-    Route::delete('/barang/{id}', [AdminWebController::class, 'destroyBarang'])->name('admin.barang.destroy');
-    Route::post('/barang/{id}/restock', [AdminWebController::class, 'restockBarang'])->name('admin.barang.restock');
-    Route::get('/barang/{id}/kartu-stok', [AdminWebController::class, 'kartuStokJson'])->name('admin.barang.kartu_stok');
+    Route::get('/barang', [BarangController::class, 'index'])->name('admin.barang');
+    Route::post('/barang', [BarangController::class, 'store'])->name('admin.barang.store');
+    Route::post('/barang/{id}', [BarangController::class, 'update'])->name('admin.barang.update'); // Form data with file
+    Route::delete('/barang/{id}', [BarangController::class, 'destroy'])->name('admin.barang.destroy');
+    Route::post('/barang/{id}/restock', [BarangController::class, 'restock'])->name('admin.barang.restock');
+    Route::get('/barang/{id}/kartu-stok', [BarangController::class, 'kartuStokJson'])->name('admin.barang.kartu_stok');
 
     // Unit Fisik (Diarahkan ke Manajemen Barang karena terintegrasi)
     Route::get('/unit', fn () => redirect()->route('admin.barang'))->name('admin.unit');
-    Route::post('/unit', [AdminWebController::class, 'storeUnit'])->name('admin.unit.store');
-    Route::match(['put', 'post'], '/unit/{id}', [AdminWebController::class, 'updateUnit'])->name('admin.unit.update');
-    Route::delete('/unit/{id}', [AdminWebController::class, 'destroyUnit'])->name('admin.unit.destroy');
-    Route::get('/unit/{id}/history', [AdminWebController::class, 'unitHistoryJson'])->name('admin.unit.history');
+    Route::post('/unit', [BarangController::class, 'storeUnit'])->name('admin.unit.store');
+    Route::match(['put', 'post'], '/unit/{id}', [BarangController::class, 'updateUnit'])->name('admin.unit.update');
+    Route::delete('/unit/{id}', [BarangController::class, 'destroyUnit'])->name('admin.unit.destroy');
+    Route::get('/unit/{id}/history', [BarangController::class, 'unitHistoryJson'])->name('admin.unit.history');
 
     // Transaksi & Logbook
-    Route::get('/logbook', [AdminWebController::class, 'logbook'])->name('admin.logbook');
-    Route::post('/peminjaman/{id}/approve', [AdminWebController::class, 'approvePeminjaman'])->name('admin.peminjaman.approve');
-    Route::post('/peminjaman/{id}/reject', [AdminWebController::class, 'rejectPeminjaman'])->name('admin.peminjaman.reject');
-    Route::get('/scanner', [AdminWebController::class, 'scanner'])->name('admin.scanner');
+    Route::get('/logbook', [LogbookController::class, 'index'])->name('admin.logbook');
+    Route::post('/peminjaman/{id}/approve', [LogbookController::class, 'approve'])->name('admin.peminjaman.approve');
+    Route::post('/peminjaman/{id}/reject', [LogbookController::class, 'reject'])->name('admin.peminjaman.reject');
+    Route::get('/scanner', [BarangController::class, 'scanner'])->name('admin.scanner');
 
     // Kalender Peminjaman & Jadwal Batas Kembali
-    Route::get('/calendar', [AdminWebController::class, 'calendar'])->name('admin.calendar');
-    Route::post('/calendar/peminjaman', [AdminWebController::class, 'storeCalendarPeminjaman'])->name('admin.calendar.store');
+    Route::get('/calendar', [LogbookController::class, 'calendar'])->name('admin.calendar');
+    Route::post('/calendar/peminjaman', [LogbookController::class, 'storeCalendar'])->name('admin.calendar.store');
 
     // Manajemen User
-    Route::get('/users', [AdminWebController::class, 'users'])->name('admin.users');
-    Route::post('/users', [AdminWebController::class, 'storeUser'])->name('admin.users.store');
-    Route::put('/users/{id}', [AdminWebController::class, 'updateUser'])->name('admin.users.update');
-    Route::delete('/users/{id}', [AdminWebController::class, 'destroyUser'])->name('admin.users.destroy');
+    Route::get('/users', [UserController::class, 'index'])->name('admin.users');
+    Route::post('/users', [UserController::class, 'store'])->name('admin.users.store');
+    Route::put('/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
+    Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
 
     // QR Code
-    Route::get('/qrcode', [AdminWebController::class, 'qrCode'])->name('admin.qrcode');
+    Route::get('/qrcode', [BarangController::class, 'qrCode'])->name('admin.qrcode');
 
     // Laporan & Statistik
-    Route::get('/reports', [AdminWebController::class, 'reports'])->name('admin.reports');
-    Route::get('/reports/export-excel', [AdminWebController::class, 'exportExcelReports'])->name('admin.reports.excel');
-    Route::get('/reports/print-pdf', [AdminWebController::class, 'exportPdfReports'])->name('admin.reports.pdf');
+    Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports');
+    Route::get('/reports/export-excel', [ReportController::class, 'exportExcel'])->name('admin.reports.excel');
+    Route::get('/reports/export-doc', [ReportController::class, 'exportDoc'])->name('admin.reports.doc');
+    Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])->name('admin.reports.pdf');
+    Route::get('/reports/print-pdf', [ReportController::class, 'exportPdf']);
 
     // Live Notifications (Peminjaman & Pengembalian)
-    Route::get('/notifications/check', [AdminWebController::class, 'checkNewTransactions'])->name('admin.notifications.check');
-    Route::match(['get', 'post'], '/notifications/test', [AdminWebController::class, 'testNotification'])->name('admin.notifications.test');
+    Route::get('/notifications/check', [NotificationController::class, 'check'])->name('admin.notifications.check');
 
     // Pengaturan Akun Administrator
-    Route::get('/profile', [AdminWebController::class, 'profile'])->name('admin.profile');
-    Route::post('/profile', [AdminWebController::class, 'updateProfile'])->name('admin.profile.update');
-    Route::put('/profile/password', [AdminWebController::class, 'updatePassword'])->name('admin.profile.password');
+    Route::get('/profile', [UserController::class, 'profile'])->name('admin.profile');
+    Route::post('/profile', [UserController::class, 'updateProfile'])->name('admin.profile.update');
+    Route::put('/profile/password', [UserController::class, 'updatePassword'])->name('admin.profile.password');
 });
 
 /*

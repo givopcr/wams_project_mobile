@@ -2,8 +2,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import ConfirmModal from '@/Components/ConfirmModal';
-import UnitHistoryModal from '@/Components/UnitHistoryModal';
+import ConfirmModal from '@/components/ConfirmModal';
+import UnitHistoryModal from '@/components/UnitHistoryModal';
 import {
     Package,
     Plus,
@@ -30,8 +30,10 @@ import {
     Eye,
     ShieldAlert,
     ShieldCheck,
-    History
+    History,
+    Download
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function BarangIndex({ barangList, categories = [], categoryStats = [], globalTabCounts = null, filters }) {
     const [search, setSearch] = useState(filters.q || '');
@@ -164,6 +166,207 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
         unit: null,
     });
 
+    // Modal Pop-up QR Code & Unduh Stiker
+    const [qrModal, setQrModal] = useState({ isOpen: false, barang: null, unitIndex: 0 });
+    const [isDownloadingQr, setIsDownloadingQr] = useState(false);
+
+    const openQrModal = (item, defaultUnitIndex = 0) => {
+        setQrModal({
+            isOpen: true,
+            barang: item,
+            unitIndex: defaultUnitIndex,
+        });
+    };
+
+    const openQrModalForUnit = (barang, unit) => {
+        if (!barang) return;
+        const uIdx = barang.units ? barang.units.findIndex(u => u.id === unit.id) : 0;
+        setQrModal({
+            isOpen: true,
+            barang: barang,
+            unitIndex: uIdx >= 0 ? uIdx : 0,
+        });
+    };
+
+    const downloadSticker = (barang, unit) => {
+        const svg = document.getElementById('popup-qr-svg');
+        if (!svg) return;
+
+        setIsDownloadingQr(true);
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(svgBlob);
+
+        img.onload = () => {
+            const width = 540;
+            const height = 670;
+            canvas.width = width;
+            canvas.height = height;
+
+            const drawRoundedRect = (c, x, y, w, h, r) => {
+                c.beginPath();
+                if (c.roundRect) {
+                    c.roundRect(x, y, w, h, r);
+                } else {
+                    const radius = typeof r === 'number' ? r : (Array.isArray(r) ? r[0] : 8);
+                    c.moveTo(x + radius, y);
+                    c.lineTo(x + w - radius, y);
+                    c.arcTo(x + w, y, x + w, y + radius, radius);
+                    c.lineTo(x + w, y + h - radius);
+                    c.arcTo(x + w, y + h, x + w - radius, y + h, radius);
+                    c.lineTo(x + radius, y + h);
+                    c.arcTo(x, y + h, x, y + h - radius, radius);
+                    c.lineTo(x, y + radius);
+                    c.arcTo(x, y, x + radius, y, radius);
+                    c.closePath();
+                }
+            };
+
+            // 1. Bersihkan Canvas (Transparan di luar box stiker)
+            ctx.clearRect(0, 0, width, height);
+
+            const cardRadius = 18;
+
+            // Clip ke bentuk box stiker ber-radius
+            ctx.save();
+            drawRoundedRect(ctx, 0, 0, width, height, cardRadius);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fill();
+            ctx.clip();
+
+            // 2. Header Banner Merah WAMS (Menempel pas di batas atas box stiker)
+            const bannerH = 70;
+            ctx.fillStyle = '#D84040';
+            ctx.fillRect(0, 0, width, bannerH);
+
+            // Judul Besar WAMS
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('WAMS', width / 2, bannerH / 2);
+            ctx.textBaseline = 'alphabetic';
+
+            // 3. Kode Unit Badge (Hitam)
+            const codeText = unit?.kode_unit || barang?.kode_barang || 'KODE-UNIT';
+
+            let codeFontSize = 17;
+            ctx.font = `bold ${codeFontSize}px "SF Mono", "Courier New", monospace`;
+            let codeMetrics = ctx.measureText(codeText);
+
+            while (codeMetrics.width > width - 80 && codeFontSize > 11) {
+                codeFontSize -= 1;
+                ctx.font = `bold ${codeFontSize}px "SF Mono", "Courier New", monospace`;
+                codeMetrics = ctx.measureText(codeText);
+            }
+
+            const badgePaddingX = 28;
+            const badgeWidth = Math.min(width - 40, Math.max(codeMetrics.width + badgePaddingX, 160));
+            const badgeHeight = 38;
+            const badgeX = (width - badgeWidth) / 2;
+            const badgeY = 88;
+
+            ctx.fillStyle = '#1D1616';
+            drawRoundedRect(ctx, badgeX, badgeY, badgeWidth, badgeHeight, 8);
+            ctx.fill();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = `bold ${codeFontSize}px "SF Mono", "Courier New", monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(codeText, width / 2, badgeY + (badgeHeight / 2));
+            ctx.textBaseline = 'alphabetic';
+
+            // 4. Container & QR Code (Di tengah dan terbingkai rapi)
+            const qrCardSize = 380;
+            const qrCardX = (width - qrCardSize) / 2;
+            const qrCardY = 142;
+
+            ctx.fillStyle = '#F8FAFC';
+            drawRoundedRect(ctx, qrCardX, qrCardY, qrCardSize, qrCardSize, 16);
+            ctx.fill();
+            ctx.strokeStyle = '#E2E8F0';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Gambar QR Code
+            const qrSize = 340;
+            const qrX = (width - qrSize) / 2;
+            const qrY = qrCardY + (qrCardSize - qrSize) / 2;
+            ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+
+            // 5. Nama / Jenis Barang (Tetap Dipertahankan)
+            const rawNama = barang?.nama_barang || 'Peralatan Workshop';
+            let namaFontSize = 26;
+            ctx.font = `900 ${namaFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            while (ctx.measureText(rawNama).width > width - 60 && namaFontSize > 15) {
+                namaFontSize -= 1;
+                ctx.font = `900 ${namaFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            }
+
+            ctx.fillStyle = '#1D1616';
+            ctx.textAlign = 'center';
+            ctx.fillText(rawNama, width / 2, 558);
+
+            // 6. Kategori Badge Pill (Tetap Dipertahankan)
+            const kategoriNama = barang?.kategori?.nama_kategori || barang?.nama_kategori || 'Peralatan';
+            const kategoriLabel = `Kategori: ${kategoriNama}`;
+            ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            const katMetrics = ctx.measureText(kategoriLabel);
+            const katPillW = katMetrics.width + 24;
+            const katPillX = (width - katPillW) / 2;
+            const katPillY = 576;
+            const katPillH = 25;
+
+            ctx.fillStyle = '#F1F5F9';
+            drawRoundedRect(ctx, katPillX, katPillY, katPillW, katPillH, 6);
+            ctx.fill();
+            ctx.strokeStyle = '#CBD5E1';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = '#475569';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(kategoriLabel, width / 2, katPillY + (katPillH / 2));
+            ctx.textBaseline = 'alphabetic';
+
+            // 7. Footer Watermark
+            ctx.fillStyle = '#94A3B8';
+            ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('WAMS • WORKSHOP ASSET MANAGEMENT SYSTEM', width / 2, 636);
+            ctx.textBaseline = 'alphabetic';
+
+            ctx.restore();
+
+            // 8. Garis Tepi Box Stiker (Border Luar)
+            ctx.strokeStyle = '#CBD5E1';
+            ctx.lineWidth = 2;
+            drawRoundedRect(ctx, 1, 1, width - 2, height - 2, cardRadius);
+            ctx.stroke();
+
+            const pngFile = canvas.toDataURL('image/png');
+            const downloadLink = document.createElement('a');
+            const safeFileName = codeText.replace(/[^a-zA-Z0-9_-]/g, '_');
+            downloadLink.download = `Stiker_QR_${safeFileName}.png`;
+            downloadLink.href = pngFile;
+            downloadLink.click();
+            URL.revokeObjectURL(url);
+            setIsDownloadingQr(false);
+        };
+
+        img.onerror = () => {
+            setIsDownloadingQr(false);
+            URL.revokeObjectURL(url);
+        };
+
+        img.src = url;
+    };
+
     // Prevent background scrolling while any modal is open
     useEffect(() => {
         const isAnyModalOpen = Boolean(
@@ -172,7 +375,8 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             previewModalImage ||
             deleteModal?.isOpen ||
             restockModal?.isOpen ||
-            kartuStokModal?.isOpen
+            kartuStokModal?.isOpen ||
+            qrModal?.isOpen
         );
         if (isAnyModalOpen) {
             document.body.style.overflow = 'hidden';
@@ -182,7 +386,7 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
         return () => {
             document.body.style.overflow = '';
         };
-    }, [modalOpen, unitModalOpen, previewModalImage, deleteModal.isOpen, restockModal.isOpen, kartuStokModal.isOpen]);
+    }, [modalOpen, unitModalOpen, previewModalImage, deleteModal.isOpen, restockModal.isOpen, kartuStokModal.isOpen, qrModal.isOpen]);
 
     // Form Unit Fisik
     const unitForm = useForm({
@@ -954,75 +1158,20 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                             Kode Master: {item.kode_barang}
                                                                         </div>
 
-                                                                        {/* DAFTAR KODE UNIT FISIK ATAU STATUS BAHAN HABIS PAKAI */}
-                                                                        <div className="mt-2 pt-2 border-t border-[#E0E0E0]/60">
-                                                                            {isHabisPakai ? (
-                                                                                <div className="flex flex-wrap items-center gap-2">
-                                                                                    <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
-                                                                                        <Boxes size={12} className="text-amber-600" />
-                                                                                        Bahan Habis Pakai
+                                                                        {/* STATUS BAHAN HABIS PAKAI (JIKA BERLAKU) */}
+                                                                        {isHabisPakai && (
+                                                                            <div className="mt-2 pt-2 border-t border-[#E0E0E0]/60 flex flex-wrap items-center gap-2">
+                                                                                <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                                                                                    <Boxes size={12} className="text-amber-600" />
+                                                                                    Bahan Habis Pakai
+                                                                                </span>
+                                                                                {item.is_low_stock && (
+                                                                                    <span className="text-[10px] font-extrabold text-red-700 bg-red-100 border border-red-300 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                                                                                        <AlertTriangle size={11} /> Stok Menipis (Batas: {item.stok_minimum} {item.satuan})
                                                                                     </span>
-                                                                                    {item.is_low_stock && (
-                                                                                        <span className="text-[10px] font-extrabold text-red-700 bg-red-100 border border-red-300 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
-                                                                                            <AlertTriangle size={11} /> Stok Menipis (Batas: {item.stok_minimum} {item.satuan})
-                                                                                        </span>
-                                                                                    )}
-                                                                                </div>
-                                                                            ) : (
-                                                                                <>
-                                                                                    <div className={`flex items-center justify-between gap-2 ${isExpanded ? 'mb-1.5' : ''}`}>
-                                                                                        <span className="text-[10px] font-extrabold text-[#6B7280] uppercase tracking-wider flex items-center gap-1">
-                                                                                            <Layers size={12} className="text-[#D84040]" />
-                                                                                            Unit ({item.units?.length || 0}):
-                                                                                        </span>
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            onClick={() => toggleExpand(item.id)}
-                                                                                            className="text-[11px] font-bold text-[#D84040] hover:text-[#8E1616] inline-flex items-center gap-0.5 cursor-pointer"
-                                                                                        >
-                                                                                            {isExpanded ? (
-                                                                                                <>Tutup Rincian <ChevronDown size={12} /></>
-                                                                                            ) : (
-                                                                                                <>Kelola Unit <ChevronRight size={12} /></>
-                                                                                            )}
-                                                                                        </button>
-                                                                                    </div>
-
-                                                                                    {isExpanded && (
-                                                                                        item.units && item.units.length > 0 ? (
-                                                                                            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                                                                                {item.units.map((u) => {
-                                                                                                    const isAvailable = u.status === 'tersedia';
-                                                                                                    const isBorrowed = u.status === 'dipinjam';
-                                                                                                    const badgeCls = isAvailable
-                                                                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                                                                        : isBorrowed
-                                                                                                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                                                                                        : 'bg-rose-50 text-[#D84040] border-rose-200';
-                                                                                                    const dotCls = isAvailable ? 'bg-emerald-500' : isBorrowed ? 'bg-amber-500' : 'bg-[#D84040]';
-
-                                                                                                    return (
-                                                                                                        <span
-                                                                                                            key={u.id}
-                                                                                                            onClick={() => openEditUnitModal(item, u)}
-                                                                                                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold border ${badgeCls} cursor-pointer hover:shadow-xs transition-shadow`}
-                                                                                                            title={`Klik untuk edit status unit: ${u.kode_unit} | Status: ${u.status} | Kondisi: ${u.kondisi}`}
-                                                                                                        >
-                                                                                                            <span className={`w-1.5 h-1.5 rounded-full ${dotCls}`} />
-                                                                                                            {u.kode_unit}
-                                                                                                        </span>
-                                                                                                    );
-                                                                                                })}
-                                                                                            </div>
-                                                                                        ) : (
-                                                                                            <span className="text-[11px] text-[#8C93A0] italic mt-1 block">
-                                                                                                Belum ada unit fisik terdaftar
-                                                                                            </span>
-                                                                                        )
-                                                                                    )}
-                                                                                </>
-                                                                            )}
-                                                                        </div>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </td>
@@ -1126,14 +1275,15 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                                 <span>Detail ({item.units?.length || 0})</span>
                                                                                 {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                                                                             </button>
-                                                                            <Link
-                                                                                href={`/admin/qrcode?barang_id=${item.id}`}
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => openQrModal(item)}
                                                                                 className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-gray-50 text-[#1D1616] hover:text-[#D84040] border border-[#E0E0E0] hover:border-[#D84040] text-[11px] font-bold inline-flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                                                                                title="Lihat & Cetak QR Code Unit"
+                                                                                title="Lihat & Unduh QR Code Stiker"
                                                                             >
                                                                                 <QrCode size={13} className="text-[#D84040]" />
                                                                                 <span>QR Code</span>
-                                                                            </Link>
+                                                                            </button>
                                                                         </>
                                                                     )}
                                                                     <button
@@ -1307,6 +1457,14 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                                                                 </td>
                                                                                                 <td className="py-2.5 text-right">
                                                                                                     <div className="flex items-center justify-end gap-1.5">
+                                                                                                        <button
+                                                                                                            type="button"
+                                                                                                            onClick={() => openQrModalForUnit(item, u)}
+                                                                                                            className="p-1 rounded text-[#D84040] hover:text-[#8E1616] hover:bg-rose-50 transition-colors cursor-pointer"
+                                                                                                            title="Lihat & Unduh QR Code Unit Ini"
+                                                                                                        >
+                                                                                                            <QrCode size={13} />
+                                                                                                        </button>
                                                                                                         <button
                                                                                                             onClick={() => setUnitHistoryModal({ isOpen: true, unit: { ...u, nama_barang: item.nama_barang, nama_kategori: item.nama_kategori } })}
                                                                                                             className="p-1 rounded text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
@@ -1579,6 +1737,14 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                                     {/* Aksi Unit */}
                                                     <td className="p-4 text-right">
                                                         <div className="flex items-center justify-end gap-1.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openQrModalForUnit(unit.parentBarang, unit)}
+                                                                className="p-1.5 rounded-lg text-[#D84040] hover:text-[#8E1616] hover:bg-rose-50 transition-colors cursor-pointer"
+                                                                title="Lihat & Unduh QR Code Unit Ini"
+                                                            >
+                                                                <QrCode size={14} />
+                                                            </button>
                                                             <button
                                                                 onClick={() => setUnitHistoryModal({ isOpen: true, unit: { ...unit, nama_barang: unit.nama_barang, nama_kategori: unit.nama_kategori } })}
                                                                 className="p-1.5 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
@@ -2580,6 +2746,125 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                 unitId={unitHistoryModal.unit?.id}
                 initialUnit={unitHistoryModal.unit}
             />
+
+            {/* Modal Pop-up QR Code & Unduh Stiker */}
+            {qrModal.isOpen && qrModal.barang && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/60 backdrop-blur-xs overflow-y-auto">
+                    <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-sm sm:max-w-md w-full p-6 shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-150 relative">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#E0E0E0]">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-rose-50 text-[#D84040] flex items-center justify-center shrink-0">
+                                    <QrCode size={18} />
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-base font-extrabold text-[#1D1616] leading-tight">
+                                        QR Code Barang
+                                    </h3>
+                                    <p className="text-xs text-[#6B7280] truncate font-medium">
+                                        {qrModal.barang.nama_barang}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setQrModal({ isOpen: false, barang: null, unitIndex: 0 })}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        {(() => {
+                            const units = qrModal.barang.units || [];
+                            const hasUnits = units.length > 0;
+                            const activeUnit = hasUnits ? (units[qrModal.unitIndex] || units[0]) : null;
+                            const activeCode = activeUnit ? activeUnit.kode_unit : qrModal.barang.kode_barang;
+                            const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                            const qrPayload = `${origin}/scan/${activeCode}`;
+
+                            return (
+                                <div className="space-y-4">
+                                    {/* Unit Selector if multiple units */}
+                                    {units.length > 1 && (
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-[#6B7280] uppercase tracking-wider mb-1.5">
+                                                Pilih Unit Fisik ({units.length} Unit):
+                                            </label>
+                                            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar p-1.5 bg-gray-50 border border-gray-200 rounded-xl">
+                                                {units.map((u, idx) => {
+                                                    const isSelected = qrModal.unitIndex === idx;
+                                                    return (
+                                                        <button
+                                                            key={u.id}
+                                                            type="button"
+                                                            onClick={() => setQrModal(prev => ({ ...prev, unitIndex: idx }))}
+                                                            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                                                                isSelected
+                                                                    ? 'bg-[#D84040] text-white shadow-xs'
+                                                                    : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-400'
+                                                            }`}
+                                                        >
+                                                            {u.kode_unit}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Info Bar */}
+                                    <div className="flex items-center justify-between text-xs bg-gray-50 border border-gray-200 px-3.5 py-2.5 rounded-xl gap-2">
+                                        <span className="font-semibold text-gray-500 shrink-0">
+                                            {hasUnits ? 'Kode Unit Terpilih:' : 'Kode Master:'}
+                                        </span>
+                                        <span className="font-mono font-bold text-[#1D1616] bg-white border border-gray-200 px-2.5 py-0.5 rounded shadow-2xs break-all text-right">
+                                            {activeCode}
+                                        </span>
+                                    </div>
+
+                                    {/* QR Code Canvas Box */}
+                                    <div className="flex flex-col items-center justify-center p-5 bg-gray-50 rounded-2xl border border-gray-200">
+                                        <div className="p-3.5 bg-white rounded-xl shadow-xs border border-gray-200 mb-3">
+                                            <QRCodeSVG
+                                                id="popup-qr-svg"
+                                                value={qrPayload}
+                                                size={190}
+                                                level="H"
+                                                includeMargin={false}
+                                                fgColor="#1D1616"
+                                            />
+                                        </div>
+                                        <div className="text-center px-2">
+                                            <span className="inline-block text-[11px] font-mono text-[#D84040] bg-red-50 border border-red-200 px-2.5 py-0.5 rounded font-semibold break-all max-w-full">
+                                                /scan/{activeCode}
+                                            </span>
+                                            <p className="text-[11px] text-[#6B7280] mt-1.5">
+                                                Pindai kamera HP untuk meminjam atau mengelola via web
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Download Sticker Button */}
+                                    <div className="pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => downloadSticker(qrModal.barang, activeUnit)}
+                                            disabled={isDownloadingQr}
+                                            className="w-full py-3 px-4 bg-[#D84040] hover:bg-[#8E1616] disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                                        >
+                                            <Download size={15} />
+                                            <span>{isDownloadingQr ? 'Memproses Stiker...' : 'Unduh Stiker QR (PNG)'}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </div>,
+                document.body
+            )}
         </AuthenticatedLayout>
     );
 }

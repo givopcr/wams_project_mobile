@@ -1,4 +1,5 @@
 import React from 'react';
+import { ClipboardCheck } from 'lucide-react';
 
 /**
  * Image 1: Jumlah Total Barang (Bunk Bed / Master Storage Inventory Icon)
@@ -117,6 +118,6 @@ export function BarangDipinjamIcon({ className = "w-5 h-5", size = 20, ...props 
  */
 export function BarangBaikIcon({ className = "w-5 h-5", size = 20, ...props }) {
     return (
-        <i className={`fi fi-br-task-checklist ${className}`} style={{ fontSize: size }} {...props} />
+        <ClipboardCheck className={className} size={size} {...props} />
     );
 }

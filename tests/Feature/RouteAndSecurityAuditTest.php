@@ -103,6 +103,26 @@ class RouteAndSecurityAuditTest extends TestCase
         $this->actingAs($this->user)
             ->get('/scan/' . $this->unit->kode_unit)
             ->assertRedirect(route('user.scanner', ['code' => $this->unit->kode_unit]));
+
+        // Tamu tanpa login mendapatkan halaman Guest/Borrow dengan login_url
+        $this->app['auth']->logout();
+        $guestResponse = $this->get('/scan/' . $this->unit->kode_unit);
+        $guestResponse->assertOk();
+        $guestResponse->assertInertia(fn ($page) => $page
+            ->component('Guest/Borrow')
+            ->has('login_url')
+        );
+
+        // Jika memilih mode login via query (?mode=login), diarahkan ke halaman login dengan redirect
+        $this->get('/scan/' . $this->unit->kode_unit . '?mode=login')
+            ->assertRedirect(route('login', ['redirect' => route('guest.scan', ['kode_unit' => $this->unit->kode_unit])]));
+
+        // Login Admin dengan redirect /scan/ diarahkan kembali ke scan -> lalu ke admin.barang
+        $this->post('/login', [
+            'login' => $this->admin->email,
+            'password' => 'password123',
+            'redirect' => '/scan/' . $this->unit->kode_unit,
+        ])->assertRedirect('/scan/' . $this->unit->kode_unit);
     }
 
     public function test_user_spoofing_nama_as_admin_email_cannot_lock_out_admin_login(): void

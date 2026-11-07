@@ -9,14 +9,11 @@ import {
     Clock,
     Wrench,
     Cpu,
-    Activity,
-    Users,
     ArrowUpRight,
     TrendingUp,
     ShieldCheck,
     Calendar,
     ChevronRight,
-    Sparkles,
     MoreHorizontal,
     ShieldAlert,
     AlertTriangle
@@ -31,7 +28,7 @@ import {
     TopBarangHorizontalChart,
     TopUnitMaintenanceChart,
     OverdueTrendLineChart
-} from '@/Components/DashboardCharts';
+} from '@/components/DashboardCharts';
 
 // Category Rounded Bar Chart Component
 function CategoryBarChart({ data = [], color = '#2563EB' }) {
@@ -154,7 +151,9 @@ export default function Dashboard({
     categoryCharts = [],
     recentUsersActivity = [],
     topBarangDipinjam = [],
+    allTopBarang = [],
     topUnitMaintenance = [],
+    allTopUnitMaintenance = [],
     overdueStats = {},
 }) {
     const { auth } = usePage().props;
@@ -355,7 +354,7 @@ export default function Dashboard({
                     {/* Card 4: Persentase barang yang masih baik */}
                     <div className="bg-white rounded-2xl border border-[#E0E0E0] p-5 shadow-2xs hover:shadow-sm transition-all relative flex items-center gap-4">
                         <div className="w-13 h-13 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
-                            <i className="fi fi-br-task-checklist text-[22px] leading-none flex items-center justify-center"></i>
+                            <BarangBaikIcon className="w-6 h-6" size={24} />
                         </div>
                         <div className="flex-1 min-w-0 pr-4">
                             <div className="flex items-baseline gap-1.5">
@@ -468,8 +467,14 @@ export default function Dashboard({
 
                 {/* 3. ANALISIS SIRKULASI & MAINTENANCE (HORIZONTAL BAR CHARTS) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <TopBarangHorizontalChart data={topBarangDipinjam} />
-                    <TopUnitMaintenanceChart data={topUnitMaintenance} />
+                    <TopBarangHorizontalChart
+                        data={topBarangDipinjam}
+                        allData={allTopBarang.length > 0 ? allTopBarang : topBarangDipinjam}
+                    />
+                    <TopUnitMaintenanceChart
+                        data={topUnitMaintenance}
+                        allData={allTopUnitMaintenance.length > 0 ? allTopUnitMaintenance : topUnitMaintenance}
+                    />
                 </div>
 
                 {/* 4. STATISTIK TREN KETERLAMBATAN (LINE CHART) */}

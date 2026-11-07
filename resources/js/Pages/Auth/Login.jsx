@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, Head } from '@inertiajs/react';
-import { User, Lock, Eye, EyeOff, ShieldAlert, KeyRound, Mail, X, CheckCircle2, RefreshCw, IdCard, UserPlus } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, ShieldAlert, KeyRound, Mail, X, CheckCircle2, RefreshCw, IdCard, UserPlus, Sparkles } from 'lucide-react';
 
 export default function Login({ status, initialTab = 'login', redirect = null }) {
     const [activeTab, setActiveTab] = useState(initialTab || 'login');
@@ -76,7 +76,7 @@ export default function Login({ status, initialTab = 'login', redirect = null })
 
     const handleGoogleLogin = () => {
         setIsGoogleRedirecting(true);
-        window.location.href = '/auth/google';
+        window.location.href = redirect ? `/auth/google?redirect=${encodeURIComponent(redirect)}` : '/auth/google';
     };
 
     // Countdown Timer for Resend OTP
@@ -244,6 +244,31 @@ export default function Login({ status, initialTab = 'login', redirect = null })
                             <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2.5">
                                 <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
                                 <span>{status}</span>
+                            </div>
+                        )}
+
+                        {/* QR Code Scan Context Banner */}
+                        {redirect && redirect.includes('/scan/') && (
+                            <div className="mb-5 p-3.5 rounded-2xl bg-gradient-to-r from-red-50 to-orange-50 border border-red-200/90 text-xs text-[#1D1616] flex items-start justify-between gap-3 shadow-2xs">
+                                <div className="flex items-start gap-2.5 min-w-0">
+                                    <div className="w-7 h-7 rounded-lg bg-white border border-red-200 text-[#D84040] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                                        <Sparkles size={14} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-[#1D1616]">
+                                            Masuk untuk Memproses Unit dari Scan QR
+                                        </p>
+                                        <p className="text-[11px] text-[#6B7280] mt-0.5 leading-relaxed">
+                                            Setelah login, Anda otomatis diarahkan kembali ke unit tersebut sesuai peran Anda (Admin/User).
+                                        </p>
+                                    </div>
+                                </div>
+                                <a
+                                    href={redirect}
+                                    className="shrink-0 px-2.5 py-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-[11px] font-bold rounded-lg transition-colors cursor-pointer"
+                                >
+                                    Mode Tamu
+                                </a>
                             </div>
                         )}
 

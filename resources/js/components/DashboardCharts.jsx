@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from '@inertiajs/react';
 import {
     TrendingUp,
@@ -11,16 +12,33 @@ import {
     Calendar,
     Activity,
     CheckCircle2,
-    ShieldAlert
+    ShieldAlert,
+    Search,
+    X,
+    Filter
 } from 'lucide-react';
 
 /**
  * 1. Top Barang Paling Sering Dipinjam (Horizontal Bar Chart)
  */
-export function TopBarangHorizontalChart({ data = [] }) {
+export function TopBarangHorizontalChart({ data = [], allData = [] }) {
     const [hoveredIdx, setHoveredIdx] = useState(null);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
+    const fullList = allData && allData.length > 0 ? allData : data;
     const maxVal = Math.max(...data.map((d) => d.total_peminjaman || 0), 1);
+    const fullMaxVal = Math.max(...fullList.map((d) => d.total_peminjaman || 0), 1);
+
+    const filteredList = fullList.filter((item) => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            (item.nama_barang && item.nama_barang.toLowerCase().includes(q)) ||
+            (item.kode_barang && item.kode_barang.toLowerCase().includes(q)) ||
+            (item.kategori && item.kategori.toLowerCase().includes(q))
+        );
+    });
 
     return (
         <div className="bg-white rounded-2xl border border-[#E0E0E0] p-6 shadow-2xs flex flex-col justify-between hover:shadow-sm transition-all h-full">
@@ -40,17 +58,18 @@ export function TopBarangHorizontalChart({ data = [] }) {
                             </p>
                         </div>
                     </div>
-                    <Link
-                        href="/admin/barang"
-                        className="text-xs font-bold text-[#D84040] hover:text-[#8E1616] inline-flex items-center gap-1 transition-colors"
-                        title="Lihat Barang"
+                    <button
+                        type="button"
+                        onClick={() => setModalOpen(true)}
+                        className="text-xs font-bold text-[#D84040] hover:text-[#8E1616] inline-flex items-center gap-1 transition-colors cursor-pointer group"
+                        title="Lihat Peringkat Lengkap Semua Barang"
                     >
-                        Semua
-                        <ChevronRight size={14} />
-                    </Link>
+                        <span>Semua</span>
+                        <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    </button>
                 </div>
 
-                {/* Horizontal Bars List */}
+                {/* Horizontal Bars List (Top 5) */}
                 <div className="mt-5 space-y-4">
                     {data.length === 0 ? (
                         <div className="py-8 text-center text-xs text-gray-400">
@@ -72,8 +91,9 @@ export function TopBarangHorizontalChart({ data = [] }) {
                                     key={item.id || idx}
                                     onMouseEnter={() => setHoveredIdx(idx)}
                                     onMouseLeave={() => setHoveredIdx(null)}
-                                    className={`p-2.5 rounded-xl transition-all ${isHovered ? 'bg-[#EEEEEE]/50 shadow-2xs' : 'hover:bg-[#EEEEEE]/30'
-                                        }`}
+                                    className={`p-2.5 rounded-xl transition-all ${
+                                        isHovered ? 'bg-[#EEEEEE]/50 shadow-2xs' : 'hover:bg-[#EEEEEE]/30'
+                                    }`}
                                 >
                                     {/* Item Info Line */}
                                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -117,12 +137,179 @@ export function TopBarangHorizontalChart({ data = [] }) {
 
             {/* Footer Summary */}
             <div className="mt-4 pt-3 border-t border-[#E0E0E0]/80 flex items-center justify-between text-[11px] font-semibold text-[#6B7280]">
-                <span>Total 5 Barang Terpopuler</span>
+                <button
+                    type="button"
+                    onClick={() => setModalOpen(true)}
+                    className="hover:text-[#D84040] transition-colors cursor-pointer text-left inline-flex items-center gap-1 group"
+                >
+                    <span>
+                        {fullList.length > 5
+                            ? `Menampilkan 5 Teratas dari ${fullList.length} Barang`
+                            : `Total ${fullList.length} Barang Terpopuler`}
+                    </span>
+                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                </button>
                 <span className="text-[#D84040] font-bold flex items-center gap-1">
                     <TrendingUp size={12} />
                     Sirkulasi Aktif
                 </span>
             </div>
+
+            {/* Pop-up Modal: Ranking Lengkap Seluruh Barang */}
+            {modalOpen && typeof document !== 'undefined' && createPortal(
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/60 backdrop-blur-xs overflow-y-auto"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setModalOpen(false);
+                    }}
+                >
+                    <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[88vh]">
+                        {/* Modal Header */}
+                        <div className="flex items-start justify-between pb-4 border-b border-[#E0E0E0]">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-rose-50 text-[#D84040] flex items-center justify-center shrink-0">
+                                    <Package size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-extrabold text-[#1D1616] leading-tight">
+                                        Peringkat Lengkap Sirkulasi Barang
+                                    </h3>
+                                    <p className="text-xs text-[#6B7280] font-medium mt-0.5">
+                                        Seluruh data barang diurutkan berdasarkan frekuensi transaksi peminjaman
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setModalOpen(false)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-[#1D1616] hover:bg-gray-100 transition-colors cursor-pointer"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Search & Filter Bar */}
+                        <div className="py-3 border-b border-gray-100 flex items-center gap-3">
+                            <div className="relative flex-1">
+                                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Cari nama barang, kode, atau kategori..."
+                                    className="w-full pl-9 pr-9 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#D84040]/20 focus:border-[#D84040] transition-all"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+                            <div className="shrink-0 text-[11px] font-bold text-[#6B7280] bg-gray-100 px-3 py-2 rounded-xl">
+                                {filteredList.length} Barang
+                            </div>
+                        </div>
+
+                        {/* List of Items */}
+                        <div className="flex-1 overflow-y-auto divide-y divide-gray-100 pr-1 my-2 space-y-1.5 custom-scrollbar">
+                            {filteredList.length === 0 ? (
+                                <div className="py-12 text-center text-gray-400">
+                                    <Package size={32} className="mx-auto mb-2 opacity-30" />
+                                    <p className="text-xs font-semibold">Tidak ada barang yang cocok dengan pencarian.</p>
+                                </div>
+                            ) : (
+                                filteredList.map((item, idx) => {
+                                    const pct = fullMaxVal > 0 ? Math.round((item.total_peminjaman / fullMaxVal) * 100) : 0;
+                                    const rankNum = item.rank || idx + 1;
+                                    const rankColor =
+                                        rankNum === 1
+                                            ? 'bg-[#D84040] text-white shadow-xs'
+                                            : rankNum === 2
+                                                ? 'bg-[#1D1616] text-white'
+                                                : rankNum === 3
+                                                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                                    : 'bg-gray-100 text-gray-600 font-bold';
+
+                                    return (
+                                        <div
+                                            key={item.id || idx}
+                                            className="p-3 rounded-xl hover:bg-gray-50 transition-all flex flex-col gap-2 group"
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${rankColor}`}>
+                                                        {rankNum}
+                                                    </span>
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-bold text-[#1D1616] truncate">
+                                                                {item.nama_barang}
+                                                            </span>
+                                                            <span className="text-[10px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200 shrink-0">
+                                                                {item.kode_barang}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[#6B7280]">
+                                                            <span>{item.kategori}</span>
+                                                            <span>•</span>
+                                                            <span>{item.total_unit} Unit Fisik</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <div className="text-right">
+                                                        <span className="text-sm font-black text-[#D84040]">
+                                                            {item.total_peminjaman}
+                                                        </span>
+                                                        <span className="text-[11px] font-semibold text-[#6B7280] ml-1">
+                                                            kali dipinjam
+                                                        </span>
+                                                    </div>
+                                                    <Link
+                                                        href={`/admin/barang?q=${encodeURIComponent(item.nama_barang)}`}
+                                                        className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-[#D84040] hover:text-white hover:bg-[#D84040] px-2.5 py-1 rounded-lg border border-rose-200 transition-all cursor-pointer"
+                                                        title="Kelola barang di master"
+                                                    >
+                                                        Buka <ArrowUpRight size={12} />
+                                                    </Link>
+                                                </div>
+                                            </div>
+
+                                            {/* Bar Track */}
+                                            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-[#D84040] to-[#8E1616]"
+                                                    style={{ width: `${Math.max(pct, item.total_peminjaman > 0 ? 6 : 0)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="pt-3 border-t border-[#E0E0E0] flex items-center justify-between gap-3 text-xs">
+                            <span className="text-[#6B7280] font-medium text-[11px]">
+                                Total {fullList.length} master barang tercatat dalam logbook
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setModalOpen(false)}
+                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-[#1D1616] font-bold rounded-xl transition-colors cursor-pointer"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }
@@ -130,10 +317,39 @@ export function TopBarangHorizontalChart({ data = [] }) {
 /**
  * 2. Top Unit Yang Sering Maintenance (Horizontal Bar Chart)
  */
-export function TopUnitMaintenanceChart({ data = [] }) {
+export function TopUnitMaintenanceChart({ data = [], allData = [] }) {
     const [hoveredIdx, setHoveredIdx] = useState(null);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'maintenance' | 'rusak' | 'aktif'
 
+    const fullList = allData && allData.length > 0 ? allData : data;
     const maxVal = Math.max(...data.map((d) => d.total_maintenance || 0), 1);
+    const fullMaxVal = Math.max(...fullList.map((d) => d.total_maintenance || 0), 1);
+
+    const maintenanceCount = fullList.filter((u) => u.status === 'maintenance').length;
+    const rusakCount = fullList.filter(
+        (u) => u.kondisi === 'rusak' || (typeof u.kondisi === 'string' && u.kondisi.includes('rusak'))
+    ).length;
+    const aktifCount = fullList.filter((u) => u.status !== 'maintenance').length;
+
+    const filteredList = fullList.filter((item) => {
+        // Tab Status Filter
+        if (filterStatus === 'maintenance' && item.status !== 'maintenance') return false;
+        if (filterStatus === 'rusak' && !(item.kondisi === 'rusak' || (typeof item.kondisi === 'string' && item.kondisi.includes('rusak')))) {
+            return false;
+        }
+        if (filterStatus === 'aktif' && item.status === 'maintenance') return false;
+
+        // Search Text Filter
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            (item.kode_unit && item.kode_unit.toLowerCase().includes(q)) ||
+            (item.nama_barang && item.nama_barang.toLowerCase().includes(q)) ||
+            (item.kategori && item.kategori.toLowerCase().includes(q))
+        );
+    });
 
     return (
         <div className="bg-white rounded-2xl border border-[#E0E0E0] p-6 shadow-2xs flex flex-col justify-between hover:shadow-sm transition-all h-full">
@@ -153,17 +369,18 @@ export function TopUnitMaintenanceChart({ data = [] }) {
                             </p>
                         </div>
                     </div>
-                    <Link
-                        href="/admin/barang"
-                        className="text-xs font-bold text-amber-700 hover:text-amber-800 inline-flex items-center gap-1 transition-colors"
-                        title="Lihat Semua Barang"
+                    <button
+                        type="button"
+                        onClick={() => setModalOpen(true)}
+                        className="text-xs font-bold text-amber-700 hover:text-amber-800 inline-flex items-center gap-1 transition-colors cursor-pointer group"
+                        title="Lihat Ranking Lengkap Seluruh Unit Fisik"
                     >
-                        Semua
-                        <ChevronRight size={14} />
-                    </Link>
+                        <span>Semua</span>
+                        <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    </button>
                 </div>
 
-                {/* Horizontal Bars List */}
+                {/* Horizontal Bars List (Top 5) */}
                 <div className="mt-5 space-y-4">
                     {data.length === 0 ? (
                         <div className="py-8 text-center text-xs text-gray-400">
@@ -180,8 +397,9 @@ export function TopUnitMaintenanceChart({ data = [] }) {
                                     key={item.id || idx}
                                     onMouseEnter={() => setHoveredIdx(idx)}
                                     onMouseLeave={() => setHoveredIdx(null)}
-                                    className={`p-2.5 rounded-xl transition-all ${isHovered ? 'bg-[#EEEEEE]/50 shadow-2xs' : 'hover:bg-[#EEEEEE]/30'
-                                        }`}
+                                    className={`p-2.5 rounded-xl transition-all ${
+                                        isHovered ? 'bg-[#EEEEEE]/50 shadow-2xs' : 'hover:bg-[#EEEEEE]/30'
+                                    }`}
                                 >
                                     {/* Item Info Line */}
                                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -202,10 +420,11 @@ export function TopUnitMaintenanceChart({ data = [] }) {
                                                 {item.total_maintenance}x
                                             </span>
                                             <span
-                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${isMaintenanceNow
+                                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                                    isMaintenanceNow
                                                         ? 'bg-rose-50 text-[#D84040] border-rose-200'
                                                         : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                    }`}
+                                                }`}
                                             >
                                                 {isMaintenanceNow ? 'Sedang Servis' : 'Aktif'}
                                             </span>
@@ -228,12 +447,241 @@ export function TopUnitMaintenanceChart({ data = [] }) {
 
             {/* Footer Summary */}
             <div className="mt-4 pt-3 border-t border-[#E0E0E0]/80 flex items-center justify-between text-[11px] font-semibold text-[#6B7280]">
-                <span>Monitoring Kondisi Unit Fisik</span>
+                <button
+                    type="button"
+                    onClick={() => setModalOpen(true)}
+                    className="hover:text-amber-700 transition-colors cursor-pointer text-left inline-flex items-center gap-1 group"
+                >
+                    <span>
+                        {fullList.length > 5
+                            ? `Monitoring 5 Teratas dari ${fullList.length} Unit Fisik`
+                            : `Monitoring ${fullList.length} Unit Fisik`}
+                    </span>
+                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                </button>
                 <span className="text-amber-700 font-bold flex items-center gap-1">
                     <ShieldAlert size={12} />
                     Perlu Inspeksi Rutin
                 </span>
             </div>
+
+            {/* Pop-up Modal: Ranking Lengkap Seluruh Unit Maintenance */}
+            {modalOpen && typeof document !== 'undefined' && createPortal(
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1D1616]/60 backdrop-blur-xs overflow-y-auto"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setModalOpen(false);
+                    }}
+                >
+                    <div className="bg-white border border-[#E0E0E0] rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl my-auto animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[88vh]">
+                        {/* Modal Header */}
+                        <div className="flex items-start justify-between pb-4 border-b border-[#E0E0E0]">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                                    <Wrench size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-extrabold text-[#1D1616] leading-tight">
+                                        Peringkat Lengkap Maintenance Unit Fisik
+                                    </h3>
+                                    <p className="text-xs text-[#6B7280] font-medium mt-0.5">
+                                        Monitoring seluruh unit fisik berdasarkan frekuensi perbaikan & status kondisi
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setModalOpen(false)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-[#1D1616] hover:bg-gray-100 transition-colors cursor-pointer"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Search Bar */}
+                        <div className="py-3 border-b border-gray-100 flex items-center gap-3">
+                            <div className="relative flex-1">
+                                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Cari kode unit, nama barang, atau kategori..."
+                                    className="w-full pl-9 pr-9 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+                            <div className="shrink-0 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl">
+                                {filteredList.length} Unit
+                            </div>
+                        </div>
+
+                        {/* Status Filter Chips */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-2 pb-1 border-b border-gray-100">
+                            <button
+                                type="button"
+                                onClick={() => setFilterStatus('all')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    filterStatus === 'all'
+                                        ? 'bg-[#1D1616] text-white shadow-xs'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                Semua ({fullList.length})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFilterStatus('maintenance')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    filterStatus === 'maintenance'
+                                        ? 'bg-[#D84040] text-white shadow-xs'
+                                        : 'bg-rose-50 text-[#D84040] hover:bg-rose-100 border border-rose-200'
+                                }`}
+                            >
+                                Sedang Servis ({maintenanceCount})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFilterStatus('rusak')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    filterStatus === 'rusak'
+                                        ? 'bg-amber-600 text-white shadow-xs'
+                                        : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                                }`}
+                            >
+                                Kondisi Rusak ({rusakCount})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFilterStatus('aktif')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    filterStatus === 'aktif'
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                                }`}
+                            >
+                                Unit Aktif ({aktifCount})
+                            </button>
+                        </div>
+
+                        {/* List of Units */}
+                        <div className="flex-1 overflow-y-auto divide-y divide-gray-100 pr-1 my-2 space-y-1.5 custom-scrollbar">
+                            {filteredList.length === 0 ? (
+                                <div className="py-12 text-center text-gray-400">
+                                    <Wrench size={32} className="mx-auto mb-2 opacity-30" />
+                                    <p className="text-xs font-semibold">Tidak ada unit yang cocok dengan filter atau pencarian.</p>
+                                </div>
+                            ) : (
+                                filteredList.map((item, idx) => {
+                                    const pct = fullMaxVal > 0 ? Math.round((item.total_maintenance / fullMaxVal) * 100) : 0;
+                                    const rankNum = item.rank || idx + 1;
+                                    const isMaintenanceNow = item.status === 'maintenance';
+                                    const isDamaged = item.kondisi === 'rusak' || (typeof item.kondisi === 'string' && item.kondisi.includes('rusak'));
+
+                                    const rankColor =
+                                        rankNum === 1
+                                            ? 'bg-amber-600 text-white shadow-xs'
+                                            : rankNum === 2
+                                                ? 'bg-amber-500 text-white'
+                                                : rankNum === 3
+                                                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                                    : 'bg-gray-100 text-gray-600 font-bold';
+
+                                    return (
+                                        <div
+                                            key={item.id || idx}
+                                            className="p-3 rounded-xl hover:bg-gray-50 transition-all flex flex-col gap-2 group"
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${rankColor}`}>
+                                                        {rankNum}
+                                                    </span>
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-mono font-bold text-[#1D1616] bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">
+                                                                {item.kode_unit}
+                                                            </span>
+                                                            <span className="text-xs font-bold text-[#1D1616] truncate">
+                                                                {item.nama_barang}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-[#6B7280]">
+                                                            <span>{item.kategori}</span>
+                                                            <span>•</span>
+                                                            <span className={isDamaged ? 'text-rose-600 font-bold' : 'text-emerald-700'}>
+                                                                Kondisi {item.kondisi || 'Baik'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2.5 shrink-0">
+                                                    <span
+                                                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                                            isMaintenanceNow
+                                                                ? 'bg-rose-50 text-[#D84040] border-rose-200'
+                                                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                        }`}
+                                                    >
+                                                        {isMaintenanceNow ? 'Sedang Servis' : 'Aktif'}
+                                                    </span>
+                                                    <div className="text-right">
+                                                        <span className="text-xs font-black text-amber-700">
+                                                            {item.total_maintenance}x
+                                                        </span>
+                                                        <span className="text-[10px] font-semibold text-[#6B7280] ml-1">
+                                                            servis
+                                                        </span>
+                                                    </div>
+                                                    <Link
+                                                        href={`/admin/barang?q=${encodeURIComponent(item.kode_unit)}`}
+                                                        className="hidden sm:inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 hover:text-white hover:bg-amber-600 px-2.5 py-1 rounded-lg border border-amber-300 transition-all cursor-pointer"
+                                                        title="Buka unit di Master Barang"
+                                                    >
+                                                        Buka <ArrowUpRight size={12} />
+                                                    </Link>
+                                                </div>
+                                            </div>
+
+                                            {/* Bar Track */}
+                                            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-amber-500 to-amber-600"
+                                                    style={{ width: `${Math.max(pct, item.total_maintenance > 0 ? 6 : 0)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="pt-3 border-t border-[#E0E0E0] flex items-center justify-between gap-3 text-xs">
+                            <span className="text-[#6B7280] font-medium text-[11px]">
+                                Total {fullList.length} unit fisik dipantau kondisinya
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setModalOpen(false)}
+                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-[#1D1616] font-bold rounded-xl transition-colors cursor-pointer"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

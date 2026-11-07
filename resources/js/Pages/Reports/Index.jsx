@@ -11,7 +11,8 @@ import {
     Package,
     Wrench,
     FileSpreadsheet,
-    Printer,
+    FileText,
+    Download,
     Search,
     TrendingUp,
     ShieldCheck,
@@ -86,7 +87,8 @@ export default function ReportsIndex({
     }).toString();
 
     const excelExportUrl = `/admin/reports/export-excel?${exportQueryString}`;
-    const pdfExportUrl = `/admin/reports/print-pdf?${exportQueryString}`;
+    const docExportUrl = `/admin/reports/export-doc?${exportQueryString}`;
+    const pdfExportUrl = `/admin/reports/export-pdf?${exportQueryString}`;
 
     return (
         <AuthenticatedLayout title="Laporan & Statistik">
@@ -116,22 +118,33 @@ export default function ReportsIndex({
                                 href={excelExportUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
-                                title="Unduh berkas spreadsheet CSV / Excel"
+                                className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                                title="Unduh langsung berkas Excel (.xls)"
                             >
                                 <FileSpreadsheet size={15} />
                                 <span>Export Excel</span>
                             </a>
 
                             <a
+                                href={docExportUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                                title="Unduh langsung berkas Word Document (.doc)"
+                            >
+                                <FileText size={15} />
+                                <span>Export Docs</span>
+                            </a>
+
+                            <a
                                 href={pdfExportUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1D1616] hover:bg-black text-white text-xs font-bold rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
-                                title="Buka format cetak & simpan PDF"
+                                className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-[#D84040] hover:bg-[#b93232] text-white text-xs font-bold rounded-xl transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                                title="Unduh langsung dokumen PDF (.pdf)"
                             >
-                                <Printer size={15} />
-                                <span>Export PDF / Cetak</span>
+                                <Download size={15} />
+                                <span>Export PDF</span>
                             </a>
                         </div>
                     </div>

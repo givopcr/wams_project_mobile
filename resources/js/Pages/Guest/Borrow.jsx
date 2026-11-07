@@ -25,7 +25,10 @@ export default function GuestBorrow({
     barang,
     max_standard_duration_minutes = 240,
     preset_durations = [],
+    login_url = null,
 }) {
+    const targetLoginUrl = login_url || `/login?redirect=${encodeURIComponent(`/scan/${unit?.kode_unit || ''}`)}`;
+
     // Form States
     const [nama, setNama] = useState('');
     const [email, setEmail] = useState('');
@@ -272,17 +275,62 @@ export default function GuestBorrow({
                         </div>
                         <div>
                             <h1 className="text-sm font-bold text-[#1D1616] leading-tight">WAMS Workshop</h1>
-                            <p className="text-[10px] text-[#6B7280]">Peminjaman Tamu (Guest Mode)</p>
+                            <p className="text-[10px] text-[#6B7280]">Peminjaman Alat Workshop</p>
                         </div>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#1D1616] text-white">
-                        Scan QR
-                    </span>
+                    <a
+                        href={targetLoginUrl}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#1D1616] hover:bg-black text-white inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                        <span>Masuk Akun</span>
+                        <KeyRound size={12} />
+                    </a>
                 </div>
             </header>
 
             {/* Main Content Area */}
             <main className="flex-1 max-w-lg w-full mx-auto p-4 space-y-4">
+                {/* Pilihan Mode Akses: Tamu vs Akun Terdaftar */}
+                <div className="bg-white border border-[#E0E0E0] rounded-2xl p-1.5 shadow-2xs">
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#EEEEEE] rounded-xl text-xs">
+                        <div className="py-2.5 px-3 rounded-lg font-extrabold bg-white text-[#1D1616] shadow-xs flex items-center justify-center gap-1.5 select-none border border-[#E0E0E0]/80">
+                            <User size={14} className="text-[#D84040]" />
+                            <span>Mode Tamu (Guest)</span>
+                        </div>
+                        <a
+                            href={targetLoginUrl}
+                            className="py-2.5 px-3 rounded-lg font-bold text-[#6B7280] hover:text-[#1D1616] hover:bg-white/60 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                        >
+                            <KeyRound size={13} className="text-[#6B7280]" />
+                            <span>Masuk Akun Member / Admin</span>
+                            <ArrowRight size={12} className="opacity-70" />
+                        </a>
+                    </div>
+                </div>
+
+                {/* Banner Edukasi Opsi Login */}
+                <div className="p-3.5 bg-gradient-to-r from-red-50 to-orange-50 border border-red-200/90 rounded-2xl flex items-start justify-between gap-3 shadow-2xs">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-white border border-red-200 text-[#D84040] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                            <Sparkles size={16} />
+                        </div>
+                        <div className="min-w-0">
+                            <h4 className="text-xs font-bold text-[#1D1616]">
+                                Punya Akun WAMS (Mahasiswa / Staf / Admin)?
+                            </h4>
+                            <p className="text-[11px] text-[#6B7280] mt-0.5 leading-relaxed">
+                                Masuk dengan akun Anda agar peminjaman tercatat di riwayat profil, durasi lebih fleksibel, dan tanpa verifikasi email tamu.
+                            </p>
+                        </div>
+                    </div>
+                    <a
+                        href={targetLoginUrl}
+                        className="shrink-0 px-3 py-1.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-[11px] font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                        <span>Login</span>
+                        <ChevronRight size={12} />
+                    </a>
+                </div>
                 {/* Unit / Item Overview Card */}
                 <div className="bg-white border border-[#E0E0E0] rounded-2xl p-4 shadow-2xs">
                     <div className="flex items-start gap-3.5">
@@ -559,6 +607,15 @@ export default function GuestBorrow({
                             </>
                         )}
                     </button>
+
+                    <div className="text-center pt-1 border-t border-[#E0E0E0]/60">
+                        <p className="text-[11px] text-[#6B7280]">
+                            Ingin peminjaman ini tercatat di profil Anda?{' '}
+                            <a href={targetLoginUrl} className="font-bold text-[#D84040] hover:underline">
+                                Masuk dengan Akun WAMS
+                            </a>
+                        </p>
+                    </div>
                 </form>
             </main>
 

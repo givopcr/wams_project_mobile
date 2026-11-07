@@ -753,10 +753,6 @@ class UserWebController extends Controller
         }
         $user->save();
 
-        if ($request->filled('new_password')) {
-            $user->recordPlainPassword($request->new_password);
-        }
-
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,

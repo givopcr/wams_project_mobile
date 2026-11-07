@@ -8,7 +8,8 @@ import {
     ArrowLeft,
     CheckCircle2,
     Search,
-    Mail
+    Mail,
+    KeyRound
 } from 'lucide-react';
 
 export default function GuestUnavailable({
@@ -17,8 +18,10 @@ export default function GuestUnavailable({
     unit = null,
     borrower_hint = null,
     message = '',
+    login_url = null,
 }) {
     const [emailCheck, setEmailCheck] = useState('');
+    const targetLoginUrl = login_url || `/login?redirect=${encodeURIComponent(`/scan/${kode_unit}`)}`;
 
     const handleCheckBorrower = (e) => {
         e.preventDefault();
@@ -42,11 +45,58 @@ export default function GuestUnavailable({
                             <p className="text-[10px] text-[#6B7280]">Status Peralatan</p>
                         </div>
                     </div>
+                    <a
+                        href={targetLoginUrl}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#1D1616] hover:bg-black text-white inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                        <span>Masuk Akun</span>
+                        <KeyRound size={12} />
+                    </a>
                 </div>
             </header>
 
             <main className="flex-1 max-w-lg w-full mx-auto p-4 flex flex-col justify-center space-y-4">
                 <div className="bg-white border border-[#E0E0E0] rounded-2xl p-6 shadow-2xs text-center space-y-4">
+                    {type === 'restricted' && (
+                        <>
+                            <div className="w-16 h-16 bg-red-50 text-[#D84040] border border-red-200 rounded-full flex items-center justify-center mx-auto">
+                                <Lock size={32} />
+                            </div>
+                            <div>
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-[#D84040] border border-rose-300">
+                                    Otorisasi Akun Diperlukan
+                                </span>
+                                <h2 className="text-base font-bold text-[#1D1616] mt-2">
+                                    {unit ? `${unit.nama_barang} (${unit.kode_unit})` : kode_unit}
+                                </h2>
+                                <p className="text-xs text-[#6B7280] mt-1.5 leading-relaxed">
+                                    {message || 'Peralatan khusus ini hanya dapat dipinjam oleh akun member terdaftar atau persetujuan Administrator Workshop.'}
+                                </p>
+                            </div>
+                            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 text-left">
+                                <p className="font-bold mb-0.5">Catatan Keamanan Workshop:</p>
+                                <p className="text-[11px] opacity-90 leading-relaxed">
+                                    Mode tamu tidak diizinkan untuk alat berkategori khusus/berisiko tinggi. Silakan masuk menggunakan akun WAMS Anda untuk mengajukan peminjaman.
+                                </p>
+                            </div>
+                            <div className="pt-2 space-y-2">
+                                <a
+                                    href={targetLoginUrl}
+                                    className="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+                                >
+                                    <KeyRound size={14} />
+                                    Masuk dengan Akun WAMS
+                                </a>
+                                <a
+                                    href="/"
+                                    className="inline-flex items-center justify-center w-full py-2 bg-gray-100 hover:bg-gray-200 text-[#1D1616] text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                                >
+                                    Kembali ke Beranda
+                                </a>
+                            </div>
+                        </>
+                    )}
+
                     {type === 'not_borrowed' && (
                         <>
                             <div className="w-16 h-16 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full flex items-center justify-center mx-auto">
@@ -98,13 +148,9 @@ export default function GuestUnavailable({
 
                             {/* Verification form for original borrower to return or view ticket */}
                             <div className="pt-3 border-t border-[#E0E0E0] text-left space-y-2.5">
-                                <div className="text-xs font-bold text-[#1D1616]">
-                                    Apakah Anda yang meminjam barang ini?
-                                </div>
-                                <p className="text-[11px] text-[#6B7280]">
-                                    Masukkan email yang Anda gunakan saat mengajukan peminjaman untuk membuka tiket atau mengembalikan barang:
+                                <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                                    Jika Anda adalah peminjam unit ini dan ingin mengembalikannya, masukkan email yang Anda gunakan saat peminjaman:
                                 </p>
-
                                 <form onSubmit={handleCheckBorrower} className="space-y-2">
                                     <div className="relative">
                                         <input
@@ -112,10 +158,10 @@ export default function GuestUnavailable({
                                             required
                                             value={emailCheck}
                                             onChange={(e) => setEmailCheck(e.target.value)}
-                                            placeholder="Masukkan email Anda..."
-                                            className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] focus:outline-none focus:border-[#D84040]"
+                                            placeholder="Masukkan email peminjam..."
+                                            className="w-full pl-9 pr-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] placeholder-[#8C93A0] focus:outline-none focus:border-[#D84040]"
                                         />
-                                        <Mail size={15} className="absolute left-3 top-3 text-[#6B7280]" />
+                                        <Mail size={15} className="absolute left-3 top-2.5 text-[#6B7280]" />
                                     </div>
                                     <button
                                         type="submit"
@@ -166,6 +212,16 @@ export default function GuestUnavailable({
                             </div>
                         </>
                     )}
+                </div>
+
+                {/* Bottom Staff / Admin Quick Access */}
+                <div className="text-center text-xs text-[#6B7280] space-y-1">
+                    <p>
+                        Staf / Administrator workshop?{' '}
+                        <a href={targetLoginUrl} className="font-bold text-[#D84040] hover:underline">
+                            Masuk Akun Pengelola
+                        </a>
+                    </p>
                 </div>
             </main>
 

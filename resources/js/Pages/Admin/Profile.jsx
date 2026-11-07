@@ -250,9 +250,6 @@ export default function Profile({ profile, stats }) {
                                 <h3 className="text-base font-extrabold text-[#1D1616]">
                                     Informasi Profil
                                 </h3>
-                                <p className="text-xs text-[#6B7280]">
-                                    Perbarui nama lengkap, email, dan NIP identitas.
-                                </p>
                             </div>
                         </div>
 
@@ -331,18 +328,14 @@ export default function Profile({ profile, stats }) {
                                         <p className="mt-1 text-[11px] text-rose-500 font-semibold">{profileErrors.nip}</p>
                                     )}
                                 </div>
-
-                                <p className="text-[11px] text-[#6B7280]">
-                                    Informasi profil ini digunakan untuk identitas pencatatan logbook dan persetujuan peminjaman.
-                                </p>
                             </div>
 
                             {/* Submit Button */}
-                            <div className="pt-6 mt-auto">
+                            <div className="pt-6 mt-6 flex justify-center">
                                 <button
                                     type="submit"
                                     disabled={profileProcessing}
-                                    className="w-full h-11 flex items-center justify-center gap-2 px-5 bg-[#D84040] hover:bg-[#8E1616] disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer active:scale-98"
+                                    className="w-full sm:w-auto min-w-[240px] h-11 flex items-center justify-center gap-2 px-6 bg-[#D84040] hover:bg-[#8E1616] disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer active:scale-98"
                                 >
                                     <Save size={15} />
                                     <span>{profileProcessing ? 'Menyimpan...' : 'Simpan Perubahan Profil'}</span>
@@ -361,9 +354,6 @@ export default function Profile({ profile, stats }) {
                                 <h3 className="text-base font-extrabold text-[#1D1616]">
                                     Keamanan & Password
                                 </h3>
-                                <p className="text-xs text-[#6B7280]">
-                                    Perbarui kata sandi akun untuk menjaga keamanan sistem.
-                                </p>
                             </div>
                         </div>
 
@@ -459,18 +449,14 @@ export default function Profile({ profile, stats }) {
                                         </button>
                                     </div>
                                 </div>
-
-                                <p className="text-[11px] text-[#6B7280]">
-                                    Tips: Gunakan minimal 8 karakter kombinasi huruf besar, angka, dan simbol untuk keamanan maksimal.
-                                </p>
                             </div>
 
                             {/* Submit Button */}
-                            <div className="pt-6 mt-auto">
+                            <div className="pt-6 mt-6 flex justify-center">
                                 <button
                                     type="submit"
                                     disabled={passProcessing}
-                                    className="w-full h-11 flex items-center justify-center gap-2 px-5 bg-[#1D1616] hover:bg-black disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer active:scale-98"
+                                    className="w-full sm:w-auto min-w-[240px] h-11 flex items-center justify-center gap-2 px-6 bg-[#1D1616] hover:bg-black disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer active:scale-98"
                                 >
                                     <Key size={15} />
                                     <span>{passProcessing ? 'Memperbarui...' : 'Perbarui Password'}</span>

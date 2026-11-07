@@ -15,7 +15,7 @@ import {
     Eye,
     EyeOff
 } from 'lucide-react';
-import ConfirmModal from '@/Components/ConfirmModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function UserIndex({ users, filters }) {
     const { auth } = usePage().props;

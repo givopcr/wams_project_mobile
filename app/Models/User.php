@@ -7,10 +7,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -40,7 +36,6 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
-        'plain_password',
         'remember_token',
     ];
 
@@ -88,21 +83,5 @@ class User extends Authenticatable
         }
 
         return asset('storage/' . $this->avatar);
-    }
-
-    /**
-     * Pencatatan plain password telah dinonaktifkan
-     */
-    public function recordPlainPassword(string $plainPassword): void
-    {
-        // Fitur melihat password user oleh admin telah dihapus
-    }
-
-    /**
-     * Ambil password untuk ditampilkan khusus kepada Admin (dinonaktifkan)
-     */
-    public function getAdminVisiblePassword(): string
-    {
-        return '';
     }
 }

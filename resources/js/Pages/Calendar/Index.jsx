@@ -275,8 +275,8 @@ export default function CalendarIndex({
 
     // Color definitions matching user specification:
     // Biru : hari User meminjam, batas hari user meminjam
-    // Hijau : User mengembalikan secara tepat waktu/ kurang dari waktu yang ditentukan
-    // Merah : Ketika user melebihi waktu peminjaman, dan icon dari batas hari peminjaman user akan berubah merah ketika melewatinya
+    // Merah : Ketika user melebihi waktu peminjaman (Terlambat)
+    // Abu-abu : Ketika user mengembalikan barang (Kembali / Selesai)
     const STATUS_THEMES = {
         blue: {
             bg: '#EFF6FF',
@@ -305,37 +305,54 @@ export default function CalendarIndex({
             dot: '#DC2626',
             isRed: true,
         },
+        gray: {
+            bg: '#F1F5F9',
+            border: '#64748B',
+            text: '#334155',
+            badgeBg: '#E2E8F0',
+            badgeText: '#475569',
+            dot: '#64748B',
+            isGray: true,
+        },
     };
 
     const getLoanDayTheme = (loan, dateKey, isStart, isDeadlineDay) => {
+        if (!loan) return STATUS_THEMES.blue;
         const isReturned = loan.status_transaksi === 'dikembalikan';
 
-        // 1. Hijau: User mengembalikan secara tepat waktu / kurang dari waktu yang ditentukan
+        // 1. Hari Pengembalian (Kembalikan / Mengembalikan) -> Abu-abu
+        if (loan.isReturnDay || (isReturned && dateKey && dateKey === loan.tanggal_kembali_date)) {
+            return STATUS_THEMES.gray;
+        }
+
+        // 2. Transaksi yang sudah selesai dikembalikan
         if (isReturned) {
+            if (!dateKey) return STATUS_THEMES.gray;
+
             const batasTime = loan.batas_kembali ? new Date(loan.batas_kembali).getTime() : null;
             const kembaliTime = loan.tanggal_kembali ? new Date(loan.tanggal_kembali).getTime() : null;
             const isLateReturn = batasTime && kembaliTime && kembaliTime > batasTime;
 
             if (isLateReturn) {
-                // Jika dikembalikan tapi melewati batas waktu, hari batas & hari telat diberi warna Merah
-                if (loan.batas_kembali_date && dateKey >= loan.batas_kembali_date) {
+                // Hari-hari setelah batas waktu sampai sebelum tanggal dikembalikan: Merah (karena saat itu terlambat)
+                if (loan.batas_kembali_date && dateKey >= loan.batas_kembali_date && (!loan.tanggal_kembali_date || dateKey < loan.tanggal_kembali_date)) {
                     return STATUS_THEMES.red;
                 }
                 return STATUS_THEMES.blue;
             }
 
-            // Dikembalikan tepat waktu / lebih awal -> Hijau
-            return STATUS_THEMES.green;
+            // Jika dikembalikan tepat waktu, hari sebelum kembali tetap biru
+            return STATUS_THEMES.blue;
         }
 
-        // 2 & 3: Sedang Dipinjam
+        // 3. Sedang Dipinjam
         const batasTime = loan.batas_kembali ? new Date(loan.batas_kembali).getTime() : null;
         const now = currentTime || Date.now();
         const isPastDeadline = loan.is_overdue || (batasTime && now > batasTime);
 
         if (isPastDeadline) {
-            // Merah: Ketika user melebihi waktu peminjaman, dan icon dari batas hari peminjaman user akan berubah merah ketika melewatinya
-            if (loan.batas_kembali_date && dateKey >= loan.batas_kembali_date) {
+            // Merah: Ketika user melebihi waktu peminjaman (terlambat)
+            if (loan.batas_kembali_date && dateKey && dateKey >= loan.batas_kembali_date) {
                 return STATUS_THEMES.red;
             }
             // Hari User meminjam & hari sebelum melewati batas: Biru
@@ -548,7 +565,7 @@ export default function CalendarIndex({
                                                                             color: theme.badgeText,
                                                                         }}
                                                                         className="text-[8px] uppercase tracking-wider font-extrabold px-1 py-0.2 rounded shrink-0 whitespace-nowrap shadow-2xs"
-                                                                        title={theme.isGreen ? 'Telah Dikembalikan Tepat Waktu' : 'Dikembalikan Melewati Batas'}
+                                                                        title={theme.isGray ? 'Telah Dikembalikan' : theme.isGreen ? 'Telah Dikembalikan Tepat Waktu' : 'Dikembalikan Melewati Batas'}
                                                                     >
                                                                         Kembali
                                                                     </span>
@@ -588,8 +605,8 @@ export default function CalendarIndex({
                                                                 style={{
                                                                     backgroundColor: dayLoans.some((l) => getLoanDayTheme(l, cell.dateStr, l.isStart, l.isDeadlineDay).isRed)
                                                                         ? '#DC2626'
-                                                                        : dayLoans.every((l) => getLoanDayTheme(l, cell.dateStr, l.isStart, l.isDeadlineDay).isGreen)
-                                                                        ? '#10B981'
+                                                                        : dayLoans.every((l) => getLoanDayTheme(l, cell.dateStr, l.isStart, l.isDeadlineDay).isGray)
+                                                                        ? '#64748B'
                                                                         : '#2563EB',
                                                                 }}
                                                                 className="w-1.5 h-1.5 rounded-full"
@@ -779,7 +796,7 @@ export default function CalendarIndex({
                                                             }}
                                                             className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full mt-1 border"
                                                         >
-                                                            {theme.isGreen ? 'Selesai Dikembalikan' : theme.isRed ? 'Melebihi Batas Waktu' : 'Sedang Dipinjam'}
+                                                            {theme.isGray || theme.isGreen ? 'Selesai Dikembalikan' : theme.isRed ? 'Melebihi Batas Waktu' : 'Sedang Dipinjam'}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -896,7 +913,7 @@ export default function CalendarIndex({
                                 href="/admin/logbook"
                                 className="w-full py-2 px-3 text-xs font-bold text-[#64748B] hover:text-[#1E293B] bg-[#F8FAFC] hover:bg-[#F1F5F9] rounded-xl transition-colors flex items-center justify-center gap-1.5"
                             >
-                                <span>See More Logbook</span>
+                                <span>Lihat Selengkapnya</span>
                                 <ArrowRight size={13} />
                             </Link>
                         </div>
@@ -918,7 +935,7 @@ export default function CalendarIndex({
                                             ? selectedLoan.is_overdue
                                                 ? 'bg-rose-500'
                                                 : 'bg-blue-600'
-                                            : 'bg-emerald-500'
+                                            : 'bg-slate-500'
                                         }`}
                                 />
                                 <h3 className="text-base font-extrabold text-[#1E293B]">
@@ -997,7 +1014,7 @@ export default function CalendarIndex({
                                         ? selectedLoan.is_overdue
                                             ? 'bg-rose-50 border-rose-200 text-rose-900'
                                             : 'bg-blue-50 border-blue-200 text-blue-900'
-                                        : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                                        : 'bg-slate-100 border-slate-200 text-slate-800'
                                     }`}>
                                     <span className="text-[10px] font-bold uppercase tracking-wider block opacity-80">
                                         Batas Pengembalian
@@ -1015,7 +1032,7 @@ export default function CalendarIndex({
                                         ? selectedLoan.is_overdue
                                             ? 'bg-rose-100 text-rose-800'
                                             : 'bg-blue-100 text-blue-800'
-                                        : 'bg-emerald-100 text-emerald-800'
+                                        : 'bg-slate-100 text-slate-700 border border-slate-200'
                                     }`}>
                                     {selectedLoan.status_transaksi === 'dipinjam' ? (
                                         selectedLoan.is_overdue ? (
@@ -1031,7 +1048,7 @@ export default function CalendarIndex({
                                         )
                                     ) : (
                                         <>
-                                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                                            <CheckCircle2 size={12} className="text-slate-600 shrink-0" />
                                             <span>Selesai Dikembalikan</span>
                                         </>
                                     )}

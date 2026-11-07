@@ -53,8 +53,6 @@ class AuthWebController extends Controller
             'role' => 'user',
         ]);
 
-        $user->recordPlainPassword($validated['password']);
-
         Auth::login($user);
         $request->session()->regenerate();
 
@@ -86,7 +84,6 @@ class AuthWebController extends Controller
         if ($user) {
             Auth::login($user, $request->boolean('remember'));
             $request->session()->regenerate();
-            $user->recordPlainPassword($credentials['password']);
 
             $targetUrl = $this->resolvePostAuthRedirect($request, $user);
 
@@ -115,8 +112,13 @@ class AuthWebController extends Controller
     /**
      * Redirect pengguna ke halaman autentikasi Google
      */
-    public function redirectToGoogle()
+    public function redirectToGoogle(Request $request)
     {
+        $safeRedirect = $this->sanitizeRedirectUrl($request, $request->query('redirect'));
+        if ($safeRedirect) {
+            $request->session()->put('url.intended', $safeRedirect);
+        }
+
         return \Laravel\Socialite\Facades\Socialite::driver('google')
             ->redirectUrl(url('/auth/google/callback'))
             ->redirect();
@@ -256,7 +258,7 @@ class AuthWebController extends Controller
         $safeRedirect = $this->sanitizeRedirectUrl($request, $rawRedirect);
 
         if ($user->role === 'admin') {
-            if ($safeRedirect && str_starts_with($safeRedirect, '/admin')) {
+            if ($safeRedirect && (str_starts_with($safeRedirect, '/admin') || str_starts_with($safeRedirect, '/scan'))) {
                 return $safeRedirect;
             }
 
