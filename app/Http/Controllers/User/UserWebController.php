@@ -74,21 +74,11 @@ class UserWebController extends Controller
                 return $this->formatLogbookItem($log);
             });
 
-        // 5. Rekomendasi Barang Tersedia
-        $availableItems = Barang::with(['kategori', 'units'])
-            ->latest()
-            ->take(8)
-            ->get()
-            ->map(function ($b) {
-                return $this->formatBarangItem($b);
-            });
-
         return Inertia::render('User/MobileDashboard', [
             'stats' => $stats,
             'activeLoans' => $activeLoans,
             'categories' => $categories,
             'recentActivity' => $recentActivity,
-            'availableItems' => $availableItems,
             'user' => [
                 'id' => $user->id,
                 'nama' => $user->nama,
@@ -210,24 +200,13 @@ class UserWebController extends Controller
             'foto_pinjam.max' => 'Ukuran foto barang terlalu besar (maksimal 5MB).',
         ]);
 
-        $fotoPinjamPath = null;
-        $rawFotoPinjam = $request->input('foto_pinjam');
-        if ($rawFotoPinjam && preg_match('/^data:image\/(\w+);base64,/', $rawFotoPinjam, $typeMatch)) {
-            $ext = strtolower($typeMatch[1]);
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                $decoded = base64_decode(substr($rawFotoPinjam, strpos($rawFotoPinjam, ',') + 1), true);
-                if ($decoded !== false && strlen($decoded) > 0 && strlen($decoded) <= 5 * 1024 * 1024) {
-                    $fotoPinjamPath = 'peminjaman/borrow_' . auth()->id() . '_' . time() . '_' . uniqid() . '.' . $ext;
-                    Storage::disk('public')->put($fotoPinjamPath, $decoded);
-                }
-            }
-        }
-
-        if (!$fotoPinjamPath) {
+        $parsedFotoPinjam = $this->decodeAndValidateBase64Image($request->input('foto_pinjam'));
+        if (!$parsedFotoPinjam) {
+            $errMsg = 'Foto barang sebelum dipinjam wajib diunggah dengan format gambar yang valid (JPG, PNG, atau WEBP maks 5MB).';
             if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Foto barang sebelum dipinjam wajib diunggah dengan format gambar yang valid.'], 422);
+                return response()->json(['success' => false, 'message' => $errMsg], 422);
             }
-            return back()->withErrors(['foto_pinjam' => 'Foto barang sebelum dipinjam wajib diunggah dengan format gambar yang valid.']);
+            return back()->withErrors(['foto_pinjam' => $errMsg]);
         }
 
         $user = auth()->user();
@@ -276,7 +255,7 @@ class UserWebController extends Controller
             return back()->with('error', $msgQuota);
         }
 
-        return DB::transaction(function () use ($user, $barang, $unitIds, $request, $targetStatus, $requiresApproval, $tglPinjam, $batasKembali, $fotoPinjamPath) {
+        return DB::transaction(function () use ($user, $barang, $unitIds, $request, $targetStatus, $requiresApproval, $tglPinjam, $batasKembali, $parsedFotoPinjam) {
             $units = BarangUnit::whereIn('id', $unitIds)
                 ->where('barang_id', $barang->id)
                 ->where('status', 'tersedia')
@@ -290,6 +269,9 @@ class UserWebController extends Controller
                 }
                 return back()->with('error', $errMsg);
             }
+
+            $fotoPinjamPath = 'peminjaman/borrow_' . $user->id . '_' . time() . '_' . uniqid() . '.' . $parsedFotoPinjam['ext'];
+            Storage::disk('public')->put($fotoPinjamPath, $parsedFotoPinjam['decoded']);
 
             $keperluanText = $request->filled('keperluan') ? trim($request->keperluan) : null;
 
@@ -359,14 +341,18 @@ class UserWebController extends Controller
             'foto_kondisi.max' => 'Ukuran foto kondisi barang terlalu besar (maksimal 5MB).',
         ]);
 
-        $rawFoto = $request->input('foto_kondisi');
-        if (!$rawFoto || !preg_match('/^data:image\/(\w+);base64,/', $rawFoto)) {
-            return back()->withErrors(['foto_kondisi' => 'Foto kondisi barang saat dikembalikan wajib diunggah dengan format gambar yang valid.']);
+        $parsedFotoKondisi = $this->decodeAndValidateBase64Image($request->input('foto_kondisi'));
+        if (!$parsedFotoKondisi) {
+            $errMsg = 'Foto kondisi barang saat dikembalikan wajib diunggah dengan format gambar yang valid (JPG, PNG, atau WEBP maks 5MB).';
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errMsg], 422);
+            }
+            return back()->withErrors(['foto_kondisi' => $errMsg]);
         }
 
         $user = auth()->user();
 
-        return DB::transaction(function () use ($user, $id, $request) {
+        return DB::transaction(function () use ($user, $id, $request, $parsedFotoKondisi) {
             $logbook = Logbook::where('id', $id)
                 ->where('user_id', $user->id)
                 ->where('status_transaksi', 'dipinjam')
@@ -374,7 +360,11 @@ class UserWebController extends Controller
                 ->first();
 
             if (!$logbook) {
-                return back()->with('error', 'Data peminjaman aktif tidak ditemukan atau sudah selesai.');
+                $errMsg = 'Data peminjaman aktif tidak ditemukan atau sudah selesai.';
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $errMsg], 422);
+                }
+                return back()->with('error', $errMsg);
             }
 
             $unit = BarangUnit::where('id', $logbook->barang_unit_id)->lockForUpdate()->first();
@@ -390,19 +380,10 @@ class UserWebController extends Controller
                 $updateData['catatan_kembali'] = trim($request->catatan);
             }
 
-            if (Schema::hasColumn('logbook', 'foto_kembali') && $request->filled('foto_kondisi')) {
-                $rawFoto = $request->input('foto_kondisi');
-                if (preg_match('/^data:image\/(\w+);base64,/', $rawFoto, $typeMatch)) {
-                    $ext = strtolower($typeMatch[1]);
-                    if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                        $decoded = base64_decode(substr($rawFoto, strpos($rawFoto, ',') + 1));
-                        if ($decoded !== false) {
-                            $filePath = 'pengembalian/return_' . $logbook->id . '_' . time() . '.' . $ext;
-                            Storage::disk('public')->put($filePath, $decoded);
-                            $updateData['foto_kembali'] = $filePath;
-                        }
-                    }
-                }
+            if (Schema::hasColumn('logbook', 'foto_kembali')) {
+                $filePath = 'pengembalian/return_' . $logbook->id . '_' . time() . '_' . uniqid() . '.' . $parsedFotoKondisi['ext'];
+                Storage::disk('public')->put($filePath, $parsedFotoKondisi['decoded']);
+                $updateData['foto_kembali'] = $filePath;
             }
 
             // Update Logbook
@@ -419,11 +400,16 @@ class UserWebController extends Controller
 
             $namaBarang = $unit?->barang?->nama_barang ?? ($unit?->kode_unit ?? 'Alat');
             $labelKondisi = $kondisi === 'baik' ? 'Baik' : 'Rusak';
+            $successMsg = "Pengembalian {$namaBarang} ({$labelKondisi}) berhasil dikonfirmasi!";
 
-            return redirect()->route('user.riwayat')->with(
-                'success',
-                "Pengembalian {$namaBarang} ({$labelKondisi}) berhasil dikonfirmasi!"
-            );
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $successMsg,
+                ]);
+            }
+
+            return redirect()->route('user.riwayat')->with('success', $successMsg);
         });
     }
 
@@ -674,6 +660,7 @@ class UserWebController extends Controller
                     'kode_barang' => $unit->barang?->kode_barang,
                     'kategori' => $unit->barang?->kategori?->nama_kategori,
                     'perlu_persetujuan' => (bool) $unit->barang?->perlu_persetujuan,
+                    'is_habis_pakai' => $unit->barang?->isHabisPakai() ?? false,
                     'gambar_url' => $unit->barang?->gambar_url,
                 ],
             ],
@@ -706,6 +693,7 @@ class UserWebController extends Controller
                 'email' => $user->email,
                 'nip' => $user->nip,
                 'role' => $user->role,
+                'has_password' => !empty($user->password),
                 'joined_at' => $user->created_at?->translatedFormat('d F Y') ?? 'Member Workshop',
             ],
             'stats' => $stats,
@@ -733,7 +721,7 @@ class UserWebController extends Controller
         ]);
 
         if ($request->filled('new_password')) {
-            if (!Hash::check($request->current_password ?? '', $user->password)) {
+            if (!empty($user->password) && !Hash::check($request->current_password ?? '', $user->password)) {
                 if ($request->wantsJson()) {
                     return response()->json([
                         'success' => false,
@@ -892,6 +880,50 @@ class UserWebController extends Controller
             'foto_kembali_url' => $log->foto_kembali_url,
             'gambar_url' => $unit?->gambar_url ?? $barang?->gambar_url,
             'foto' => $unit?->gambar_url ?? $barang?->gambar_url,
+        ];
+    }
+
+    /**
+     * Validasi ketat Base64 image beserta pengecekan magic bytes / MIME gambar
+     *
+     * @return array{decoded: string, ext: string}|null
+     */
+    private function decodeAndValidateBase64Image(?string $rawFoto): ?array
+    {
+        if (empty($rawFoto) || !preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/i', $rawFoto)) {
+            return null;
+        }
+
+        $commaPos = strpos($rawFoto, ',');
+        if ($commaPos === false) {
+            return null;
+        }
+
+        $decoded = base64_decode(substr($rawFoto, $commaPos + 1), true);
+        if ($decoded === false || strlen($decoded) === 0 || strlen($decoded) > 5 * 1024 * 1024) {
+            return null;
+        }
+
+        $imageInfo = @getimagesizefromstring($decoded);
+        if ($imageInfo === false || empty($imageInfo['mime'])) {
+            return null;
+        }
+
+        $mimeMap = [
+            'image/jpeg' => 'jpg',
+            'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+
+        $mime = strtolower($imageInfo['mime']);
+        if (!isset($mimeMap[$mime])) {
+            return null;
+        }
+
+        return [
+            'decoded' => $decoded,
+            'ext' => $mimeMap[$mime],
         ];
     }
 }

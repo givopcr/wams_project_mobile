@@ -236,4 +236,105 @@ class RouteAndSecurityAuditTest extends TestCase
             'status_transaksi' => 'dipinjam',
         ]);
     }
+
+    public function test_guest_ticket_cannot_be_unlocked_by_email_alone_without_matching_name_or_token(): void
+    {
+        $this->unit->update(['status' => 'dipinjam']);
+        $logbook = Logbook::create([
+            'user_id' => null,
+            'barang_unit_id' => $this->unit->id,
+            'tipe_peminjam' => 'guest',
+            'guest_nama' => 'Budi Santoso',
+            'guest_email' => 'budi@example.com',
+            'tanggal_pinjam' => now(),
+            'batas_kembali' => now()->addHours(2),
+            'status_transaksi' => 'dipinjam',
+            'return_token' => 'secret_guest_return_token_1234567890',
+        ]);
+
+        // Hanya menebak email tanpa nama lengkap atau token harus ditolak (tetap di Guest/Unavailable)
+        $this->get('/scan/' . $this->unit->kode_unit . '?email=budi@example.com')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Guest/Unavailable')
+                ->where('type', 'borrowed')
+                ->missing('logbook.return_token')
+            );
+
+        // Kombinasi nama lengkap + email yang cocok berhasil membuka Guest/Status
+        $this->get('/scan/' . $this->unit->kode_unit . '?nama=Budi+Santoso&email=budi@example.com')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Guest/Status')
+                ->where('logbook.id', $logbook->id)
+            );
+    }
+
+    public function test_invalid_or_gif_base64_photo_cannot_bypass_mandatory_return_photo(): void
+    {
+        $this->unit->update(['status' => 'dipinjam']);
+        $logbook = Logbook::create([
+            'user_id' => $this->user->id,
+            'barang_unit_id' => $this->unit->id,
+            'tipe_peminjam' => 'user',
+            'tanggal_pinjam' => now(),
+            'batas_kembali' => now()->addDays(1),
+            'status_transaksi' => 'dipinjam',
+        ]);
+
+        // 1. Mencoba bypass menggunakan header GIF atau payload bukan gambar asli
+        $this->actingAs($this->user)
+            ->postJson("/user/kembali/{$logbook->id}", [
+                'kondisi_kembali' => 'baik',
+                'foto_kondisi' => 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+            ])
+            ->assertStatus(422);
+
+        $this->actingAs($this->user)
+            ->postJson("/user/kembali/{$logbook->id}", [
+                'kondisi_kembali' => 'baik',
+                'foto_kondisi' => 'data:image/png;base64,' . base64_encode('bukan_file_gambar_biner'),
+            ])
+            ->assertStatus(422);
+
+        // Status masih dipinjam karena foto tidak valid
+        $this->assertEquals('dipinjam', $logbook->fresh()->status_transaksi);
+
+        // 2. Menggunakan PNG valid berhasil mengembalikan dan menyimpan foto_kembali
+        $validPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        $this->actingAs($this->user)
+            ->postJson("/user/kembali/{$logbook->id}", [
+                'kondisi_kembali' => 'baik',
+                'foto_kondisi' => $validPng,
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        $this->assertEquals('dikembalikan', $logbook->fresh()->status_transaksi);
+        $this->assertNotNull($logbook->fresh()->foto_kembali);
+    }
+
+    public function test_google_oauth_user_without_local_password_can_set_password(): void
+    {
+        $oauthUser = User::factory()->create([
+            'nama' => 'OAuth User',
+            'email' => 'oauth@wams.test',
+            'role' => 'user',
+            'password' => null,
+            'google_id' => 'google-oauth-id-999',
+        ]);
+
+        $this->actingAs($oauthUser)
+            ->postJson('/user/profile/update', [
+                'nama' => 'OAuth User Updated',
+                'nip' => '19998877',
+                'current_password' => '',
+                'new_password' => 'secret123',
+                'new_password_confirmation' => 'secret123',
+            ])
+            ->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        $this->assertNotNull($oauthUser->fresh()->password);
+    }
 }

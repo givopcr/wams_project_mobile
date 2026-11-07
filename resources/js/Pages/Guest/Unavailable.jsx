@@ -16,17 +16,20 @@ export default function GuestUnavailable({
     type = 'not_found',
     kode_unit = '',
     unit = null,
+    is_guest_loan = true,
     borrower_hint = null,
+    verification_error = null,
     message = '',
     login_url = null,
 }) {
+    const [namaCheck, setNamaCheck] = useState('');
     const [emailCheck, setEmailCheck] = useState('');
     const targetLoginUrl = login_url || `/login?redirect=${encodeURIComponent(`/scan/${kode_unit}`)}`;
 
     const handleCheckBorrower = (e) => {
         e.preventDefault();
-        if (!emailCheck.trim()) return;
-        window.location.href = `/scan/${kode_unit}?email=${encodeURIComponent(emailCheck.trim())}`;
+        if (!namaCheck.trim() || !emailCheck.trim()) return;
+        window.location.href = `/scan/${encodeURIComponent(kode_unit)}?nama=${encodeURIComponent(namaCheck.trim())}&email=${encodeURIComponent(emailCheck.trim())}`;
     };
 
     return (
@@ -147,30 +150,60 @@ export default function GuestUnavailable({
                             </div>
 
                             {/* Verification form for original borrower to return or view ticket */}
-                            <div className="pt-3 border-t border-[#E0E0E0] text-left space-y-2.5">
-                                <p className="text-[11px] text-[#6B7280] leading-relaxed">
-                                    Jika Anda adalah peminjam unit ini dan ingin mengembalikannya, masukkan email yang Anda gunakan saat peminjaman:
-                                </p>
-                                <form onSubmit={handleCheckBorrower} className="space-y-2">
-                                    <div className="relative">
-                                        <input
-                                            type="email"
-                                            required
-                                            value={emailCheck}
-                                            onChange={(e) => setEmailCheck(e.target.value)}
-                                            placeholder="Masukkan email peminjam..."
-                                            className="w-full pl-9 pr-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] placeholder-[#8C93A0] focus:outline-none focus:border-[#D84040]"
-                                        />
-                                        <Mail size={15} className="absolute left-3 top-2.5 text-[#6B7280]" />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        className="w-full py-2.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+                            {is_guest_loan ? (
+                                <div className="pt-3 border-t border-[#E0E0E0] text-left space-y-2.5">
+                                    <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                                        Jika Anda adalah peminjam tamu unit ini dan ingin mengembalikannya, masukkan <strong>nama lengkap</strong> dan <strong>email</strong> yang Anda gunakan saat meminjam:
+                                    </p>
+                                    {verification_error && (
+                                        <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] font-semibold text-[#D84040]">
+                                            {verification_error}
+                                        </div>
+                                    )}
+                                    <form onSubmit={handleCheckBorrower} className="space-y-2">
+                                        <div>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={namaCheck}
+                                                onChange={(e) => setNamaCheck(e.target.value)}
+                                                placeholder="Nama lengkap peminjam..."
+                                                className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] placeholder-[#8C93A0] focus:outline-none focus:border-[#D84040]"
+                                            />
+                                        </div>
+                                        <div className="relative">
+                                            <input
+                                                type="email"
+                                                required
+                                                value={emailCheck}
+                                                onChange={(e) => setEmailCheck(e.target.value)}
+                                                placeholder="Alamat email peminjam..."
+                                                className="w-full pl-9 pr-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] placeholder-[#8C93A0] focus:outline-none focus:border-[#D84040]"
+                                            />
+                                            <Mail size={15} className="absolute left-3 top-2.5 text-[#6B7280]" />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            className="w-full py-2.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+                                        >
+                                            Verifikasi & Buka Tiket Pengembalian
+                                        </button>
+                                    </form>
+                                </div>
+                            ) : (
+                                <div className="pt-3 border-t border-[#E0E0E0] space-y-2">
+                                    <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                                        Unit ini dipinjam menggunakan akun member terdaftar. Silakan masuk ke akun WAMS Anda untuk melakukan pengembalian.
+                                    </p>
+                                    <a
+                                        href={targetLoginUrl}
+                                        className="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
                                     >
-                                        Buka Tiket Pengembalian
-                                    </button>
-                                </form>
-                            </div>
+                                        <KeyRound size={14} />
+                                        Masuk Akun WAMS
+                                    </a>
+                                </div>
+                            )}
                         </>
                     )}
 

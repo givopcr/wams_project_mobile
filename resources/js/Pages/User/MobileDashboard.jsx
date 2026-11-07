@@ -312,6 +312,40 @@ export default function MobileDashboard({
                         })}
                     </div>
 
+                    {/* Selected Day Deadline Info Banner */}
+                    {(() => {
+                        const selectedDay = weekDays[selectedDayIndex];
+                        if (!selectedDay) return null;
+                        const dayDeadlines = activeBorrows.filter((b) => {
+                            if (!b.batas_kembali_raw) return false;
+                            const dt = new Date(b.batas_kembali_raw);
+                            if (isNaN(dt.getTime())) return false;
+                            return (
+                                dt.getFullYear() === selectedDay.fullDate.getFullYear() &&
+                                dt.getMonth() === selectedDay.fullDate.getMonth() &&
+                                dt.getDate() === selectedDay.fullDate.getDate()
+                            );
+                        });
+                        if (dayDeadlines.length === 0) return null;
+                        return (
+                            <div className="px-3.5 py-2.5 rounded-[12px] bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <Clock size={15} className="text-[#D97706] shrink-0" />
+                                    <span className="text-[11px] font-bold text-[#92400E] truncate">
+                                        {dayDeadlines.length} batas kembali pada {selectedDay.day}, {selectedDay.date}:{' '}
+                                        {dayDeadlines.map((d) => d.nama_barang).join(', ')}
+                                    </span>
+                                </div>
+                                <Link
+                                    href={`/user/riwayat?detail_id=${dayDeadlines[0].id}`}
+                                    className="text-[11px] font-extrabold text-[#D84040] shrink-0 hover:underline"
+                                >
+                                    Detail
+                                </Link>
+                            </div>
+                        );
+                    })()}
+
                     {/* 3. STATUS SAYA (Dipinjam | Menunggu | Selesai) (_buildStatusSayaSection) */}
                     <div>
                         <h3 className="text-[16px] font-black text-[#0F172A] tracking-[-0.3px] mb-2.5">
@@ -339,7 +373,7 @@ export default function MobileDashboard({
 
                             {/* Card 2: Menunggu */}
                             <Link
-                                href="/user/riwayat?tab=semua"
+                                href="/user/riwayat?tab=aktif"
                                 className="bg-white rounded-[14px] border-[1.2px] border-[#CBD5E1] shadow-[0_2px_8px_rgba(15,23,42,0.04)] overflow-hidden flex flex-col items-center hover:border-[#D97706] transition-all"
                             >
                                 <div className="h-[4px] w-full bg-[#D97706]" />

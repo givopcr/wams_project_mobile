@@ -182,16 +182,6 @@ export default function UserMobileLayout({
                                     <h1 className="font-extrabold tracking-tight truncate text-[16px] leading-snug">
                                         {title || 'WAMS Portal'}
                                     </h1>
-                                    {!showBackButton && (
-                                        <span
-                                            className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shrink-0 ${darkAppBar
-                                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-400/30'
-                                                    : 'bg-rose-50 text-[#D84040] border border-rose-200/80'
-                                                }`}
-                                        >
-                                            Web
-                                        </span>
-                                    )}
                                 </div>
                                 {subtitle && (
                                     <p
@@ -270,7 +260,7 @@ export default function UserMobileLayout({
                             className={`mx-auto w-full transition-all duration-300 pointer-events-auto ${isFullWidth ? 'max-w-[796px]' : 'max-w-[456px]'
                                 }`}
                         >
-                            <div className="bg-[#18181B]/95 backdrop-blur-xl border border-white/10 rounded-[22px] h-[64px] px-2 shadow-[0_14px_34px_rgba(15,23,42,0.32)] flex items-center justify-around">
+                            <div className="bg-white/95 backdrop-blur-xl border border-[#E2E8F0] rounded-[22px] h-[64px] px-2 shadow-[0_10px_30px_rgba(15,23,42,0.12)] flex items-center justify-around">
                                 {navItems.map((item) => {
                                     const Icon = item.icon;
 
@@ -283,7 +273,7 @@ export default function UserMobileLayout({
                                                 <Link
                                                     href={item.href}
                                                     title="Scan QR Code"
-                                                    className={`-mt-7 w-[56px] h-[56px] rounded-[18px] bg-gradient-to-br from-[#EF4444] to-[#B91C1C] border-[4px] border-[#F8FAFC] flex items-center justify-center text-white transition-all duration-200 active:scale-95 shadow-[0_8px_22px_rgba(220,38,38,0.5)] ${item.active
+                                                    className={`-mt-7 w-[56px] h-[56px] rounded-[18px] bg-gradient-to-br from-[#EF4444] to-[#B91C1C] border-[4px] border-white flex items-center justify-center text-white transition-all duration-200 active:scale-95 shadow-[0_8px_22px_rgba(220,38,38,0.45)] ${item.active
                                                             ? 'ring-2 ring-[#EF4444] scale-105'
                                                             : 'hover:-translate-y-0.5 hover:brightness-110'
                                                         }`}
@@ -303,8 +293,8 @@ export default function UserMobileLayout({
                                                 href={item.href}
                                                 title={item.name}
                                                 className={`relative group py-1.5 px-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${item.active
-                                                        ? 'bg-white/12 text-white'
-                                                        : 'text-slate-400 hover:text-slate-200'
+                                                        ? 'bg-[#FEF2F2] text-[#D84040]'
+                                                        : 'text-[#64748B] hover:text-[#0F172A]'
                                                     }`}
                                             >
                                                 <div className="relative flex items-center justify-center">
@@ -313,18 +303,18 @@ export default function UserMobileLayout({
                                                         strokeWidth={item.active ? 2.5 : 2}
                                                         className={
                                                             item.active
-                                                                ? 'text-[#FF6B6B]'
+                                                                ? 'text-[#D84040]'
                                                                 : 'text-current'
                                                         }
                                                     />
                                                     {item.hasBadge && (
-                                                        <span className="absolute -top-0.5 -right-1.5 w-[6px] h-[6px] rounded-full bg-[#EF4444] ring-2 ring-[#18181B]" />
+                                                        <span className="absolute -top-0.5 -right-1.5 w-[6px] h-[6px] rounded-full bg-[#EF4444] ring-2 ring-white" />
                                                     )}
                                                 </div>
                                                 <span
                                                     className={`text-[10px] leading-none tracking-tight ${item.active
-                                                            ? 'font-bold text-white'
-                                                            : 'font-medium text-slate-400'
+                                                            ? 'font-bold text-[#D84040]'
+                                                            : 'font-medium text-[#64748B]'
                                                         }`}
                                                 >
                                                     {item.name}

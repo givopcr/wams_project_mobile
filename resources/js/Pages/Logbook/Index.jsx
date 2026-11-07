@@ -194,9 +194,8 @@ export default function LogbookIndex({ logs, filters = {}, statusCounts = {} }) 
                     </div>
 
                     <div className="text-xs text-[#6B7280] font-medium self-end sm:self-auto">
-                        <span>Menampilkan </span>
                         <span className="font-bold text-[#1D1616]">
-                            {logs?.from ?? 0} - {logs?.to ?? 0}
+                            {logs?.to ?? 0}
                         </span>
                         <span> dari </span>
                         <span className="font-bold text-[#1D1616]">{logs?.total ?? 0}</span>

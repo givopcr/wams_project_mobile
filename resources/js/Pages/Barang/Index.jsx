@@ -808,19 +808,16 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
             <div className="space-y-6 max-w-7xl mx-auto">
                 {/* 1. STATISTIK KATEGORI CARDS */}
                 <div>
-                    <div className="flex items-center justify-between mb-3">
-                        <h2 className="text-base font-bold text-[#1D1616]">
-                            Kategori Barang & Unit Workshop
-                        </h2>
-                        {selectedCategory && (
+                    {selectedCategory && (
+                        <div className="flex items-center justify-end mb-3">
                             <button
                                 onClick={() => handleCategoryFilter('')}
                                 className="text-xs text-[#D84040] font-bold hover:underline cursor-pointer"
                             >
                                 Reset Filter Kategori
                             </button>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         {categoryStats.length === 0 ? (
@@ -1514,7 +1511,6 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                             {barangList.links && barangList.links.length > 3 && (
                                 <div className="p-4 border-t border-[#E0E0E0] flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
                                     <span className="text-xs text-[#6B7280]">
-                                        Menampilkan <span className="font-bold text-[#1D1616]">{barangList.from || 0}</span> sampai{' '}
                                         <span className="font-bold text-[#1D1616]">{barangList.to || 0}</span> dari{' '}
                                         <span className="font-bold text-[#1D1616]">{barangList.total || 0}</span> barang
                                     </span>
@@ -1779,7 +1775,6 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                             {unitTotalPages > 1 && (
                                 <div className="p-4 border-t border-[#E0E0E0] flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
                                     <span className="text-xs text-[#6B7280]">
-                                        Menampilkan <span className="font-bold text-[#1D1616]">{unitFrom}</span> sampai{' '}
                                         <span className="font-bold text-[#1D1616]">{unitTo}</span> dari{' '}
                                         <span className="font-bold text-[#1D1616]">{unitTotal}</span> unit fisik
                                     </span>

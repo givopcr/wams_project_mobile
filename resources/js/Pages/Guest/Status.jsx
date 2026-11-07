@@ -16,6 +16,7 @@ import {
     X,
     Check
 } from 'lucide-react';
+import { compressImageFile } from '@/utils/imageCompressor';
 
 export default function GuestStatus({ unit, logbook }) {
     const [timeLeft, setTimeLeft] = useState('');
@@ -30,15 +31,16 @@ export default function GuestStatus({ unit, logbook }) {
     const [returnError, setReturnError] = useState(null);
     const [returnSuccess, setReturnSuccess] = useState(false);
 
-    const handleFotoKondisiChange = (e) => {
+    const handleFotoKondisiChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            setFotoKondisi(ev.target.result);
+        try {
+            const compressed = await compressImageFile(file);
+            setFotoKondisi(compressed);
             setReturnError(null);
-        };
-        reader.readAsDataURL(file);
+        } catch {
+            setReturnError('Gagal memproses foto kondisi barang.');
+        }
     };
 
     // Countdown Timer calculation

@@ -23,6 +23,7 @@ import {
     Shield
 } from 'lucide-react';
 import axios from 'axios';
+import { compressImageFile } from '@/utils/imageCompressor';
 
 export default function MobileProfile({ user = {}, stats = {} }) {
     // View state: 'profile' | 'edit'
@@ -65,19 +66,23 @@ export default function MobileProfile({ user = {}, stats = {} }) {
         setTimeout(() => setToastMsg(null), 3500);
     };
 
-    const handleAvatarFileChange = (e) => {
+    const handleAvatarFileChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const dataUrl = ev.target.result;
+        try {
+            const dataUrl = await compressImageFile(file, { maxDimension: 400, quality: 0.8 });
             setCustomAvatar(dataUrl);
             if (typeof window !== 'undefined') {
-                localStorage.setItem(avatarStorageKey, dataUrl);
+                try {
+                    localStorage.setItem(avatarStorageKey, dataUrl);
+                } catch {
+                    // Abaikan jika kuota localStorage penuh
+                }
             }
             setShowAvatarSheet(false);
-        };
-        reader.readAsDataURL(file);
+        } catch {
+            showToast('Gagal memproses foto profil', 'error');
+        }
     };
 
     const handleRemoveAvatar = () => {
@@ -272,10 +277,12 @@ export default function MobileProfile({ user = {}, stats = {} }) {
                     <ChangePasswordSheet
                         nama={nama}
                         nip={nip}
+                        hasPassword={user?.has_password !== false}
                         onClose={() => setShowPasswordSheet(false)}
                         onSuccess={() => {
                             setShowPasswordSheet(false);
                             showToast('Password berhasil diperbarui!', 'success');
+                            router.reload({ only: ['user', 'auth'] });
                         }}
                     />
                 )}
@@ -284,6 +291,7 @@ export default function MobileProfile({ user = {}, stats = {} }) {
                 {showEmailOtpSheet && (
                     <ChangeEmailOtpSheet
                         currentEmail={currentEmail}
+                        hasPassword={user?.has_password !== false}
                         onClose={() => setShowEmailOtpSheet(false)}
                         onSuccess={(updatedEmail) => {
                             setCurrentEmail(updatedEmail);
@@ -587,7 +595,7 @@ export default function MobileProfile({ user = {}, stats = {} }) {
 // =============================================================================
 // CHANGE PASSWORD BOTTOM SHEET (matching _ChangePasswordSheet in edit_profile_screen.dart)
 // =============================================================================
-function ChangePasswordSheet({ nama, nip, onClose, onSuccess }) {
+function ChangePasswordSheet({ nama, nip, hasPassword = true, onClose, onSuccess }) {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -601,7 +609,7 @@ function ChangePasswordSheet({ nama, nip, onClose, onSuccess }) {
         e.preventDefault();
         setErrorMsg(null);
 
-        if (!currentPassword) {
+        if (hasPassword && !currentPassword) {
             setErrorMsg('Password lama wajib diisi');
             return;
         }
@@ -662,10 +670,12 @@ function ChangePasswordSheet({ nama, nip, onClose, onSuccess }) {
                     </div>
                     <div>
                         <h3 className="text-[16px] font-extrabold text-[#1D1616]">
-                            Ganti Password
+                            {hasPassword ? 'Ganti Password' : 'Buat Password Lokal'}
                         </h3>
                         <p className="text-[12px] text-[#8C93A0]">
-                            Masukkan password lama dan password baru Anda
+                            {hasPassword
+                                ? 'Masukkan password lama dan password baru Anda'
+                                : 'Akun Google Anda belum memiliki password lokal'}
                         </p>
                     </div>
                 </div>
@@ -677,13 +687,15 @@ function ChangePasswordSheet({ nama, nip, onClose, onSuccess }) {
                 )}
 
                 <div className="mt-[20px] space-y-[14px]">
-                    <PasswordInput
-                        label="Password Saat Ini"
-                        value={currentPassword}
-                        onChange={setCurrentPassword}
-                        obscure={obscureCurrent}
-                        onToggle={() => setObscureCurrent(!obscureCurrent)}
-                    />
+                    {hasPassword && (
+                        <PasswordInput
+                            label="Password Saat Ini"
+                            value={currentPassword}
+                            onChange={setCurrentPassword}
+                            obscure={obscureCurrent}
+                            onToggle={() => setObscureCurrent(!obscureCurrent)}
+                        />
+                    )}
                     <PasswordInput
                         label="Password Baru"
                         value={newPassword}
@@ -719,7 +731,7 @@ function ChangePasswordSheet({ nama, nip, onClose, onSuccess }) {
 // =============================================================================
 // CHANGE EMAIL OTP BOTTOM SHEET (matching _ChangeEmailOtpSheet in edit_profile_screen.dart)
 // =============================================================================
-function ChangeEmailOtpSheet({ currentEmail, onClose, onSuccess }) {
+function ChangeEmailOtpSheet({ currentEmail, hasPassword = true, onClose, onSuccess }) {
     const [newEmail, setNewEmail] = useState('');
     const [password, setPassword] = useState('');
     const [otp, setOtp] = useState('');
@@ -749,7 +761,7 @@ function ChangeEmailOtpSheet({ currentEmail, onClose, onSuccess }) {
             setErrorMsg('Email baru tidak boleh sama dengan email saat ini');
             return;
         }
-        if (!password) {
+        if (hasPassword && !password) {
             setErrorMsg('Masukkan password akun Anda untuk keamanan');
             return;
         }
@@ -858,13 +870,15 @@ function ChangeEmailOtpSheet({ currentEmail, onClose, onSuccess }) {
                             />
                         </div>
 
-                        <PasswordInput
-                            label="Password Akun Saat Ini"
-                            value={password}
-                            onChange={setPassword}
-                            obscure={obscurePass}
-                            onToggle={() => setObscurePass(!obscurePass)}
-                        />
+                        {hasPassword && (
+                            <PasswordInput
+                                label="Password Akun Saat Ini"
+                                value={password}
+                                onChange={setPassword}
+                                obscure={obscurePass}
+                                onToggle={() => setObscurePass(!obscurePass)}
+                            />
+                        )}
 
                         <button
                             type="submit"

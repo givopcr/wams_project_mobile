@@ -335,7 +335,6 @@ export default function UnitHistoryModal({ isOpen, onClose, unitId, initialUnit 
                 {totalPages > 1 && (
                     <div className="p-3 sm:p-4 border-t border-[#E0E0E0] flex flex-col sm:flex-row items-center justify-between gap-3 bg-white shrink-0">
                         <span className="text-xs text-[#6B7280]">
-                            Menampilkan <span className="font-bold text-[#1D1616]">{from}</span> sampai{' '}
                             <span className="font-bold text-[#1D1616]">{to}</span> dari{' '}
                             <span className="font-bold text-[#1D1616]">{totalItems}</span> riwayat
                         </span>

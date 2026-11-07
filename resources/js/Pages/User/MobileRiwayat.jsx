@@ -14,6 +14,7 @@ import {
     RefreshCw,
     History
 } from 'lucide-react';
+import { compressImageFile } from '@/utils/imageCompressor';
 
 // =============================================================================
 // COUNTDOWN BADGE (matching wams_mobile/lib/widgets/countdown_badge.dart)
@@ -133,19 +134,34 @@ export default function MobileRiwayat({
     const [catatanKembali, setCatatanKembali] = useState('');
     const [fotoPreview, setFotoPreview] = useState(null);
     const [returnError, setReturnError] = useState('');
+    const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
 
     const { post: postAction, processing } = useForm({});
 
-    // Open initialLogId automatically if passed via query or prop
+    // Open initialLogId or return_id automatically if passed via query or prop
     useEffect(() => {
-        let logIdToOpen = initialLogId;
-        if (!logIdToOpen && typeof window !== 'undefined') {
+        let logIdToOpen = initialLogId || filters?.detail_id;
+        let returnIdToOpen = filters?.return_id;
+        if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
-            logIdToOpen = params.get('detail_id');
+            if (!logIdToOpen) logIdToOpen = params.get('detail_id');
+            if (!returnIdToOpen) returnIdToOpen = params.get('return_id');
             const tabParam = params.get('tab');
             if (tabParam === 'aktif') setSelectedTab(1);
             else if (tabParam === 'selesai') setSelectedTab(2);
             else if (tabParam === 'terlambat') setSelectedTab(3);
+        }
+        if (returnIdToOpen && allLogs.length > 0) {
+            const foundReturn = allLogs.find((item) => String(item.id) === String(returnIdToOpen));
+            if (foundReturn) {
+                setActiveLog(foundReturn);
+                setSelectedKondisi('baik');
+                setCatatanKembali('');
+                setFotoPreview(null);
+                setReturnError('');
+                setViewMode(foundReturn.status_transaksi === 'dipinjam' ? 'return_form' : 'detail');
+                return;
+            }
         }
         if (logIdToOpen && allLogs.length > 0) {
             const found = allLogs.find((item) => String(item.id) === String(logIdToOpen));
@@ -154,7 +170,7 @@ export default function MobileRiwayat({
                 setViewMode('detail');
             }
         }
-    }, [initialLogId]);
+    }, [initialLogId, filters?.detail_id, filters?.return_id]);
 
     // Keep activeLog synced if allLogs updates
     useEffect(() => {
@@ -233,6 +249,8 @@ export default function MobileRiwayat({
             },
             {
                 preserveScroll: true,
+                onStart: () => setIsSubmittingReturn(true),
+                onFinish: () => setIsSubmittingReturn(false),
                 onError: (errs) => {
                     if (errs?.foto_kondisi) {
                         setReturnError(errs.foto_kondisi);
@@ -246,15 +264,16 @@ export default function MobileRiwayat({
         );
     };
 
-    const handlePhotoChange = (e) => {
+    const handlePhotoChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            setFotoPreview(ev.target.result);
+        try {
+            const compressed = await compressImageFile(file);
+            setFotoPreview(compressed);
             setReturnError('');
-        };
-        reader.readAsDataURL(file);
+        } catch {
+            setReturnError('Gagal memproses foto kondisi barang.');
+        }
     };
 
     // =========================================================================
@@ -410,10 +429,10 @@ export default function MobileRiwayat({
                     <div className="mt-[32px]">
                         <button
                             type="submit"
-                            disabled={processing}
+                            disabled={isSubmittingReturn || processing}
                             className="w-full py-[16px] bg-[#D84040] hover:bg-[#8E1616] text-white rounded-[12px] font-semibold text-[14px] transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                         >
-                            {processing ? (
+                            {isSubmittingReturn || processing ? (
                                 <>
                                     <RefreshCw size={18} className="animate-spin" />
                                     <span>Memproses...</span>

@@ -113,15 +113,15 @@ Route::middleware(['auth', 'user'])->prefix('user')->name('user.')->group(functi
     Route::get('/katalog', [UserWebController::class, 'katalog'])->name('katalog');
     Route::get('/barang/{id}', [UserWebController::class, 'detailBarang'])->name('barang.detail');
     Route::get('/peminjaman', [UserWebController::class, 'peminjaman'])->name('peminjaman');
-    Route::post('/pinjam', [UserWebController::class, 'storePinjam'])->name('pinjam.store');
-    Route::post('/pakai-bahan', [\App\Http\Controllers\Api\TransaksiStokController::class, 'pakai'])->name('pakai.store');
-    Route::post('/kembali/{id}', [UserWebController::class, 'storeKembali'])->name('kembali.store');
-    Route::post('/batalkan/{id}', [UserWebController::class, 'cancelPinjam'])->name('pinjam.cancel');
+    Route::post('/pinjam', [UserWebController::class, 'storePinjam'])->middleware('throttle:30,1')->name('pinjam.store');
+    Route::post('/pakai-bahan', [\App\Http\Controllers\Api\TransaksiStokController::class, 'pakai'])->middleware('throttle:30,1')->name('pakai.store');
+    Route::post('/kembali/{id}', [UserWebController::class, 'storeKembali'])->middleware('throttle:30,1')->name('kembali.store');
+    Route::post('/batalkan/{id}', [UserWebController::class, 'cancelPinjam'])->middleware('throttle:30,1')->name('pinjam.cancel');
     Route::get('/riwayat', [UserWebController::class, 'riwayat'])->name('riwayat');
     Route::get('/scanner', [UserWebController::class, 'scanner'])->name('scanner');
-    Route::get('/lookup-unit/{kode_unit?}', [UserWebController::class, 'lookupUnit'])->where('kode_unit', '.*')->name('lookup.unit');
+    Route::get('/lookup-unit/{kode_unit?}', [UserWebController::class, 'lookupUnit'])->where('kode_unit', '.*')->middleware('throttle:60,1')->name('lookup.unit');
     Route::get('/profile', [UserWebController::class, 'profile'])->name('profile');
-    Route::post('/profile/update', [UserWebController::class, 'updateProfile'])->name('profile.update');
+    Route::post('/profile/update', [UserWebController::class, 'updateProfile'])->middleware('throttle:20,1')->name('profile.update');
     Route::post('/profile/email/send-otp', [\App\Http\Controllers\Api\ProfileController::class, 'sendChangeEmailOtp'])->middleware('throttle:10,1')->name('profile.email.otp');
     Route::post('/profile/email/verify-otp', [\App\Http\Controllers\Api\ProfileController::class, 'verifyChangeEmailOtp'])->middleware('throttle:10,1')->name('profile.email.verify');
 });
@@ -131,10 +131,10 @@ Route::middleware(['auth', 'user'])->prefix('user')->name('user.')->group(functi
 | Public Guest Borrowing (Scan QR via Mobile Web)
 |--------------------------------------------------------------------------
 */
-Route::get('/scan/{kode_unit}', [GuestPinjamController::class, 'show'])->where('kode_unit', '.*')->name('guest.scan');
+Route::get('/scan/{kode_unit}', [GuestPinjamController::class, 'show'])->where('kode_unit', '.*')->middleware('throttle:60,1')->name('guest.scan');
 Route::post('/guest/pinjam/{kode_unit}', [GuestPinjamController::class, 'submitBorrow'])->where('kode_unit', '.*')->middleware('throttle:15,1')->name('guest.borrow.submit');
 Route::post('/guest/pinjam/{kode_unit}/verify-otp', [GuestPinjamController::class, 'verifyOtp'])->where('kode_unit', '.*')->middleware('throttle:10,1')->name('guest.borrow.verify_otp');
 Route::post('/guest/pinjam/{kode_unit}/resend-otp', [GuestPinjamController::class, 'resendOtp'])->where('kode_unit', '.*')->middleware('throttle:10,1')->name('guest.borrow.resend_otp');
-Route::get('/guest/status/{kode_unit}', [GuestPinjamController::class, 'showStatus'])->where('kode_unit', '.*')->name('guest.status');
+Route::get('/guest/status/{kode_unit}', [GuestPinjamController::class, 'showStatus'])->where('kode_unit', '.*')->middleware('throttle:60,1')->name('guest.status');
 Route::post('/guest/return/{kode_unit}', [GuestPinjamController::class, 'submitReturn'])->where('kode_unit', '.*')->middleware('throttle:15,1')->name('guest.return.submit');
 

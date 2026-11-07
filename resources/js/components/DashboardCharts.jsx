@@ -136,19 +136,7 @@ export function TopBarangHorizontalChart({ data = [], allData = [] }) {
             </div>
 
             {/* Footer Summary */}
-            <div className="mt-4 pt-3 border-t border-[#E0E0E0]/80 flex items-center justify-between text-[11px] font-semibold text-[#6B7280]">
-                <button
-                    type="button"
-                    onClick={() => setModalOpen(true)}
-                    className="hover:text-[#D84040] transition-colors cursor-pointer text-left inline-flex items-center gap-1 group"
-                >
-                    <span>
-                        {fullList.length > 5
-                            ? `Menampilkan 5 Teratas dari ${fullList.length} Barang`
-                            : `Total ${fullList.length} Barang Terpopuler`}
-                    </span>
-                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-                </button>
+            <div className="mt-4 pt-3 border-t border-[#E0E0E0]/80 flex items-center justify-end text-[11px] font-semibold text-[#6B7280]">
                 <span className="text-[#D84040] font-bold flex items-center gap-1">
                     <TrendingUp size={12} />
                     Sirkulasi Aktif
@@ -446,19 +434,7 @@ export function TopUnitMaintenanceChart({ data = [], allData = [] }) {
             </div>
 
             {/* Footer Summary */}
-            <div className="mt-4 pt-3 border-t border-[#E0E0E0]/80 flex items-center justify-between text-[11px] font-semibold text-[#6B7280]">
-                <button
-                    type="button"
-                    onClick={() => setModalOpen(true)}
-                    className="hover:text-amber-700 transition-colors cursor-pointer text-left inline-flex items-center gap-1 group"
-                >
-                    <span>
-                        {fullList.length > 5
-                            ? `Monitoring 5 Teratas dari ${fullList.length} Unit Fisik`
-                            : `Monitoring ${fullList.length} Unit Fisik`}
-                    </span>
-                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-                </button>
+            <div className="mt-4 pt-3 border-t border-[#E0E0E0]/80 flex items-center justify-end text-[11px] font-semibold text-[#6B7280]">
                 <span className="text-amber-700 font-bold flex items-center gap-1">
                     <ShieldAlert size={12} />
                     Perlu Inspeksi Rutin

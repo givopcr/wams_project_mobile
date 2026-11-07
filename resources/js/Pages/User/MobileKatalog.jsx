@@ -334,8 +334,8 @@ export default function MobileKatalog({
 
                 {/* Bottom Summary Progress Bar (Matching BarangKategoriScreen.dart) */}
                 {filteredItems.length > 0 && (
-                    <div className="fixed bottom-[66px] left-0 right-0 z-30 pointer-events-none">
-                        <div className="max-w-[440px] mx-auto bg-white border-t border-[#E2E8F0] p-4 shadow-[0_-2px_10px_rgba(0,0,0,0.03)] pointer-events-auto">
+                    <div className="sticky bottom-0 left-0 right-0 z-20 mt-4">
+                        <div className="w-full bg-white border-t border-[#E2E8F0] p-4 shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
                             {isHabisPakai ? (
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">

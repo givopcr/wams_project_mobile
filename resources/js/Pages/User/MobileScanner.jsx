@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import jsQR from 'jsqr';
+import { compressImageFile } from '@/utils/imageCompressor';
 
 export default function MobileScanner({
     categories = [],
@@ -40,12 +41,15 @@ export default function MobileScanner({
     const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
     const [showManualSheet, setShowManualSheet] = useState(false);
     const [borrowDurationPreset, setBorrowDurationPreset] = useState(120);
+    const [sheetError, setSheetError] = useState(null);
 
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const canvasRef = useRef(null);
     const isScanningRef = useRef(true);
     const fileInputRef = useRef(null);
+    const borrowPhotoInputRef = useRef(null);
+    const returnPhotoInputRef = useRef(null);
 
     const calculateDeadline = (minutes) => {
         const d = new Date(Date.now() + minutes * 60 * 1000);
@@ -57,12 +61,14 @@ export default function MobileScanner({
         setData: setBorrowData,
         post: postBorrow,
         processing: borrowProcessing,
+        errors: borrowErrors,
         reset: resetBorrow,
     } = useForm({
         barang_id: '',
         barang_unit_id: '',
         keperluan: 'Pekerjaan / Praktikum Workshop',
         batas_kembali: calculateDeadline(120),
+        foto_pinjam: '',
     });
 
     const {
@@ -70,10 +76,37 @@ export default function MobileScanner({
         setData: setReturnData,
         post: postReturn,
         processing: returnProcessing,
+        errors: returnErrors,
+        reset: resetReturn,
     } = useForm({
         kondisi_kembali: 'baik',
         catatan: '',
+        foto_kondisi: '',
     });
+
+    const handleBorrowPhotoChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setSheetError(null);
+        try {
+            const compressed = await compressImageFile(file);
+            setBorrowData('foto_pinjam', compressed);
+        } catch {
+            setSheetError('Gagal memproses foto barang. Silakan coba lagi.');
+        }
+    };
+
+    const handleReturnPhotoChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setSheetError(null);
+        try {
+            const compressed = await compressImageFile(file);
+            setReturnData('foto_kondisi', compressed);
+        } catch {
+            setSheetError('Gagal memproses foto kondisi barang. Silakan coba lagi.');
+        }
+    };
 
     const handleDurationPresetChange = (minutes) => {
         setBorrowDurationPreset(minutes);
@@ -319,12 +352,15 @@ export default function MobileScanner({
                 const u = res.data.data;
                 setScannedUnit(u);
                 setShowManualSheet(false);
+                setSheetError(null);
                 setBorrowData({
                     barang_id: u.barang.id,
                     barang_unit_id: u.id,
                     keperluan: 'Pekerjaan / Praktikum Workshop',
                     batas_kembali: calculateDeadline(120),
+                    foto_pinjam: '',
                 });
+                resetReturn();
                 stopCamera();
             }
         } catch (err) {
@@ -340,21 +376,40 @@ export default function MobileScanner({
 
     const handleConfirmBorrow = (e) => {
         e.preventDefault();
+        setSheetError(null);
+        if (!borrowData.foto_pinjam) {
+            setSheetError('Foto kondisi barang sebelum dipinjam wajib diambil/diunggah.');
+            return;
+        }
         postBorrow('/user/pinjam', {
             onSuccess: () => {
                 setScannedUnit(null);
                 resetBorrow();
+            },
+            onError: (errs) => {
+                const firstErr = Object.values(errs || {})[0];
+                if (firstErr) setSheetError(firstErr);
             },
         });
     };
 
     const handleConfirmReturn = (e) => {
         e.preventDefault();
+        setSheetError(null);
         if (!scannedUnit?.active_logbook_id) return;
+        if (!returnData.foto_kondisi) {
+            setSheetError('Foto kondisi barang saat dikembalikan wajib diambil/diunggah.');
+            return;
+        }
 
         postReturn(`/user/kembali/${scannedUnit.active_logbook_id}`, {
             onSuccess: () => {
                 setScannedUnit(null);
+                resetReturn();
+            },
+            onError: (errs) => {
+                const firstErr = Object.values(errs || {})[0];
+                if (firstErr) setSheetError(firstErr);
             },
         });
     };
@@ -363,6 +418,7 @@ export default function MobileScanner({
         setScannedUnit(null);
         setScannedCategory(null);
         setScanError(null);
+        setSheetError(null);
         setScanInput('');
         startCamera(facingMode);
     };
@@ -835,6 +891,10 @@ export default function MobileScanner({
                                         ? 'bg-[#ECFDF5] text-[#059669]'
                                         : scannedUnit.is_borrowed_by_me
                                         ? 'bg-[#EFF6FF] text-[#2563EB]'
+                                        : scannedUnit.status === 'maintenance'
+                                        ? 'bg-[#FFFBEB] text-[#D97706]'
+                                        : scannedUnit.status === 'menunggu_persetujuan'
+                                        ? 'bg-[#FFFBEB] text-[#B45309]'
                                         : 'bg-[#FEF2F2] text-[#DC2626]'
                                 }`}
                             >
@@ -842,11 +902,35 @@ export default function MobileScanner({
                                     ? 'Tersedia'
                                     : scannedUnit.is_borrowed_by_me
                                     ? 'Dipinjam Anda'
+                                    : scannedUnit.status === 'maintenance'
+                                    ? 'Dalam Perbaikan'
+                                    : scannedUnit.status === 'menunggu_persetujuan'
+                                    ? 'Menunggu Persetujuan'
                                     : 'Dipinjam'}
                             </span>
                         </div>
 
-                        {scannedUnit.status === 'tersedia' && (
+                        {(sheetError || Object.values(borrowErrors || {})[0] || Object.values(returnErrors || {})[0]) && (
+                            <div className="mb-3 p-3 rounded-[12px] bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] text-xs font-semibold flex items-center gap-2">
+                                <AlertCircle size={15} className="shrink-0" />
+                                <span>{sheetError || Object.values(borrowErrors || {})[0] || Object.values(returnErrors || {})[0]}</span>
+                            </div>
+                        )}
+
+                        {scannedUnit.barang.is_habis_pakai ? (
+                            <div className="space-y-3 pt-3 border-t border-[#EEEEEE]">
+                                <div className="p-3 rounded-[12px] bg-[#FFFBEB] border border-[#FCD34D] text-[#92400E] text-xs">
+                                    Barang ini termasuk kategori <strong>Bahan Habis Pakai</strong>. Silakan ajukan pengambilan stok melalui halaman detail barang.
+                                </div>
+                                <Link
+                                    href={`/user/barang/${scannedUnit.barang.id}`}
+                                    className="w-full py-3.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-[12px] flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                                >
+                                    <span>Buka Halaman Pengambilan Bahan</span>
+                                    <ChevronRight size={16} />
+                                </Link>
+                            </div>
+                        ) : scannedUnit.status === 'tersedia' ? (
                             <form
                                 onSubmit={handleConfirmBorrow}
                                 className="space-y-3 pt-3 border-t border-[#EEEEEE]"
@@ -900,19 +984,58 @@ export default function MobileScanner({
                                     />
                                 </div>
 
+                                <div>
+                                    <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
+                                        Foto Barang Sebelum Dipinjam <span className="text-[#D84040]">*</span>
+                                    </label>
+                                    <input
+                                        ref={borrowPhotoInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        onChange={handleBorrowPhotoChange}
+                                        className="hidden"
+                                    />
+                                    {borrowData.foto_pinjam ? (
+                                        <div className="relative rounded-[12px] overflow-hidden border border-[#E0E0E0] bg-[#F8F9FA]">
+                                            <img
+                                                src={borrowData.foto_pinjam}
+                                                alt="Preview Foto Pinjam"
+                                                className="w-full h-36 object-cover"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => borrowPhotoInputRef.current?.click()}
+                                                className="absolute bottom-2 right-2 px-3 py-1.5 rounded-lg bg-black/75 text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer"
+                                            >
+                                                <Camera size={13} />
+                                                <span>Ganti Foto</span>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => borrowPhotoInputRef.current?.click()}
+                                            className="w-full py-4 border-2 border-dashed border-[#D84040]/40 hover:border-[#D84040] rounded-[12px] bg-[#FEF2F2]/40 text-[#D84040] flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                        >
+                                            <Camera size={22} />
+                                            <span className="text-xs font-bold">Ambil / Unggah Foto Barang</span>
+                                            <span className="text-[10px] text-[#8C93A0]">Wajib dilampirkan sebelum meminjam</span>
+                                        </button>
+                                    )}
+                                </div>
+
                                 <button
                                     type="submit"
                                     disabled={borrowProcessing}
-                                    className="w-full py-3.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-[12px] transition-colors cursor-pointer"
+                                    className="w-full py-3.5 bg-[#D84040] hover:bg-[#8E1616] disabled:opacity-60 text-white text-xs font-bold rounded-[12px] transition-colors cursor-pointer"
                                 >
                                     {borrowProcessing
                                         ? 'Memproses...'
                                         : `Pinjam Unit ${scannedUnit.kode_unit}`}
                                 </button>
                             </form>
-                        )}
-
-                        {scannedUnit.is_borrowed_by_me && (
+                        ) : scannedUnit.is_borrowed_by_me ? (
                             <form
                                 onSubmit={handleConfirmReturn}
                                 className="space-y-3 pt-3 border-t border-[#EEEEEE]"
@@ -932,16 +1055,81 @@ export default function MobileScanner({
                                         <option value="rusak_ringan">Rusak</option>
                                     </select>
                                 </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-[#1D1616] mb-1">
+                                        Catatan Pengembalian (Opsional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={returnData.catatan}
+                                        onChange={(e) => setReturnData('catatan', e.target.value)}
+                                        placeholder="Catatan kondisi unit..."
+                                        className="w-full px-3.5 py-2.5 bg-[#F8F9FA] border border-[#E0E0E0] rounded-[12px] text-xs text-[#1D1616]"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
+                                        Foto Kondisi Saat Dikembalikan <span className="text-[#D84040]">*</span>
+                                    </label>
+                                    <input
+                                        ref={returnPhotoInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        onChange={handleReturnPhotoChange}
+                                        className="hidden"
+                                    />
+                                    {returnData.foto_kondisi ? (
+                                        <div className="relative rounded-[12px] overflow-hidden border border-[#E0E0E0] bg-[#F8F9FA]">
+                                            <img
+                                                src={returnData.foto_kondisi}
+                                                alt="Preview Foto Kembali"
+                                                className="w-full h-36 object-cover"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => returnPhotoInputRef.current?.click()}
+                                                className="absolute bottom-2 right-2 px-3 py-1.5 rounded-lg bg-black/75 text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer"
+                                            >
+                                                <Camera size={13} />
+                                                <span>Ganti Foto</span>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => returnPhotoInputRef.current?.click()}
+                                            className="w-full py-4 border-2 border-dashed border-[#D84040]/40 hover:border-[#D84040] rounded-[12px] bg-[#FEF2F2]/40 text-[#D84040] flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                        >
+                                            <Camera size={22} />
+                                            <span className="text-xs font-bold">Ambil / Unggah Foto Kondisi</span>
+                                            <span className="text-[10px] text-[#8C93A0]">Wajib dilampirkan saat mengembalikan</span>
+                                        </button>
+                                    )}
+                                </div>
+
                                 <button
                                     type="submit"
                                     disabled={returnProcessing}
-                                    className="w-full py-3.5 bg-[#D84040] hover:bg-[#8E1616] text-white text-xs font-bold rounded-[12px] cursor-pointer"
+                                    className="w-full py-3.5 bg-[#D84040] hover:bg-[#8E1616] disabled:opacity-60 text-white text-xs font-bold rounded-[12px] cursor-pointer"
                                 >
                                     {returnProcessing
                                         ? 'Memproses...'
                                         : 'Konfirmasi Pengembalian Unit'}
                                 </button>
                             </form>
+                        ) : (
+                            <div className="pt-3 border-t border-[#EEEEEE]">
+                                <div className="p-3.5 rounded-[12px] bg-[#F8F9FA] border border-[#E0E0E0] text-xs text-[#6B7280] leading-relaxed">
+                                    {scannedUnit.status === 'maintenance'
+                                        ? 'Unit fisik ini sedang dalam pemeliharaan/perbaikan teknisi dan belum dapat dipinjam.'
+                                        : scannedUnit.status === 'menunggu_persetujuan'
+                                        ? 'Unit fisik ini sedang dalam antrean persetujuan peminjaman.'
+                                        : 'Unit fisik ini sedang dipinjam oleh pengguna lain.'}
+                                </div>
+                            </div>
                         )}
 
                         <button

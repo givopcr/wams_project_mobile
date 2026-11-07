@@ -14,6 +14,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 import axios from 'axios';
+import { compressImageFile } from '@/utils/imageCompressor';
 
 function formatIndoDate(dateStr) {
     if (!dateStr) return '-';
@@ -50,15 +51,16 @@ export default function MobileDetailBarang({ barang }) {
     const [submitting, setSubmitting] = useState(false);
     const [formError, setFormError] = useState('');
 
-    const handleFotoPinjamChange = (e) => {
+    const handleFotoPinjamChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            setFotoPinjam(ev.target.result);
+        try {
+            const compressed = await compressImageFile(file);
+            setFotoPinjam(compressed);
             setFormError('');
-        };
-        reader.readAsDataURL(file);
+        } catch {
+            setFormError('Gagal memproses foto barang.');
+        }
     };
 
     if (!barang) {
@@ -272,7 +274,14 @@ export default function MobileDetailBarang({ barang }) {
                             <input
                                 type="date"
                                 value={tanggalPinjam}
-                                onChange={(e) => setTanggalPinjam(e.target.value)}
+                                min={todayIso}
+                                onChange={(e) => {
+                                    const nextPinjam = e.target.value;
+                                    setTanggalPinjam(nextPinjam);
+                                    if (tanggalKembali < nextPinjam) {
+                                        setTanggalKembali(nextPinjam);
+                                    }
+                                }}
                                 required
                                 className="w-full p-[15px] bg-white rounded-[12px] border border-[#E0E0E0] text-[14px] font-semibold text-[#1D1616] focus:outline-none focus:border-[#D84040]"
                             />

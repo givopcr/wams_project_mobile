@@ -19,6 +19,7 @@ import {
     Camera,
     X
 } from 'lucide-react';
+import { compressImageFile } from '@/utils/imageCompressor';
 
 export default function GuestBorrow({
     unit,
@@ -38,15 +39,16 @@ export default function GuestBorrow({
     const [keperluan, setKeperluan] = useState('');
     const [fotoPinjam, setFotoPinjam] = useState(null);
 
-    const handleFotoPinjamChange = (e) => {
+    const handleFotoPinjamChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            setFotoPinjam(ev.target.result);
+        try {
+            const compressed = await compressImageFile(file);
+            setFotoPinjam(compressed);
             setError(null);
-        };
-        reader.readAsDataURL(file);
+        } catch {
+            setError('Gagal memproses foto barang.');
+        }
     };
 
     // UI & Submission States

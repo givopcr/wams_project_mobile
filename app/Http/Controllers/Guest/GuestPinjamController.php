@@ -120,17 +120,7 @@ class GuestPinjamController extends Controller
 
         if ($unit->status === 'dipinjam' || $unit->status === 'menunggu_persetujuan') {
             $logbook = $unit->activeLogbook;
-            $token = $request->query('token') ?: $request->cookie('wams_guest_token_' . $kode_unit);
-            $email = $request->query('email');
-
-            $isAuthorized = false;
-            if ($logbook && $logbook->tipe_peminjam === 'guest' && ! empty($logbook->return_token)) {
-                if ($token && hash_equals($logbook->return_token, $token)) {
-                    $isAuthorized = true;
-                } elseif ($email && ! empty($logbook->guest_email) && hash_equals(strtolower(trim($logbook->guest_email)), strtolower(trim($email)))) {
-                    $isAuthorized = true;
-                }
-            }
+            $isAuthorized = $this->isAuthorizedForGuestReturn($request, $logbook, $kode_unit);
 
             if ($isAuthorized) {
                 // Tampilkan halaman status / pengembalian
@@ -156,6 +146,8 @@ class GuestPinjamController extends Controller
                 ]);
             }
 
+            $hasVerificationAttempt = $request->filled('email') || $request->filled('nama') || $request->filled('token');
+
             return Inertia::render('Guest/Unavailable', [
                 'type' => 'borrowed',
                 'kode_unit' => $kode_unit,
@@ -164,7 +156,11 @@ class GuestPinjamController extends Controller
                     'nama_barang' => $unit->barang?->nama_barang ?? 'Peralatan',
                     'kategori' => $unit->barang?->kategori?->nama_kategori ?? 'Umum',
                 ],
-                'borrower_hint' => $logbook ? substr($logbook->peminjam_nama, 0, 3) . '***' : 'Pengguna lain',
+                'is_guest_loan' => $logbook?->tipe_peminjam === 'guest',
+                'borrower_hint' => $this->maskBorrowerHint($logbook),
+                'verification_error' => $hasVerificationAttempt
+                    ? 'Nama dan email peminjam tidak sesuai dengan data peminjaman aktif unit ini.'
+                    : null,
                 'message' => 'Unit barang ini sedang dipinjam.',
                 'login_url' => $loginUrl,
             ]);
@@ -229,23 +225,11 @@ class GuestPinjamController extends Controller
             'foto_pinjam.max' => 'Ukuran foto barang terlalu besar (maksimal 5MB).',
         ]);
 
-        $fotoPinjamPath = null;
-        $rawFoto = $validated['foto_pinjam'];
-        if (preg_match('/^data:image\/(\w+);base64,/', $rawFoto, $typeMatch)) {
-            $ext = strtolower($typeMatch[1]);
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                $decoded = base64_decode(substr($rawFoto, strpos($rawFoto, ',') + 1), true);
-                if ($decoded !== false && strlen($decoded) > 0 && strlen($decoded) <= 5 * 1024 * 1024) {
-                    $fotoPinjamPath = 'peminjaman/guest_borrow_' . $kode_unit . '_' . time() . '_' . uniqid() . '.' . $ext;
-                    Storage::disk('public')->put($fotoPinjamPath, $decoded);
-                }
-            }
-        }
-
-        if (!$fotoPinjamPath) {
+        $parsedFoto = $this->decodeAndValidateBase64Image($validated['foto_pinjam'] ?? null);
+        if (!$parsedFoto) {
             return response()->json([
                 'success' => false,
-                'message' => 'Foto barang sebelum dipinjam wajib diunggah dengan format gambar yang valid.',
+                'message' => 'Foto barang sebelum dipinjam wajib diunggah dengan format gambar yang valid (JPG, PNG, atau WEBP maks 5MB).',
             ], 422);
         }
 
@@ -268,6 +252,10 @@ class GuestPinjamController extends Controller
                 'message' => 'Barang ini memerlukan persetujuan Admin Workshop dan hanya dapat diajukan melalui akun teknisi terdaftar.',
             ], 403);
         }
+
+        $safeSlug = $this->sanitizeUnitSlug($unit->kode_unit);
+        $fotoPinjamPath = 'peminjaman/guest_borrow_' . $safeSlug . '_' . time() . '_' . uniqid() . '.' . $parsedFoto['ext'];
+        Storage::disk('public')->put($fotoPinjamPath, $parsedFoto['decoded']);
 
         $durasiMenit = (int) $validated['durasi_menit'];
 
@@ -319,6 +307,7 @@ class GuestPinjamController extends Controller
                 ->first();
 
             if (!$lockedUnit) {
+                Storage::disk('public')->delete($fotoPinjamPath);
                 return response()->json([
                     'success' => false,
                     'message' => 'Unit barang sedang diproses atau sudah dipinjam pengguna lain.',
@@ -355,7 +344,7 @@ class GuestPinjamController extends Controller
                     'kode_unit' => $kode_unit,
                     'token' => $returnToken,
                 ]),
-            ])->withCookie(cookie('wams_guest_token_' . $kode_unit, $returnToken, 60 * 24 * 7));
+            ])->withCookie(cookie($this->guestCookieName($kode_unit), $returnToken, 60 * 24 * 7));
         });
     }
 
@@ -465,7 +454,7 @@ class GuestPinjamController extends Controller
                     'kode_unit' => $kode_unit,
                     'token' => $returnToken,
                 ]),
-            ])->withCookie(cookie('wams_guest_token_' . $kode_unit, $returnToken, 60 * 24 * 7));
+            ])->withCookie(cookie($this->guestCookieName($kode_unit), $returnToken, 60 * 24 * 7));
         });
     }
 
@@ -569,20 +558,12 @@ class GuestPinjamController extends Controller
             ]);
         }
 
-        // Verifikasi otorisasi token atau email tamu sebelum menampilkan tiket pengembalian
-        $token = $request->query('token') ?: $request->cookie('wams_guest_token_' . $kode_unit);
-        $email = $request->query('email');
-
-        $isAuthorized = false;
-        if ($logbook->tipe_peminjam === 'guest' && ! empty($logbook->return_token)) {
-            if ($token && hash_equals($logbook->return_token, $token)) {
-                $isAuthorized = true;
-            } elseif ($email && ! empty($logbook->guest_email) && hash_equals(strtolower(trim($logbook->guest_email)), strtolower(trim($email)))) {
-                $isAuthorized = true;
-            }
-        }
+        // Verifikasi otorisasi token atau kombinasi nama + email tamu sebelum menampilkan tiket pengembalian
+        $isAuthorized = $this->isAuthorizedForGuestReturn($request, $logbook, $kode_unit);
 
         if (!$isAuthorized) {
+            $hasVerificationAttempt = $request->filled('email') || $request->filled('nama') || $request->filled('token');
+
             return Inertia::render('Guest/Unavailable', [
                 'type' => 'borrowed',
                 'kode_unit' => $kode_unit,
@@ -591,8 +572,12 @@ class GuestPinjamController extends Controller
                     'nama_barang' => $unit->barang?->nama_barang ?? 'Peralatan',
                     'kategori' => $unit->barang?->kategori?->nama_kategori ?? 'Umum',
                 ],
-                'borrower_hint' => substr((string) $logbook->peminjam_nama, 0, 3) . '***',
-                'message' => 'Unit barang ini sedang dipinjam. Gunakan tautan tiket atau verifikasi email peminjam untuk mengakses halaman pengembalian.',
+                'is_guest_loan' => $logbook->tipe_peminjam === 'guest',
+                'borrower_hint' => $this->maskBorrowerHint($logbook),
+                'verification_error' => $hasVerificationAttempt
+                    ? 'Nama dan email peminjam tidak sesuai dengan data peminjaman aktif unit ini.'
+                    : null,
+                'message' => 'Unit barang ini sedang dipinjam. Gunakan tautan tiket atau verifikasi nama & email peminjam untuk mengakses halaman pengembalian.',
             ]);
         }
 
@@ -633,23 +618,11 @@ class GuestPinjamController extends Controller
             'foto_kondisi.max' => 'Ukuran foto kondisi barang terlalu besar (maksimal 5MB).',
         ]);
 
-        $fotoKembaliPath = null;
-        $rawFoto = $validated['foto_kondisi'];
-        if (preg_match('/^data:image\/(\w+);base64,/', $rawFoto, $typeMatch)) {
-            $ext = strtolower($typeMatch[1]);
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                $decoded = base64_decode(substr($rawFoto, strpos($rawFoto, ',') + 1), true);
-                if ($decoded !== false && strlen($decoded) > 0 && strlen($decoded) <= 5 * 1024 * 1024) {
-                    $fotoKembaliPath = 'pengembalian/guest_return_' . $kode_unit . '_' . time() . '_' . uniqid() . '.' . $ext;
-                    Storage::disk('public')->put($fotoKembaliPath, $decoded);
-                }
-            }
-        }
-
-        if (!$fotoKembaliPath) {
+        $parsedFoto = $this->decodeAndValidateBase64Image($validated['foto_kondisi'] ?? null);
+        if (!$parsedFoto) {
             return response()->json([
                 'success' => false,
-                'message' => 'Foto kondisi barang saat dikembalikan wajib diunggah dengan format gambar yang valid.',
+                'message' => 'Foto kondisi barang saat dikembalikan wajib diunggah dengan format gambar yang valid (JPG, PNG, atau WEBP maks 5MB).',
             ], 422);
         }
 
@@ -673,13 +646,17 @@ class GuestPinjamController extends Controller
         }
 
         // Wajib verifikasi return_token untuk pengembalian tamu
-        $providedToken = $validated['token'] ?? $request->cookie('wams_guest_token_' . $kode_unit);
+        $providedToken = $validated['token'] ?: $this->resolveGuestToken($request, $kode_unit);
         if (empty($logbook->return_token) || ! $providedToken || ! hash_equals($logbook->return_token, $providedToken)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Token pengembalian tidak valid.',
             ], 403);
         }
+
+        $safeSlug = $this->sanitizeUnitSlug($unit->kode_unit);
+        $fotoKembaliPath = 'pengembalian/guest_return_' . $safeSlug . '_' . time() . '_' . uniqid() . '.' . $parsedFoto['ext'];
+        Storage::disk('public')->put($fotoKembaliPath, $parsedFoto['decoded']);
 
         DB::transaction(function () use ($unit, $logbook, $validated, $fotoKembaliPath) {
             $kondisi = $validated['kondisi'];
@@ -707,6 +684,125 @@ class GuestPinjamController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Barang berhasil dikembalikan. Terima kasih telah menggunakan peralatan workshop WAMS!',
-        ])->withoutCookie('wams_guest_token_' . $kode_unit);
+        ])->withoutCookie($this->guestCookieName($kode_unit));
+    }
+
+    /**
+     * Nama cookie aman sesuai RFC 6265 (tanpa spasi atau slash dari kode_unit)
+     */
+    private function guestCookieName(string $kode_unit): string
+    {
+        return 'wams_guest_token_' . md5(trim(urldecode($kode_unit)));
+    }
+
+    /**
+     * Ambil return_token dari query parameter atau cookie (termasuk fallback cookie lama)
+     */
+    private function resolveGuestToken(Request $request, string $kode_unit): ?string
+    {
+        $token = $request->query('token')
+            ?: $request->cookie($this->guestCookieName($kode_unit))
+            ?: $request->cookie('wams_guest_token_' . $kode_unit);
+
+        return is_string($token) && trim($token) !== '' ? trim($token) : null;
+    }
+
+    /**
+     * Verifikasi apakah tamu berhak membuka tiket pengembalian:
+     * 1. Memiliki return_token valid (via URL/Cookie), ATAU
+     * 2. Memasukkan kombinasi Nama Lengkap DAN Email Peminjam yang keduanya cocok dengan logbook aktif.
+     */
+    private function isAuthorizedForGuestReturn(Request $request, ?Logbook $logbook, string $kode_unit): bool
+    {
+        if (!$logbook || $logbook->tipe_peminjam !== 'guest' || empty($logbook->return_token)) {
+            return false;
+        }
+
+        $token = $this->resolveGuestToken($request, $kode_unit);
+        if ($token && hash_equals($logbook->return_token, $token)) {
+            return true;
+        }
+
+        $email = strtolower(trim((string) $request->query('email', '')));
+        $nama = strtolower(trim((string) $request->query('nama', '')));
+        $expectedEmail = strtolower(trim((string) $logbook->guest_email));
+        $expectedNama = strtolower(trim((string) $logbook->guest_nama));
+
+        if ($email !== '' && $nama !== '' && $expectedEmail !== '' && $expectedNama !== '') {
+            return hash_equals($expectedEmail, $email) && hash_equals($expectedNama, $nama);
+        }
+
+        return false;
+    }
+
+    /**
+     * Masking petunjuk peminjam tanpa membocorkan nama peminjam yang dipakai untuk verifikasi
+     */
+    private function maskBorrowerHint(?Logbook $logbook): string
+    {
+        if (!$logbook) {
+            return 'Pengguna lain';
+        }
+
+        if ($logbook->tipe_peminjam === 'guest' && !empty($logbook->guest_email) && str_contains($logbook->guest_email, '@')) {
+            [$local, $domain] = explode('@', $logbook->guest_email, 2);
+            $maskedLocal = substr($local, 0, 1) . '***';
+            return $maskedLocal . '@' . $domain;
+        }
+
+        return 'Member Terdaftar';
+    }
+
+    /**
+     * Sanitasi kode_unit sebelum digunakan pada nama file di storage
+     */
+    private function sanitizeUnitSlug(string $kode_unit): string
+    {
+        $slug = preg_replace('/[^A-Za-z0-9\-_]/', '_', trim($kode_unit));
+        return !empty($slug) ? substr($slug, 0, 60) : 'unit';
+    }
+
+    /**
+     * Validasi ketat Base64 image beserta pengecekan magic bytes / MIME gambar
+     *
+     * @return array{decoded: string, ext: string}|null
+     */
+    private function decodeAndValidateBase64Image(?string $rawFoto): ?array
+    {
+        if (empty($rawFoto) || !preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/i', $rawFoto)) {
+            return null;
+        }
+
+        $commaPos = strpos($rawFoto, ',');
+        if ($commaPos === false) {
+            return null;
+        }
+
+        $decoded = base64_decode(substr($rawFoto, $commaPos + 1), true);
+        if ($decoded === false || strlen($decoded) === 0 || strlen($decoded) > 5 * 1024 * 1024) {
+            return null;
+        }
+
+        $imageInfo = @getimagesizefromstring($decoded);
+        if ($imageInfo === false || empty($imageInfo['mime'])) {
+            return null;
+        }
+
+        $mimeMap = [
+            'image/jpeg' => 'jpg',
+            'image/jpg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+
+        $mime = strtolower($imageInfo['mime']);
+        if (!isset($mimeMap[$mime])) {
+            return null;
+        }
+
+        return [
+            'decoded' => $decoded,
+            'ext' => $mimeMap[$mime],
+        ];
     }
 }

@@ -160,8 +160,8 @@ export default function Login({ status, initialTab = 'login', redirect = null })
     // Step 3: Reset Password
     const handleResetPassword = async (e) => {
         if (e) e.preventDefault();
-        if (newPassword.length < 8) {
-            setModalError('Kata sandi baru minimal 8 karakter.');
+        if (newPassword.length < 6) {
+            setModalError('Kata sandi baru minimal 6 karakter.');
             return;
         }
         if (newPassword !== newPasswordConfirm) {
@@ -802,7 +802,7 @@ export default function Login({ status, initialTab = 'login', redirect = null })
                                             type={showNewPassword ? 'text' : 'password'}
                                             value={newPassword}
                                             onChange={(e) => setNewPassword(e.target.value)}
-                                            placeholder="Minimal 8 karakter"
+                                            placeholder="Minimal 6 karakter"
                                             required
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#D84040] focus:ring-1 focus:ring-[#D84040]"
                                         />
