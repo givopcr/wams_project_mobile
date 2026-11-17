@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import CustomSelect from '@/components/CustomSelect';
 import {
     BarChart3,
     Calendar,
@@ -45,13 +46,23 @@ export default function ReportsIndex({
     const [logbookSearch, setLogbookSearch] = useState('');
     const [logbookStatusFilter, setLogbookStatusFilter] = useState('all');
 
+    useEffect(() => {
+        if (filters.period) {
+            setSelectedPeriod(filters.period);
+        }
+    }, [filters.period]);
+
     // Handle Period Filter Changes
     const handlePeriodChange = (period) => {
         setSelectedPeriod(period);
         if (period !== 'custom') {
             router.get('/admin/reports', {
                 period: period,
-            }, { preserveState: true, preserveScroll: true });
+            }, {
+                preserveState: true,
+                preserveScroll: true,
+                onError: () => setSelectedPeriod(filters.period || 'all'),
+            });
         }
     };
 
@@ -62,7 +73,10 @@ export default function ReportsIndex({
             period: 'custom',
             start_date: startDate,
             end_date: endDate,
-        }, { preserveState: true, preserveScroll: true });
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     // Filter Logbooks locally by search and status
@@ -208,14 +222,6 @@ export default function ReportsIndex({
                                 </button>
                             </form>
                         )}
-
-                        {/* Active Filter Indicator Badge */}
-                        <div className="text-xs font-semibold text-[#6B7280] flex items-center gap-1.5 self-end md:self-auto">
-                            <span>Filter Aktif:</span>
-                            <span className="font-bold text-[#1D1616] bg-[#EEEEEE] px-2.5 py-1 rounded-md border border-[#E0E0E0]">
-                                {filters.period_label || 'Semua Periode'}
-                            </span>
-                        </div>
                     </div>
                 </div>
 
@@ -629,15 +635,15 @@ export default function ReportsIndex({
                                 <Search size={14} className="absolute left-3 top-2.5 text-[#6B7280]" />
                             </div>
 
-                            <select
+                            <CustomSelect
                                 value={logbookStatusFilter}
                                 onChange={(e) => setLogbookStatusFilter(e.target.value)}
-                                className="px-3 py-2 bg-[#EEEEEE]/50 border border-[#E0E0E0] rounded-xl text-xs font-bold text-[#1D1616] focus:outline-none focus:border-[#D84040]"
+                                className="min-w-[165px] px-3 py-2 bg-[#EEEEEE]/50 border border-[#E0E0E0] rounded-xl text-xs font-bold text-[#1D1616] focus:outline-none hover:border-[#D84040]/50 cursor-pointer"
                             >
                                 <option value="all">Semua Status</option>
                                 <option value="dipinjam">Sedang Dipinjam</option>
                                 <option value="dikembalikan">Sudah Dikembalikan</option>
-                            </select>
+                            </CustomSelect>
                         </div>
                     </div>
 

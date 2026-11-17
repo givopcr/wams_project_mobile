@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import CustomSelect from '@/components/CustomSelect';
 import {
     ChevronLeft,
     ChevronRight,
@@ -1106,18 +1107,17 @@ export default function CalendarIndex({
                                 <label className="block text-xs font-bold text-[#1E293B] mb-1.5">
                                     Pilih Peminjam (Teknisi / User)
                                 </label>
-                                <select
+                                <CustomSelect
                                     value={data.user_id}
                                     onChange={(e) => setData('user_id', e.target.value)}
-                                    required
-                                    className="w-full px-3.5 py-2.5 bg-white border border-[#E2E8F0] rounded-xl text-xs text-[#1E293B] font-semibold focus:outline-none focus:border-[#3B82F6]"
+                                    className="w-full px-3.5 py-2.5 bg-white border border-[#E2E8F0] rounded-xl text-xs text-[#1E293B] font-semibold focus:outline-none hover:border-[#D84040]/50 cursor-pointer"
                                 >
                                     {users.map((u) => (
                                         <option key={u.id} value={u.id}>
                                             {u.nama} (NIP: {u.nip || '-'})
                                         </option>
                                     ))}
-                                </select>
+                                </CustomSelect>
                                 {errors.user_id && <p className="text-rose-500 text-xs mt-1">{errors.user_id}</p>}
                             </div>
 
@@ -1131,18 +1131,17 @@ export default function CalendarIndex({
                                         Tidak ada unit barang berstatus tersedia saat ini.
                                     </div>
                                 ) : (
-                                    <select
+                                    <CustomSelect
                                         value={data.barang_unit_id}
                                         onChange={(e) => setData('barang_unit_id', e.target.value)}
-                                        required
-                                        className="w-full px-3.5 py-2.5 bg-white border border-[#E2E8F0] rounded-xl text-xs text-[#1E293B] font-semibold focus:outline-none focus:border-[#3B82F6]"
+                                        className="w-full px-3.5 py-2.5 bg-white border border-[#E2E8F0] rounded-xl text-xs text-[#1E293B] font-semibold focus:outline-none hover:border-[#D84040]/50 cursor-pointer"
                                     >
                                         {availableUnits.map((unit) => (
                                             <option key={unit.id} value={unit.id}>
                                                 {unit.kode_unit} - {unit.nama_barang}
                                             </option>
                                         ))}
-                                    </select>
+                                    </CustomSelect>
                                 )}
                                 {errors.barang_unit_id && (
                                     <p className="text-rose-500 text-xs mt-1">{errors.barang_unit_id}</p>

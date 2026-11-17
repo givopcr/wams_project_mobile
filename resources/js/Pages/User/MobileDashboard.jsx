@@ -355,17 +355,16 @@ export default function MobileDashboard({
                             {/* Card 1: Dipinjam */}
                             <Link
                                 href="/user/riwayat?tab=aktif"
-                                className="bg-white rounded-[14px] border-[1.2px] border-[#CBD5E1] shadow-[0_2px_8px_rgba(15,23,42,0.04)] overflow-hidden flex flex-col items-center hover:border-[#DC2626] transition-all"
+                                className="bg-[#DC2626] rounded-[14px] border-[1.2px] border-[#DC2626] shadow-[0_2px_8px_rgba(220,38,38,0.2)] overflow-hidden flex flex-col items-center hover:brightness-95 transition-all"
                             >
-                                <div className="h-[4px] w-full bg-[#DC2626]" />
                                 <div className="py-3.5 px-2 flex flex-col items-center">
-                                    <div className="w-[42px] h-[42px] rounded-[10px] bg-[#FEE2E2] border border-[#DC2626]/20 shadow-[0_2px_4px_rgba(220,38,38,0.12)] flex items-center justify-center text-[#DC2626]">
-                                        <Hammer size={21} />
+                                    <div className="w-[42px] h-[42px] rounded-[10px] bg-white/20 border border-white/25 shadow-[0_2px_4px_rgba(0,0,0,0.1)] flex items-center justify-center text-white">
+                                        <Hammer size={21} className="text-white" />
                                     </div>
-                                    <span className="mt-2 text-[26px] font-black text-[#0F172A] leading-none">
+                                    <span className="mt-2 text-[26px] font-black text-white leading-none">
                                         {stats.dipinjam}
                                     </span>
-                                    <span className="mt-1 text-[12px] font-bold text-[#475569]">
+                                    <span className="mt-1 text-[12px] font-bold text-white/90">
                                         Dipinjam
                                     </span>
                                 </div>
@@ -374,17 +373,16 @@ export default function MobileDashboard({
                             {/* Card 2: Menunggu */}
                             <Link
                                 href="/user/riwayat?tab=aktif"
-                                className="bg-white rounded-[14px] border-[1.2px] border-[#CBD5E1] shadow-[0_2px_8px_rgba(15,23,42,0.04)] overflow-hidden flex flex-col items-center hover:border-[#D97706] transition-all"
+                                className="bg-[#D97706] rounded-[14px] border-[1.2px] border-[#D97706] shadow-[0_2px_8px_rgba(217,119,6,0.2)] overflow-hidden flex flex-col items-center hover:brightness-95 transition-all"
                             >
-                                <div className="h-[4px] w-full bg-[#D97706]" />
                                 <div className="py-3.5 px-2 flex flex-col items-center">
-                                    <div className="w-[42px] h-[42px] rounded-[10px] bg-[#FEF3C7] border border-[#D97706]/20 shadow-[0_2px_4px_rgba(217,119,6,0.12)] flex items-center justify-center text-[#D97706]">
-                                        <Hourglass size={21} />
+                                    <div className="w-[42px] h-[42px] rounded-[10px] bg-white/20 border border-white/25 shadow-[0_2px_4px_rgba(0,0,0,0.1)] flex items-center justify-center text-white">
+                                        <Hourglass size={21} className="text-white" />
                                     </div>
-                                    <span className="mt-2 text-[26px] font-black text-[#0F172A] leading-none">
+                                    <span className="mt-2 text-[26px] font-black text-white leading-none">
                                         {stats.menunggu}
                                     </span>
-                                    <span className="mt-1 text-[12px] font-bold text-[#475569]">
+                                    <span className="mt-1 text-[12px] font-bold text-white/90">
                                         Menunggu
                                     </span>
                                 </div>
@@ -393,17 +391,16 @@ export default function MobileDashboard({
                             {/* Card 3: Selesai */}
                             <Link
                                 href="/user/riwayat?tab=selesai"
-                                className="bg-white rounded-[14px] border-[1.2px] border-[#CBD5E1] shadow-[0_2px_8px_rgba(15,23,42,0.04)] overflow-hidden flex flex-col items-center hover:border-[#059669] transition-all"
+                                className="bg-[#059669] rounded-[14px] border-[1.2px] border-[#059669] shadow-[0_2px_8px_rgba(5,150,105,0.2)] overflow-hidden flex flex-col items-center hover:brightness-95 transition-all"
                             >
-                                <div className="h-[4px] w-full bg-[#059669]" />
                                 <div className="py-3.5 px-2 flex flex-col items-center">
-                                    <div className="w-[42px] h-[42px] rounded-[10px] bg-[#D1FAE5] border border-[#059669]/20 shadow-[0_2px_4px_rgba(5,150,105,0.12)] flex items-center justify-center text-[#059669]">
-                                        <CheckCircle2 size={21} />
+                                    <div className="w-[42px] h-[42px] rounded-[10px] bg-white/20 border border-white/25 shadow-[0_2px_4px_rgba(0,0,0,0.1)] flex items-center justify-center text-white">
+                                        <CheckCircle2 size={21} className="text-white" />
                                     </div>
-                                    <span className="mt-2 text-[26px] font-black text-[#0F172A] leading-none">
+                                    <span className="mt-2 text-[26px] font-black text-white leading-none">
                                         {stats.selesai}
                                     </span>
-                                    <span className="mt-1 text-[12px] font-bold text-[#475569]">
+                                    <span className="mt-1 text-[12px] font-bold text-white/90">
                                         Selesai
                                     </span>
                                 </div>
@@ -419,24 +416,16 @@ export default function MobileDashboard({
 
                     {/* 5. KATEGORI PERALATAN (_buildKategoriSection) */}
                     <div className="pt-1">
-                        <div className="flex items-center justify-between mb-2.5">
-                            <h3 className="text-[16px] font-extrabold text-[#1E293B] tracking-[-0.3px]">
-                                Kategori Peralatan
-                            </h3>
-                            <Link
-                                href="/user/katalog"
-                                className="text-[13px] font-bold text-[#8E1616] hover:underline"
-                            >
-                                Lihat semua &gt;
-                            </Link>
-                        </div>
+                        <h3 className="text-[16px] font-black text-[#0F172A] tracking-[-0.3px] mb-2.5">
+                            Kategori Peralatan
+                        </h3>
 
                         {categories.length === 0 ? (
                             <div className="w-full py-6 px-4 bg-white rounded-[16px] border border-[#E2E8F0] text-center text-xs text-[#94A3B8]">
                                 Belum ada kategori peralatan.
                             </div>
                         ) : (
-                            <div className="flex items-center gap-3 overflow-x-auto pb-1 no-scrollbar">
+                            <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
                                 {categories.map((kat) => {
                                     const style = getCategoryCardStyle(kat.nama_kategori);
                                     const Icon = style.icon;
@@ -452,19 +441,19 @@ export default function MobileDashboard({
                                                 backgroundColor: style.bgColor,
                                                 borderColor: style.borderColor,
                                             }}
-                                            className="w-[122px] h-[146px] px-2.5 py-3 rounded-[14px] border-[1.2px] shadow-[0_2px_8px_rgba(15,23,42,0.04)] flex flex-col justify-between items-center shrink-0 transition-transform active:scale-95"
+                                            className="w-full min-w-0 p-2 sm:p-2.5 rounded-[14px] border-[1.2px] shadow-[0_2px_8px_rgba(15,23,42,0.04)] flex flex-col justify-between items-center transition-all duration-150 hover:brightness-95 active:scale-95 min-h-[148px]"
                                         >
                                             {/* Top Icon Container */}
                                             <div
                                                 style={{ borderColor: style.borderColor }}
-                                                className="w-[40px] h-[40px] rounded-[10px] bg-white border shadow-[0_1px_4px_rgba(15,23,42,0.04)] flex items-center justify-center"
+                                                className="w-[36px] h-[36px] sm:w-[40px] sm:h-[40px] rounded-[10px] bg-white border shadow-[0_1px_4px_rgba(15,23,42,0.04)] flex items-center justify-center shrink-0 mb-1.5"
                                             >
-                                                <Icon size={22} style={{ color: style.iconColor }} />
+                                                <Icon size={20} style={{ color: style.iconColor }} />
                                             </div>
 
                                             {/* Name & Quantity */}
-                                            <div className="w-full text-center">
-                                                <p className="text-[13px] font-black text-[#0F172A] leading-tight truncate">
+                                            <div className="w-full text-center min-w-0 mb-2">
+                                                <p className="text-[12px] sm:text-[13px] font-black text-[#0F172A] leading-tight truncate px-0.5">
                                                     {kat.nama_kategori}
                                                 </p>
                                                 <span
@@ -472,15 +461,15 @@ export default function MobileDashboard({
                                                         borderColor: style.borderColor,
                                                         color: style.iconColor,
                                                     }}
-                                                    className="mt-1 inline-block px-1.5 py-0.5 bg-white rounded-[6px] border text-[10px] font-extrabold"
+                                                    className="mt-1 inline-block px-1.5 py-0.5 bg-white rounded-[6px] border text-[9.5px] sm:text-[10px] font-extrabold whitespace-nowrap leading-tight"
                                                 >
                                                     {readyLabel}
                                                 </span>
                                             </div>
 
                                             {/* Button: ▶ Lihat */}
-                                            <div className="w-full py-1 bg-white rounded-[8px] border border-[#CBD5E1] shadow-[0_1px_3px_rgba(15,23,42,0.03)] flex items-center justify-center gap-1">
-                                                <Play size={10} className="text-[#8E1616] fill-[#8E1616]" />
+                                            <div className="w-full py-1 bg-white rounded-[8px] border border-[#CBD5E1] shadow-[0_1px_3px_rgba(15,23,42,0.03)] flex items-center justify-center gap-1 mt-auto">
+                                                <Play size={9} className="text-[#8E1616] fill-[#8E1616]" />
                                                 <span className="text-[10px] font-extrabold text-[#0F172A]">
                                                     Lihat
                                                 </span>
@@ -575,12 +564,9 @@ function FeaturedReturnSection({ activeBorrows = [], formatShortDate }) {
         return (
             <div className="w-full bg-white rounded-[16px] border-[1.5px] border-[#10B981] px-[18px] py-[14px] shadow-[0_3px_12px_rgba(16,185,129,0.10)] flex items-center justify-between gap-3.5">
                 <div className="min-w-0 flex-1">
-                    <h4 className="text-[15.5px] font-black text-[#0F172A] tracking-[-0.3px] truncate">
-                        Semua Alat Tersimpan Rapi
+                    <h4 className="text-[15px] font-bold text-[#0F172A] tracking-[-0.3px] truncate">
+                        Tidak Ada Dipinjam
                     </h4>
-                    <p className="text-[12px] text-[#64748B] font-semibold mt-1 truncate">
-                        Tidak ada pinjaman aktif · Siap dipinjam
-                    </p>
                 </div>
                 <div className="w-[50px] h-[50px] rounded-[14px] bg-[#ECFDF5] border-[1.5px] border-[#A7F3D0] shadow-[0_2px_8px_rgba(16,185,129,0.10)] flex items-center justify-center shrink-0">
                     <CheckCircle2 size={26} className="text-[#059669]" />

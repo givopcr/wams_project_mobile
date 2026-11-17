@@ -15,9 +15,13 @@ class RouteAndSecurityAuditTest extends TestCase
     use RefreshDatabase;
 
     protected User $admin;
+
     protected User $user;
+
     protected KategoriBarang $kategori;
+
     protected Barang $barang;
+
     protected BarangUnit $unit;
 
     protected function setUp(): void
@@ -97,16 +101,16 @@ class RouteAndSecurityAuditTest extends TestCase
     public function test_admin_scanning_qr_unit_is_redirected_to_admin_barang_instead_of_guest(): void
     {
         $this->actingAs($this->admin)
-            ->get('/scan/' . $this->unit->kode_unit)
+            ->get('/scan/'.$this->unit->kode_unit)
             ->assertRedirect(route('admin.barang', ['q' => $this->unit->kode_unit]));
 
         $this->actingAs($this->user)
-            ->get('/scan/' . $this->unit->kode_unit)
+            ->get('/scan/'.$this->unit->kode_unit)
             ->assertRedirect(route('user.scanner', ['code' => $this->unit->kode_unit]));
 
         // Tamu tanpa login mendapatkan halaman Guest/Borrow dengan login_url
         $this->app['auth']->logout();
-        $guestResponse = $this->get('/scan/' . $this->unit->kode_unit);
+        $guestResponse = $this->get('/scan/'.$this->unit->kode_unit);
         $guestResponse->assertOk();
         $guestResponse->assertInertia(fn ($page) => $page
             ->component('Guest/Borrow')
@@ -114,15 +118,15 @@ class RouteAndSecurityAuditTest extends TestCase
         );
 
         // Jika memilih mode login via query (?mode=login), diarahkan ke halaman login dengan redirect
-        $this->get('/scan/' . $this->unit->kode_unit . '?mode=login')
+        $this->get('/scan/'.$this->unit->kode_unit.'?mode=login')
             ->assertRedirect(route('login', ['redirect' => route('guest.scan', ['kode_unit' => $this->unit->kode_unit])]));
 
         // Login Admin dengan redirect /scan/ diarahkan kembali ke scan -> lalu ke admin.barang
         $this->post('/login', [
             'login' => $this->admin->email,
             'password' => 'password123',
-            'redirect' => '/scan/' . $this->unit->kode_unit,
-        ])->assertRedirect('/scan/' . $this->unit->kode_unit);
+            'redirect' => '/scan/'.$this->unit->kode_unit,
+        ])->assertRedirect('/scan/'.$this->unit->kode_unit);
     }
 
     public function test_user_spoofing_nama_as_admin_email_cannot_lock_out_admin_login(): void
@@ -145,6 +149,35 @@ class RouteAndSecurityAuditTest extends TestCase
             ->assertJsonPath('data.user.role', 'admin');
     }
 
+    public function test_login_via_nip_is_rejected_on_web_login(): void
+    {
+        $testUser = User::factory()->create([
+            'nama' => 'User Non NIP Login',
+            'email' => 'user_non_nip@wams.test',
+            'nip' => '9988776655',
+            'password' => bcrypt('password123'),
+            'role' => 'user',
+        ]);
+
+        // Login via NIP harus gagal
+        $responseNip = $this->post('/login', [
+            'login' => '9988776655',
+            'password' => 'password123',
+        ]);
+
+        $responseNip->assertSessionHasErrors('login');
+        $this->assertGuest();
+
+        // Login via Email tetap berhasil
+        $responseEmail = $this->post('/login', [
+            'login' => 'user_non_nip@wams.test',
+            'password' => 'password123',
+        ]);
+
+        $responseEmail->assertRedirect(route('user.dashboard'));
+        $this->assertAuthenticatedAs($testUser);
+    }
+
     public function test_guest_cannot_return_registered_user_loan_or_bypass_token(): void
     {
         $this->unit->update(['status' => 'dipinjam']);
@@ -158,7 +191,7 @@ class RouteAndSecurityAuditTest extends TestCase
             'return_token' => null,
         ]);
 
-        $response = $this->postJson('/guest/return/' . $this->unit->kode_unit, [
+        $response = $this->postJson('/guest/return/'.$this->unit->kode_unit, [
             'kondisi' => 'rusak',
             'catatan' => 'Rusak',
             'foto_kondisi' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -253,7 +286,7 @@ class RouteAndSecurityAuditTest extends TestCase
         ]);
 
         // Hanya menebak email tanpa nama lengkap atau token harus ditolak (tetap di Guest/Unavailable)
-        $this->get('/scan/' . $this->unit->kode_unit . '?email=budi@example.com')
+        $this->get('/scan/'.$this->unit->kode_unit.'?email=budi@example.com')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Guest/Unavailable')
@@ -262,7 +295,7 @@ class RouteAndSecurityAuditTest extends TestCase
             );
 
         // Kombinasi nama lengkap + email yang cocok berhasil membuka Guest/Status
-        $this->get('/scan/' . $this->unit->kode_unit . '?nama=Budi+Santoso&email=budi@example.com')
+        $this->get('/scan/'.$this->unit->kode_unit.'?nama=Budi+Santoso&email=budi@example.com')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Guest/Status')
@@ -293,7 +326,7 @@ class RouteAndSecurityAuditTest extends TestCase
         $this->actingAs($this->user)
             ->postJson("/user/kembali/{$logbook->id}", [
                 'kondisi_kembali' => 'baik',
-                'foto_kondisi' => 'data:image/png;base64,' . base64_encode('bukan_file_gambar_biner'),
+                'foto_kondisi' => 'data:image/png;base64,'.base64_encode('bukan_file_gambar_biner'),
             ])
             ->assertStatus(422);
 

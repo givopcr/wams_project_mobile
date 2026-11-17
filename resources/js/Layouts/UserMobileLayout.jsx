@@ -10,8 +10,6 @@ import {
     CheckCircle2,
     AlertCircle,
     X,
-    Maximize2,
-    Minimize2,
     ArrowLeft,
     Wrench
 } from 'lucide-react';
@@ -33,23 +31,7 @@ export default function UserMobileLayout({
     const user = auth?.user;
     const currentUrl = url || (typeof window !== 'undefined' ? window.location.pathname : '');
 
-    const [isFullWidth, setIsFullWidth] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('wams_web_wide_mode') === '1';
-        }
-        return false;
-    });
     const [toastMessage, setToastMessage] = useState(null);
-
-    const toggleFullWidth = () => {
-        setIsFullWidth((prev) => {
-            const next = !prev;
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('wams_web_wide_mode', next ? '1' : '0');
-            }
-            return next;
-        });
-    };
 
     // Listen to flash messages
     useEffect(() => {
@@ -114,10 +96,7 @@ export default function UserMobileLayout({
         <div className="min-h-screen bg-[#E2E8F0] bg-[radial-gradient(#CBD5E1_1px,transparent_1px)] [background-size:20px_20px] text-[#0F172A] font-['Poppins','Inter',ui-sans-serif,system-ui,sans-serif] antialiased selection:bg-[#D84040] selection:text-white flex flex-col justify-between">
             {/* Main Web App Container */}
             <div
-                className={`w-full mx-auto min-h-screen flex flex-col transition-all duration-300 relative ${darkAppBar ? 'bg-[#0F172A] text-white' : 'bg-[#F8FAFC] text-[#0F172A]'
-                    } ${isFullWidth
-                        ? 'max-w-[820px] shadow-[0_0_50px_rgba(15,23,42,0.12)] sm:border-x sm:border-[#CBD5E1]/80'
-                        : 'max-w-[480px] shadow-[0_0_40px_rgba(15,23,42,0.12)] sm:border-x sm:border-[#CBD5E1]/80'
+                className={`w-full mx-auto min-h-screen flex flex-col transition-all duration-300 relative max-w-[480px] shadow-[0_0_40px_rgba(15,23,42,0.12)] sm:border-x sm:border-[#CBD5E1]/80 ${darkAppBar ? 'bg-[#0F172A] text-white' : 'bg-[#F8FAFC] text-[#0F172A]'
                     }`}
             >
                 {/* Admin Preview Bar */}
@@ -128,15 +107,6 @@ export default function UserMobileLayout({
                             <span>Pratinjau WAMS Mobile Web (Admin)</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <button
-                                type="button"
-                                onClick={toggleFullWidth}
-                                className="hidden sm:flex px-2 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-[10px] items-center gap-1 transition-colors cursor-pointer"
-                                title={isFullWidth ? 'Mode Mobile (480px)' : 'Mode Lebar Web (820px)'}
-                            >
-                                {isFullWidth ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
-                                <span>{isFullWidth ? '480px' : '820px'}</span>
-                            </button>
                             <Link
                                 href="/admin/dashboard"
                                 className="bg-white text-amber-700 hover:bg-amber-50 px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all shadow-2xs"
@@ -194,25 +164,11 @@ export default function UserMobileLayout({
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                            {rightAction}
-                            {user?.role !== 'admin' && (
-                                <button
-                                    type="button"
-                                    onClick={toggleFullWidth}
-                                    className={`hidden sm:flex h-8 px-2.5 rounded-xl border text-[11px] font-bold items-center gap-1.5 transition-colors cursor-pointer ${darkAppBar
-                                            ? 'bg-white/10 border-white/15 text-slate-200 hover:bg-white/20'
-                                            : 'bg-[#F8FAFC] border-[#E2E8F0] text-[#475569] hover:text-[#0F172A] hover:border-slate-300'
-                                        }`}
-                                    title={isFullWidth ? 'Tampilan Mobile (480px)' : 'Perlebar ke Mode Web (820px)'}
-                                >
-                                    {isFullWidth ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-                                    <span className="hidden md:inline">
-                                        {isFullWidth ? 'Mobile' : 'Wide'}
-                                    </span>
-                                </button>
-                            )}
-                        </div>
+                        {rightAction && (
+                            <div className="flex items-center gap-2 shrink-0">
+                                {rightAction}
+                            </div>
+                        )}
                     </header>
                 )}
 
@@ -256,10 +212,7 @@ export default function UserMobileLayout({
                 {/* Floating Pill Island Bottom Dock (Web-Distinctive Navigation) */}
                 {showBottomNav && (
                     <nav className="fixed bottom-3 left-0 right-0 z-40 pointer-events-none px-3">
-                        <div
-                            className={`mx-auto w-full transition-all duration-300 pointer-events-auto ${isFullWidth ? 'max-w-[796px]' : 'max-w-[456px]'
-                                }`}
-                        >
+                        <div className="mx-auto w-full transition-all duration-300 pointer-events-auto max-w-[456px]">
                             <div className="bg-white/95 backdrop-blur-xl border border-[#E2E8F0] rounded-[22px] h-[64px] px-2 shadow-[0_10px_30px_rgba(15,23,42,0.12)] flex items-center justify-around">
                                 {navItems.map((item) => {
                                     const Icon = item.icon;

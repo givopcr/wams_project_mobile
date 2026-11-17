@@ -229,14 +229,19 @@ export default function Login({ status, initialTab = 'login', redirect = null })
                                     className="w-full h-full object-contain"
                                 />
                             </div>
-                            <h1 className="text-2xl font-bold tracking-tight text-[#1D1616]">
-                                {activeTab === 'login' ? 'Masuk ke WAMS' : 'Daftar Akun Baru'}
-                            </h1>
-                            <p className="text-xs text-[#6B7280] mt-1 font-medium">
-                                {activeTab === 'login'
-                                    ? 'Workshop Asset Management System'
-                                    : 'Lengkapi formulir untuk membuat akun pengguna WAMS'}
-                            </p>
+                            <div
+                                key={activeTab}
+                                className="animate-in fade-in slide-in-from-bottom-1 duration-300"
+                            >
+                                <h1 className="text-2xl font-bold tracking-tight text-[#1D1616]">
+                                    {activeTab === 'login' ? 'Masuk ke WAMS' : 'Daftar Akun Baru'}
+                                </h1>
+                                <p className="text-xs text-[#6B7280] mt-1 font-medium">
+                                    {activeTab === 'login'
+                                        ? 'Workshop Asset Management System'
+                                        : 'Lengkapi formulir untuk membuat akun pengguna WAMS'}
+                                </p>
+                            </div>
                         </div>
 
                         {/* Flash Status Message */}
@@ -272,17 +277,22 @@ export default function Login({ status, initialTab = 'login', redirect = null })
                             </div>
                         )}
 
-                        {/* Tab Switcher: Masuk / Daftar */}
-                        <div className="flex p-1 bg-slate-100 rounded-2xl mb-6 border border-slate-200/80">
+                        {/* Tab Switcher: Masuk / Daftar (with Smooth Sliding Pill) */}
+                        <div className="relative flex p-1 bg-slate-100 rounded-2xl mb-6 border border-slate-200/80 overflow-hidden select-none">
+                            <div
+                                className={`absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] pointer-events-none ${
+                                    activeTab === 'register' ? 'translate-x-full' : 'translate-x-0'
+                                }`}
+                            />
                             <button
                                 type="button"
                                 onClick={() => {
                                     setActiveTab('login');
                                     clearRegErrors();
                                 }}
-                                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                className={`relative z-10 flex-1 py-2.5 text-xs font-bold rounded-xl transition-colors duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
                                     activeTab === 'login'
-                                        ? 'bg-white text-slate-900 shadow-sm'
+                                        ? 'text-slate-900'
                                         : 'text-slate-500 hover:text-slate-800'
                                 }`}
                             >
@@ -295,9 +305,9 @@ export default function Login({ status, initialTab = 'login', redirect = null })
                                     setActiveTab('register');
                                     clearErrors();
                                 }}
-                                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                                className={`relative z-10 flex-1 py-2.5 text-xs font-bold rounded-xl transition-colors duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
                                     activeTab === 'register'
-                                        ? 'bg-white text-slate-900 shadow-sm'
+                                        ? 'text-slate-900'
                                         : 'text-slate-500 hover:text-slate-800'
                                 }`}
                             >
@@ -308,7 +318,10 @@ export default function Login({ status, initialTab = 'login', redirect = null })
 
                         {/* Login View */}
                         {activeTab === 'login' ? (
-                            <>
+                            <div
+                                key="login-view"
+                                className="animate-in fade-in slide-in-from-left-3 duration-300 ease-out"
+                            >
                                 {/* Error Alert */}
                                 {errors.login && (
                                     <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5">
@@ -319,10 +332,10 @@ export default function Login({ status, initialTab = 'login', redirect = null })
 
                                 {/* Main Form */}
                                 <form onSubmit={submit} className="space-y-4">
-                                    {/* Input Email / Nama / NIP */}
+                                    {/* Input Email / Nama */}
                                     <div>
                                         <label className="block text-xs font-semibold text-[#1D1616] mb-1.5 uppercase tracking-wider">
-                                            Email, Nama Lengkap, atau NIP
+                                            Email atau Nama
                                         </label>
                                         <div className="relative">
                                             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#8C93A0]">
@@ -332,7 +345,7 @@ export default function Login({ status, initialTab = 'login', redirect = null })
                                                 type="text"
                                                 value={data.login}
                                                 onChange={(e) => setData('login', e.target.value)}
-                                                placeholder="Email, nama, atau NIP"
+                                                placeholder="Email atau Nama"
                                                 required
                                                 className="w-full pl-10 pr-4 py-3 bg-white border border-[#E0E0E0] rounded-xl text-sm focus:outline-none focus:border-[#D84040] focus:ring-1 focus:ring-[#D84040] transition-colors"
                                             />
@@ -441,10 +454,14 @@ export default function Login({ status, initialTab = 'login', redirect = null })
                                         </button>
                                     </div>
                                 </form>
-                            </>
+                            </div>
                         ) : (
                             /* Register View */
-                            <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                            <form
+                                key="register-view"
+                                onSubmit={handleRegisterSubmit}
+                                className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-300 ease-out"
+                            >
                                 {/* Error Alert jika ada general errors */}
                                 {Object.keys(regErrors).length > 0 && !regErrors.nama && !regErrors.email && !regErrors.nip && !regErrors.password && !regErrors.password_confirmation && (
                                     <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5">

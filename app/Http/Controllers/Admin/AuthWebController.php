@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthWebController extends Controller
 {
@@ -45,11 +47,11 @@ class AuthWebController extends Controller
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
         ]);
 
-        $user = \App\Models\User::create([
+        $user = User::create([
             'nama' => $validated['nama'],
             'email' => $validated['email'],
             'nip' => $validated['nip'] ?: null,
-            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+            'password' => Hash::make($validated['password']),
             'role' => 'user',
         ]);
 
@@ -58,7 +60,7 @@ class AuthWebController extends Controller
 
         $targetUrl = $this->resolvePostAuthRedirect($request, $user);
 
-        return redirect()->to($targetUrl)->with('success', 'Registrasi berhasil! Selamat datang di WAMS, ' . $user->nama . '.');
+        return redirect()->to($targetUrl)->with('success', 'Registrasi berhasil! Selamat datang di WAMS, '.$user->nama.'.');
     }
 
     public function login(Request $request)
@@ -70,8 +72,8 @@ class AuthWebController extends Controller
 
         $loginInput = trim($credentials['login']);
 
-        // Prioritaskan pencarian berdasarkan identifier unik (email atau nip) terlebih dahulu,
-        // baru fallback ke nama agar perubahan nama user tidak bisa membajak/mengunci login email/NIP akun lain
+        // Prioritaskan pencarian berdasarkan identifier unik (email) terlebih dahulu,
+        // baru fallback ke nama agar perubahan nama user tidak bisa membajak/mengunci login email akun lain
         $user = $this->findAndVerifyUser($loginInput, $credentials['password']);
 
         // Jika sebelumnya sudah ada sesi aktif, bersihkan agar login baru bersih
@@ -87,15 +89,11 @@ class AuthWebController extends Controller
 
             $targetUrl = $this->resolvePostAuthRedirect($request, $user);
 
-            if ($user->role === 'admin') {
-                return redirect()->to($targetUrl)->with('success', 'Selamat datang kembali, Administrator!');
-            }
-
-            return redirect()->to($targetUrl)->with('success', 'Selamat datang di WAMS Mobile, ' . $user->nama . '!');
+            return redirect()->to($targetUrl);
         }
 
         throw ValidationException::withMessages([
-            'login' => 'Email/Nama/NIP atau password yang Anda masukkan tidak sesuai.',
+            'login' => 'Email/Nama atau password yang Anda masukkan tidak sesuai.',
         ]);
     }
 
@@ -119,7 +117,7 @@ class AuthWebController extends Controller
             $request->session()->put('url.intended', $safeRedirect);
         }
 
-        return \Laravel\Socialite\Facades\Socialite::driver('google')
+        return Socialite::driver('google')
             ->redirectUrl(url('/auth/google/callback'))
             ->redirect();
     }
@@ -130,20 +128,20 @@ class AuthWebController extends Controller
     public function handleGoogleCallback(Request $request)
     {
         try {
-            $driver = \Laravel\Socialite\Facades\Socialite::driver('google')
+            $driver = Socialite::driver('google')
                 ->redirectUrl(url('/auth/google/callback'));
             if (app()->isLocal()) {
-                $driver->setHttpClient(new \GuzzleHttp\Client(['verify' => false]));
+                $driver->setHttpClient(new Client(['verify' => false]));
             }
             $googleUser = $driver->user();
         } catch (\Exception $e) {
             return redirect()->route('login')->withErrors([
-                'login' => 'Gagal mengautentikasi dengan Google: ' . $e->getMessage(),
+                'login' => 'Gagal mengautentikasi dengan Google: '.$e->getMessage(),
             ]);
         }
 
         // Cari user berdasarkan google_id terlebih dahulu, lalu email
-        $user = \App\Models\User::where('google_id', $googleUser->getId())->first();
+        $user = User::where('google_id', $googleUser->getId())->first();
 
         if (! $user && $googleUser->getEmail()) {
             $emailVerified = $googleUser->user['email_verified'] ?? ($googleUser->user['verified_email'] ?? true);
@@ -153,7 +151,7 @@ class AuthWebController extends Controller
                 ]);
             }
 
-            $user = \App\Models\User::where('email', $googleUser->getEmail())->first();
+            $user = User::where('email', $googleUser->getEmail())->first();
 
             if ($user && ! empty($user->google_id) && $user->google_id !== $googleUser->getId()) {
                 return redirect()->route('login')->withErrors([
@@ -170,7 +168,7 @@ class AuthWebController extends Controller
             ]);
         } else {
             // Buat user baru dengan role default 'user'
-            $user = \App\Models\User::create([
+            $user = User::create([
                 'nama' => $googleUser->getName() ?: 'User Google',
                 'email' => $googleUser->getEmail(),
                 'google_id' => $googleUser->getId(),
@@ -184,21 +182,15 @@ class AuthWebController extends Controller
 
         $targetUrl = $this->resolvePostAuthRedirect($request, $user);
 
-        if ($user->role === 'admin') {
-            return redirect()->to($targetUrl)->with('success', 'Selamat datang kembali, Administrator!');
-        }
-
-        return redirect()->to($targetUrl)->with('success', 'Selamat datang di WAMS Mobile, ' . $user->nama . '!');
+        return redirect()->to($targetUrl);
     }
 
     /**
-     * Cari user dengan prioritas email/NIP (unik) sebelum fallback ke nama
+     * Cari user dengan prioritas email (unik) sebelum fallback ke nama
      */
     private function findAndVerifyUser(string $loginInput, string $password): ?User
     {
-        $uniqueCandidates = User::where('email', $loginInput)
-            ->orWhere('nip', $loginInput)
-            ->get();
+        $uniqueCandidates = User::where('email', $loginInput)->get();
 
         if ($uniqueCandidates->isNotEmpty()) {
             foreach ($uniqueCandidates as $candidate) {

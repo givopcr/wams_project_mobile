@@ -106,8 +106,8 @@ class UserWebController extends Controller
             $search = $request->q;
             $query->where(function ($q) use ($search) {
                 $q->where('nama_barang', 'like', "%{$search}%")
-                  ->orWhere('kode_barang', 'like', "%{$search}%")
-                  ->orWhere('detail_spesifikasi', 'like', "%{$search}%");
+                    ->orWhere('kode_barang', 'like', "%{$search}%")
+                    ->orWhere('detail_spesifikasi', 'like', "%{$search}%");
             });
         }
 
@@ -128,6 +128,7 @@ class UserWebController extends Controller
                     'total_barang' => $kat->barang_count ?? 0,
                     'total_unit' => $kat->units->count(),
                     'tersedia' => $kat->units->where('status', 'tersedia')->count(),
+                    'maintenance' => $kat->units->where('status', 'maintenance')->count(),
                 ];
             });
 
@@ -201,11 +202,12 @@ class UserWebController extends Controller
         ]);
 
         $parsedFotoPinjam = $this->decodeAndValidateBase64Image($request->input('foto_pinjam'));
-        if (!$parsedFotoPinjam) {
+        if (! $parsedFotoPinjam) {
             $errMsg = 'Foto barang sebelum dipinjam wajib diunggah dengan format gambar yang valid (JPG, PNG, atau WEBP maks 5MB).';
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $errMsg], 422);
             }
+
             return back()->withErrors(['foto_pinjam' => $errMsg]);
         }
 
@@ -215,6 +217,7 @@ class UserWebController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Barang habis pakai tidak dapat dipinjam sebagai unit aset.'], 422);
             }
+
             return back()->with('error', 'Barang habis pakai tidak dapat dipinjam sebagai unit aset.');
         }
         $requiresApproval = (bool) $barang->perlu_persetujuan;
@@ -231,6 +234,7 @@ class UserWebController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Pilih minimal satu unit fisik untuk dipinjam.'], 422);
             }
+
             return back()->with('error', 'Pilih minimal satu unit fisik untuk dipinjam.');
         }
 
@@ -240,6 +244,7 @@ class UserWebController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Batas waktu pengembalian tidak boleh sebelum tanggal pinjam.'], 422);
             }
+
             return back()->with('error', 'Batas waktu pengembalian tidak boleh sebelum tanggal pinjam.');
         }
 
@@ -252,6 +257,7 @@ class UserWebController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msgQuota], 422);
             }
+
             return back()->with('error', $msgQuota);
         }
 
@@ -267,10 +273,11 @@ class UserWebController extends Controller
                 if ($request->wantsJson()) {
                     return response()->json(['success' => false, 'message' => $errMsg], 422);
                 }
+
                 return back()->with('error', $errMsg);
             }
 
-            $fotoPinjamPath = 'peminjaman/borrow_' . $user->id . '_' . time() . '_' . uniqid() . '.' . $parsedFotoPinjam['ext'];
+            $fotoPinjamPath = 'peminjaman/borrow_'.$user->id.'_'.time().'_'.uniqid().'.'.$parsedFotoPinjam['ext'];
             Storage::disk('public')->put($fotoPinjamPath, $parsedFotoPinjam['decoded']);
 
             $keperluanText = $request->filled('keperluan') ? trim($request->keperluan) : null;
@@ -303,7 +310,7 @@ class UserWebController extends Controller
                 'tanggal_pinjam' => $tglPinjam->translatedFormat('d M Y'),
                 'tanggal_kembali' => $batasKembali->translatedFormat('d M Y'),
                 'keperluan' => $keperluanText ?: '-',
-                'foto_pinjam_url' => asset('storage/' . $fotoPinjamPath),
+                'foto_pinjam_url' => asset('storage/'.$fotoPinjamPath),
                 'perlu_persetujuan' => $requiresApproval,
                 'status_transaksi' => $targetStatus,
             ];
@@ -342,11 +349,12 @@ class UserWebController extends Controller
         ]);
 
         $parsedFotoKondisi = $this->decodeAndValidateBase64Image($request->input('foto_kondisi'));
-        if (!$parsedFotoKondisi) {
+        if (! $parsedFotoKondisi) {
             $errMsg = 'Foto kondisi barang saat dikembalikan wajib diunggah dengan format gambar yang valid (JPG, PNG, atau WEBP maks 5MB).';
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $errMsg], 422);
             }
+
             return back()->withErrors(['foto_kondisi' => $errMsg]);
         }
 
@@ -359,11 +367,12 @@ class UserWebController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$logbook) {
+            if (! $logbook) {
                 $errMsg = 'Data peminjaman aktif tidak ditemukan atau sudah selesai.';
                 if ($request->wantsJson()) {
                     return response()->json(['success' => false, 'message' => $errMsg], 422);
                 }
+
                 return back()->with('error', $errMsg);
             }
 
@@ -381,7 +390,7 @@ class UserWebController extends Controller
             }
 
             if (Schema::hasColumn('logbook', 'foto_kembali')) {
-                $filePath = 'pengembalian/return_' . $logbook->id . '_' . time() . '_' . uniqid() . '.' . $parsedFotoKondisi['ext'];
+                $filePath = 'pengembalian/return_'.$logbook->id.'_'.time().'_'.uniqid().'.'.$parsedFotoKondisi['ext'];
                 Storage::disk('public')->put($filePath, $parsedFotoKondisi['decoded']);
                 $updateData['foto_kembali'] = $filePath;
             }
@@ -427,7 +436,7 @@ class UserWebController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$logbook) {
+            if (! $logbook) {
                 return back()->with('error', 'Pengajuan tidak dapat dibatalkan atau sudah diproses admin.');
             }
 
@@ -518,7 +527,7 @@ class UserWebController extends Controller
     public function lookupUnit(Request $request, ?string $kode_unit = null): JsonResponse
     {
         $user = auth()->user();
-        
+
         // 1. Ambil input dari query parameter ?code= atau dari path parameter {kode_unit}
         $raw = (string) $request->query('code', $kode_unit ?? '');
         $raw = trim(urldecode($raw));
@@ -589,7 +598,7 @@ class UserWebController extends Controller
 
         $katByCode = KategoriBarang::withCount('barang')->with('units')
             ->where('qr_code', $raw)
-            ->orWhere('qr_code', '/' . ltrim($raw, '/'))
+            ->orWhere('qr_code', '/'.ltrim($raw, '/'))
             ->orWhere('nama_kategori', $raw)
             ->orWhere('nama_kategori', 'like', "%{$raw}%")
             ->first();
@@ -628,7 +637,7 @@ class UserWebController extends Controller
             ->orWhere('kode_unit', rawurldecode($cleanKode))
             ->first();
 
-        if (!$unit) {
+        if (! $unit) {
             return response()->json([
                 'success' => false,
                 'message' => "Kode QR '{$cleanKode}' tidak ditemukan di sistem WAMS.",
@@ -693,7 +702,7 @@ class UserWebController extends Controller
                 'email' => $user->email,
                 'nip' => $user->nip,
                 'role' => $user->role,
-                'has_password' => !empty($user->password),
+                'has_password' => ! empty($user->password),
                 'joined_at' => $user->created_at?->translatedFormat('d F Y') ?? 'Member Workshop',
             ],
             'stats' => $stats,
@@ -710,7 +719,7 @@ class UserWebController extends Controller
 
         $request->validate([
             'nama' => ['required', 'string', 'max:255'],
-            'nip' => ['nullable', 'string', 'max:50', 'unique:users,nip,' . $user->id],
+            'nip' => ['nullable', 'string', 'max:50', 'unique:users,nip,'.$user->id],
             'current_password' => ['nullable', 'string'],
             'new_password' => ['nullable', 'string', 'min:6', 'confirmed'],
         ], [
@@ -721,7 +730,7 @@ class UserWebController extends Controller
         ]);
 
         if ($request->filled('new_password')) {
-            if (!empty($user->password) && !Hash::check($request->current_password ?? '', $user->password)) {
+            if (! empty($user->password) && ! Hash::check($request->current_password ?? '', $user->password)) {
                 if ($request->wantsJson()) {
                     return response()->json([
                         'success' => false,
@@ -841,7 +850,7 @@ class UserWebController extends Controller
                 } elseif ($diff->h > 0) {
                     $remainingText = "sisa {$diff->h} jam";
                 } else {
-                    $remainingText = "segera berakhir";
+                    $remainingText = 'segera berakhir';
                 }
             }
         }
@@ -890,7 +899,7 @@ class UserWebController extends Controller
      */
     private function decodeAndValidateBase64Image(?string $rawFoto): ?array
     {
-        if (empty($rawFoto) || !preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/i', $rawFoto)) {
+        if (empty($rawFoto) || ! preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/i', $rawFoto)) {
             return null;
         }
 
@@ -917,7 +926,7 @@ class UserWebController extends Controller
         ];
 
         $mime = strtolower($imageInfo['mime']);
-        if (!isset($mimeMap[$mime])) {
+        if (! isset($mimeMap[$mime])) {
             return null;
         }
 

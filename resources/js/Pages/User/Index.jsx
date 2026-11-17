@@ -16,6 +16,7 @@ import {
     EyeOff
 } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
+import CustomSelect from '@/components/CustomSelect';
 
 export default function UserIndex({ users, filters }) {
     const { auth } = usePage().props;
@@ -144,18 +145,18 @@ export default function UserIndex({ users, filters }) {
                             <Search size={16} className="absolute left-3.5 top-3 text-[#6B7280]" />
                         </form>
 
-                        <select
+                        <CustomSelect
                             value={selectedRole}
                             onChange={(e) => {
                                 setSelectedRole(e.target.value);
                                 router.get('/admin/users', { q: search, role: e.target.value }, { preserveState: true });
                             }}
-                            className="py-2.5 px-3.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none focus:border-[#D84040]"
+                            className="min-w-[155px] py-2.5 px-3.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none hover:border-[#D84040]/50 transition-colors cursor-pointer"
                         >
                             <option value="">Semua Role</option>
                             <option value="admin">Administrator</option>
                             <option value="user">User / Teknisi</option>
-                        </select>
+                        </CustomSelect>
                     </div>
 
                     <button
@@ -231,24 +232,21 @@ export default function UserIndex({ users, filters }) {
                                                 </td>
                                                 <td className="p-4">
                                                     <div className="inline-flex items-center gap-1.5">
-                                                        <select
+                                                        <CustomSelect
                                                             value={u.role}
                                                             disabled={isSelf}
+                                                            variant="pill"
                                                             onChange={(e) => handleQuickRoleChange(u, e.target.value)}
                                                             title={isSelf ? 'Role akun sendiri tidak dapat diturunkan' : 'Klik untuk mengganti role (User <-> Admin)'}
-                                                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                                                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors ${
                                                                 u.role === 'admin'
                                                                     ? 'bg-[#D84040] text-white border-[#D84040]'
                                                                     : 'bg-[#EEEEEE] text-[#1D1616] border-[#E0E0E0] hover:border-[#D84040]'
                                                             } ${isSelf ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'}`}
                                                         >
-                                                            <option value="user" className="bg-white text-[#1D1616] font-bold">
-                                                                USER (TEKNISI)
-                                                            </option>
-                                                            <option value="admin" className="bg-white text-[#1D1616] font-bold">
-                                                                ADMIN
-                                                            </option>
-                                                        </select>
+                                                            <option value="user">USER (TEKNISI)</option>
+                                                            <option value="admin">ADMIN</option>
+                                                        </CustomSelect>
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-center font-bold text-[#1D1616]">
@@ -347,14 +345,14 @@ export default function UserIndex({ users, filters }) {
                                     <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
                                         Role Akun
                                     </label>
-                                    <select
+                                    <CustomSelect
                                         value={data.role}
                                         onChange={(e) => setData('role', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none focus:border-[#D84040]"
+                                        className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none hover:border-[#D84040]/50 transition-colors cursor-pointer"
                                     >
                                         <option value="user">User (Teknisi)</option>
                                         <option value="admin">Admin</option>
-                                    </select>
+                                    </CustomSelect>
                                 </div>
                             </div>
 

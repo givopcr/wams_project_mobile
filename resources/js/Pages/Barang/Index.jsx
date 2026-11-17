@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Head, useForm, router, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import ConfirmModal from '@/components/ConfirmModal';
+import CustomSelect from '@/components/CustomSelect';
 import UnitHistoryModal from '@/components/UnitHistoryModal';
 import {
     Package,
@@ -1902,18 +1903,17 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                             <label className="block text-xs font-bold text-[#1D1616] mb-1">
                                                 Kategori Kelompok
                                             </label>
-                                            <select
+                                            <CustomSelect
                                                 value={data.kategori_id}
                                                 onChange={(e) => setData('kategori_id', e.target.value)}
-                                                required
-                                                className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none focus:border-[#D84040]"
+                                                className="w-full px-3 py-2 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none hover:border-[#D84040]/50 cursor-pointer"
                                             >
                                                 {categories.map((c) => (
                                                     <option key={c.id} value={c.id}>
                                                         {c.nama_kategori}
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </CustomSelect>
                                             {errors.kategori_id && <p className="text-[#D84040] text-xs mt-1">{errors.kategori_id}</p>}
                                         </div>
                                         <div>
@@ -2317,29 +2317,29 @@ export default function BarangIndex({ barangList, categories = [], categoryStats
                                     <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
                                         Status Peminjaman
                                     </label>
-                                    <select
+                                    <CustomSelect
                                         value={unitForm.data.status}
                                         onChange={(e) => unitForm.setData('status', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none focus:border-[#D84040]"
+                                        className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none hover:border-[#D84040]/50 cursor-pointer"
                                     >
                                         <option value="tersedia">Tersedia</option>
                                         <option value="dipinjam">Dipinjam</option>
                                         <option value="maintenance">Maintenance</option>
-                                    </select>
+                                    </CustomSelect>
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-bold text-[#1D1616] mb-1.5">
                                         Kondisi Fisik
                                     </label>
-                                    <select
+                                    <CustomSelect
                                         value={unitForm.data.kondisi}
                                         onChange={(e) => unitForm.setData('kondisi', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none focus:border-[#D84040]"
+                                        className="w-full px-3.5 py-2.5 bg-white border border-[#E0E0E0] rounded-xl text-xs text-[#1D1616] font-semibold focus:outline-none hover:border-[#D84040]/50 cursor-pointer"
                                     >
                                         <option value="baik">Baik</option>
                                         <option value="rusak">Rusak</option>
-                                    </select>
+                                    </CustomSelect>
                                 </div>
                             </div>
 

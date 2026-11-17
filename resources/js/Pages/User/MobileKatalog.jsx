@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import UserMobileLayout from '@/Layouts/UserMobileLayout';
 import axios from 'axios';
 import {
@@ -8,17 +8,18 @@ import {
     Zap,
     Cpu,
     Box,
+    Boxes,
     X,
     SlidersHorizontal,
     QrCode,
-    ChevronRight,
     MinusCircle,
     Plus,
     Minus,
     Package,
     RefreshCw,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    ChevronRight
 } from 'lucide-react';
 
 export default function MobileKatalog({
@@ -83,36 +84,50 @@ export default function MobileKatalog({
         });
     }, [barangs, selectedCategoryId, searchQuery, filterAvailableOnly]);
 
-    // Dynamic Category Pill Color matching KategoriScreen._getCategoryPillColor
-    const getCategoryPillStyle = (name) => {
+    // Urutan & Tema 4 Card Stacked Katalog (Perkakas -> Elektronik -> Komponen -> Semua)
+    const getCategoryCardConfig = (name) => {
         const lower = (name || '').toLowerCase();
         if (lower.includes('perkakas') || lower.includes('tangan')) {
             return {
-                bg: '#DC2626',
-                shadow: '0 2px 8px rgba(220, 38, 38, 0.35)',
-                text: '#FFFFFF',
+                order: 1,
+                icon: Wrench,
+                bgColor: '#DC2626',
+                borderColor: '#DC2626',
+                shadow: '0 2px 8px rgba(220,38,38,0.2)',
             };
         }
         if (lower.includes('elektronik') || lower.includes('listrik') || lower.includes('ukur')) {
             return {
-                bg: '#F59E0B',
-                shadow: '0 2px 8px rgba(245, 158, 11, 0.35)',
-                text: '#FFFFFF',
+                order: 2,
+                icon: Zap,
+                bgColor: '#D97706',
+                borderColor: '#D97706',
+                shadow: '0 2px 8px rgba(217,119,6,0.2)',
             };
         }
         if (lower.includes('komponen') || lower.includes('chip') || lower.includes('board') || lower.includes('habis')) {
             return {
-                bg: '#16A34A',
-                shadow: '0 2px 8px rgba(22, 163, 74, 0.35)',
-                text: '#FFFFFF',
+                order: 3,
+                icon: Cpu,
+                bgColor: '#059669',
+                borderColor: '#059669',
+                shadow: '0 2px 8px rgba(5,150,105,0.2)',
             };
         }
         return {
-            bg: '#FFFFFF',
-            shadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-            text: '#0F172A',
+            order: 4,
+            icon: Boxes,
+            bgColor: '#64748B',
+            borderColor: '#64748B',
+            shadow: '0 2px 8px rgba(100,116,139,0.2)',
         };
     };
+
+    const sortedCategories = useMemo(() => {
+        return [...categories].sort(
+            (a, b) => getCategoryCardConfig(a.nama_kategori).order - getCategoryCardConfig(b.nama_kategori).order
+        );
+    }, [categories]);
 
     const getCategoryBadgeColor = (name) => {
         const lower = (name || '').toLowerCase();
@@ -165,12 +180,113 @@ export default function MobileKatalog({
         }
     };
 
+    // Helper render 2-column product grid (shared between Category/Semua List & Search)
+    const renderProductGrid = (items) => (
+        <div className="grid grid-cols-2 gap-3 pt-1">
+            {items.map((item) => {
+                const categoryName = (item.nama_kategori || 'PERALATAN').toUpperCase();
+                const itemCode = item.kode_barang || 'WMS';
+                const badgeColor = getCategoryBadgeColor(item.nama_kategori || '');
+
+                return (
+                    <div
+                        key={item.id}
+                        onClick={() => {
+                            if (item.is_habis_pakai) {
+                                openPakaiBottomSheet(item);
+                            } else {
+                                router.visit(`/user/barang/${item.id}`);
+                            }
+                        }}
+                        className="bg-white rounded-[16px] border-[1.2px] border-[#E2E8F0] p-2.5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] flex flex-col justify-between h-[244px] cursor-pointer hover:border-[#CBD5E1] transition-all active:scale-[0.99]"
+                    >
+                        <div>
+                            {/* 1. Image Container (With [ X Tersedia ] badge) */}
+                            <div className="w-full h-[120px] bg-[#F1F5F9] rounded-[12px] overflow-hidden relative flex items-center justify-center">
+                                {item.gambar_url ? (
+                                    <img
+                                        src={item.gambar_url}
+                                        alt={item.nama_barang}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center text-[#64748B]">
+                                        <Box size={40} strokeWidth={1.6} />
+                                        <span className="mt-0.5 text-[9px] font-extrabold text-[#94A3B8] tracking-[0.8px]">
+                                            WAMS
+                                        </span>
+                                    </div>
+                                )}
+
+                                {/* Top-Right: [ X Tersedia ] */}
+                                <span className="absolute top-[7px] right-[7px] px-[7px] py-[3px] rounded-full bg-[#DCFCE7]/95 border border-[#A7F3D0] shadow-[0_1px_4px_rgba(0,0,0,0.06)] text-[9.5px] font-extrabold text-[#047857]">
+                                    {item.is_habis_pakai
+                                        ? `${item.stok_saat_ini} ${item.satuan || 'pcs'}`
+                                        : `${item.tersedia} Tersedia`}
+                                </span>
+                            </div>
+
+                            {/* 2. Category & Code Row */}
+                            <div className="mt-[7px] flex items-center justify-between gap-1">
+                                <span
+                                    style={{ color: badgeColor }}
+                                    className="text-[9.5px] font-black tracking-[0.5px] truncate"
+                                >
+                                    {categoryName}
+                                </span>
+                                <span className="text-[9.5px] font-bold text-[#94A3B8] shrink-0">
+                                    {itemCode}
+                                </span>
+                            </div>
+
+                            {/* 3. Tool Name */}
+                            <h4 className="mt-[3px] h-[32px] text-[12.5px] font-extrabold text-[#0F172A] leading-[1.25] line-clamp-2">
+                                {item.nama_barang}
+                            </h4>
+                        </div>
+
+                        {/* 4. Crimson Button: [ Scan QR Unit ] */}
+                        {item.is_habis_pakai ? (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    openPakaiBottomSheet(item);
+                                }}
+                                className="w-full h-[34px] bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-[9px] flex items-center justify-center gap-1.5 text-[11px] font-extrabold transition-colors cursor-pointer"
+                            >
+                                <MinusCircle size={14} />
+                                <span>Pakai Bahan</span>
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.visit(
+                                        `/user/scanner?target=${encodeURIComponent(item.nama_barang)}`
+                                    );
+                                }}
+                                className="w-full h-[34px] bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-[9px] flex items-center justify-center gap-1.5 text-[11px] font-extrabold transition-colors cursor-pointer"
+                            >
+                                <QrCode size={14} />
+                                <span>Scan QR Unit</span>
+                            </button>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+
     // =========================================================================
-    // MODE 1: BARANG KATEGORI SCREEN (Mirip BarangKategoriScreen.dart)
+    // MODE 1: BARANG KATEGORI / SEMUA BARANG SCREEN
     // =========================================================================
-    if (isCategoryListMode && selectedCategoryId) {
-        const activeCategory = categories.find((c) => Number(c.id) === Number(selectedCategoryId));
-        const categoryName = activeCategory?.nama_kategori || 'Kategori Peralatan';
+    if (isCategoryListMode) {
+        const activeCategory = selectedCategoryId
+            ? categories.find((c) => Number(c.id) === Number(selectedCategoryId))
+            : null;
+        const categoryName = activeCategory?.nama_kategori || 'Semua Barang';
         const isHabisPakai = Boolean(activeCategory?.is_habis_pakai);
 
         let totalUnits = 0;
@@ -190,10 +306,14 @@ export default function MobileKatalog({
                 onBack={() => {
                     setIsCategoryListMode(false);
                     setSelectedCategoryId(null);
-                    if (typeof window !== 'undefined' && window.history.length > 2) {
-                        window.history.back();
-                    } else {
-                        router.visit('/user/katalog');
+                    setFilterAvailableOnly(false);
+                    setSearchQuery('');
+                    if (filters.mode === 'category_list') {
+                        if (typeof window !== 'undefined' && window.history.length > 2) {
+                            window.history.back();
+                        } else {
+                            router.visit('/user/katalog');
+                        }
                     }
                 }}
             >
@@ -221,7 +341,7 @@ export default function MobileKatalog({
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Cari perkakas..."
+                                placeholder={`Cari ${categoryName.toLowerCase()}...`}
                                 className="w-full pl-10 pr-8 py-2.5 bg-transparent text-[13px] text-[#0F172A] placeholder-[#9CA3AF] focus:outline-none font-medium"
                             />
                             {searchQuery && (
@@ -256,83 +376,17 @@ export default function MobileKatalog({
                         </button>
                     </div>
 
-                    {/* Items List */}
+                    {/* Items Grid */}
                     {filteredItems.length === 0 ? (
                         <div className="py-16 text-center text-[13px] text-[#64748B]">
                             Tidak ada barang ditemukan.
                         </div>
                     ) : (
-                        <div className="space-y-3">
-                            {filteredItems.map((item) => (
-                                <div
-                                    key={item.id}
-                                    onClick={() => {
-                                        if (isHabisPakai || item.is_habis_pakai) {
-                                            openPakaiBottomSheet(item);
-                                        } else {
-                                            router.visit(`/user/barang/${item.id}`);
-                                        }
-                                    }}
-                                    className="p-3.5 bg-white rounded-[16px] border border-[#E2E8F0] shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex items-center gap-3.5 cursor-pointer hover:border-[#CBD5E1] transition-all active:scale-[0.99]"
-                                >
-                                    {/* Tool Thumbnail */}
-                                    <div className="w-[52px] h-[52px] rounded-[12px] bg-[#F3F4F6] border border-[#E2E8F0] overflow-hidden flex items-center justify-center shrink-0">
-                                        {item.gambar_url ? (
-                                            <img
-                                                src={item.gambar_url}
-                                                alt={item.nama_barang}
-                                                className="w-full h-full object-contain p-1"
-                                            />
-                                        ) : (
-                                            <Wrench size={26} className="text-[#D84040]" />
-                                        )}
-                                    </div>
-
-                                    {/* Name & Available Units / Stok */}
-                                    <div className="min-w-0 flex-1">
-                                        <h4 className="text-[14px] font-bold text-[#0F172A] truncate">
-                                            {item.nama_barang}
-                                        </h4>
-                                        <div className="mt-1 flex items-center gap-2">
-                                            {isHabisPakai || item.is_habis_pakai ? (
-                                                <>
-                                                    <span
-                                                        className={`text-[12px] font-semibold ${
-                                                            item.is_low_stock ? 'text-[#EF4444]' : 'text-[#64748B]'
-                                                        }`}
-                                                    >
-                                                        Stok: {item.stok_saat_ini} {item.satuan || 'Unit'}
-                                                    </span>
-                                                    {item.is_low_stock && (
-                                                        <span className="px-1.5 py-0.5 rounded-[6px] bg-[#FEE2E2] text-[#DC2626] text-[10px] font-bold">
-                                                            Menipis
-                                                        </span>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <span className="text-[12px] text-[#64748B]">
-                                                    {item.total_unit} Unit • {item.tersedia} Tersedia
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Right Action */}
-                                    {isHabisPakai || item.is_habis_pakai ? (
-                                        <div className="px-2.5 py-1.5 rounded-[8px] bg-[#D84040]/10 text-[#D84040] flex items-center gap-1 text-[12px] font-bold shrink-0">
-                                            <MinusCircle size={14} />
-                                            <span>Pakai</span>
-                                        </div>
-                                    ) : (
-                                        <ChevronRight size={20} className="text-[#9CA3AF] shrink-0" />
-                                    )}
-                                </div>
-                            ))}
-                        </div>
+                        renderProductGrid(filteredItems)
                     )}
                 </div>
 
-                {/* Bottom Summary Progress Bar (Matching BarangKategoriScreen.dart) */}
+                {/* Bottom Summary Progress Bar */}
                 {filteredItems.length > 0 && (
                     <div className="sticky bottom-0 left-0 right-0 z-20 mt-4">
                         <div className="w-full bg-white border-t border-[#E2E8F0] p-4 shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
@@ -392,20 +446,30 @@ export default function MobileKatalog({
     }
 
     // =========================================================================
-    // MODE 2: MAIN KATALOG SCREEN (Mirip KategoriScreen.dart)
+    // MODE 2: MAIN KATALOG SCREEN (4 STACKED CATEGORY CARDS)
     // =========================================================================
-    const tabItems = [
-        { id: null, nama_kategori: 'Semua' },
-        ...categories,
+    const totalAllUnits = sortedCategories.reduce((sum, k) => sum + (k.total_unit ?? 0), 0);
+    const totalAllAvailable = sortedCategories.reduce((sum, k) => sum + (k.tersedia ?? 0), 0);
+    const totalAllMaintenance = sortedCategories.reduce((sum, k) => sum + (k.maintenance ?? 0), 0);
+
+    const stackedCards = [
+        ...sortedCategories.map((kat) => ({
+            id: kat.id,
+            title: kat.nama_kategori,
+            totalAda: kat.total_unit ?? 0,
+            tersedia: kat.tersedia ?? 0,
+            maintenance: kat.maintenance ?? 0,
+            theme: getCategoryCardConfig(kat.nama_kategori),
+        })),
+        {
+            id: null,
+            title: 'Semua',
+            totalAda: totalAllUnits,
+            tersedia: totalAllAvailable,
+            maintenance: totalAllMaintenance,
+            theme: getCategoryCardConfig('semua'),
+        },
     ];
-    const selectedTabIndex = Math.max(
-        0,
-        tabItems.findIndex((t) =>
-            selectedCategoryId === null ? t.id === null : Number(t.id) === Number(selectedCategoryId)
-        )
-    );
-    const activeTabObj = tabItems[selectedTabIndex] || tabItems[0];
-    const pillStyle = getCategoryPillStyle(activeTabObj.nama_kategori);
 
     return (
         <UserMobileLayout title="Katalog" centerTitle>
@@ -424,7 +488,7 @@ export default function MobileKatalog({
                 </div>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-3.5">
                 {/* 1. SEARCH BAR WIDGET */}
                 <div className="h-[46px] bg-white rounded-[14px] border-[1.1px] border-[#CBD5E1] shadow-[0_2px_6px_rgba(15,23,42,0.04)] relative flex items-center">
                     <Search size={20} className="absolute left-3.5 text-[#64748B]" />
@@ -446,49 +510,14 @@ export default function MobileKatalog({
                     )}
                 </div>
 
-                {/* 2. CATEGORY SEGMENTED CONTROL WITH DYNAMIC THEME COLORS */}
-                <div className="h-[44px] p-1 bg-[#F1F2F6] rounded-[14px] relative flex items-center select-none">
-                    {/* Smooth Sliding Colored Pill Indicator */}
-                    <div
-                        style={{
-                            width: `calc((100% - 8px) / ${tabItems.length})`,
-                            transform: `translateX(${selectedTabIndex * 100}%)`,
-                            backgroundColor: pillStyle.bg,
-                            boxShadow: pillStyle.shadow,
-                        }}
-                        className="absolute top-1 bottom-1 left-1 rounded-[10px] transition-all duration-260 ease-in-out"
-                    />
-
-                    {/* Tab Text Buttons */}
-                    {tabItems.map((tab, idx) => {
-                        const isSelected = idx === selectedTabIndex;
-                        const textColor = isSelected ? pillStyle.text : '#64748B';
-                        return (
-                            <button
-                                key={tab.id ?? 'semua'}
-                                type="button"
-                                onClick={() => setSelectedCategoryId(tab.id)}
-                                style={{ color: textColor }}
-                                className={`relative z-10 flex-1 h-full flex items-center justify-center text-[13px] truncate px-1 transition-colors duration-200 cursor-pointer ${
-                                    isSelected ? 'font-black' : 'font-semibold'
-                                }`}
-                            >
-                                <span className="truncate">{tab.nama_kategori}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-
-                {/* 3. MAIN PRODUCT GRID (2 COLUMNS matching KategoriScreen.dart) */}
-                {filteredItems.length === 0 ? (
-                    <div className="py-14 px-6 text-center">
-                        <Package size={48} className="text-[#CBD5E1] mx-auto mb-3" />
-                        <p className="text-[13px] font-semibold text-[#64748B]">
-                            {searchQuery
-                                ? `Tidak ada alat dengan kata kunci "${searchQuery}"`
-                                : 'Tidak ada alat pada kategori ini.'}
-                        </p>
-                        {searchQuery && (
+                {/* 2. SEARCH RESULTS OR 4 STACKED CATEGORY CARDS */}
+                {searchQuery.trim() !== '' ? (
+                    filteredItems.length === 0 ? (
+                        <div className="py-14 px-6 text-center">
+                            <Package size={48} className="text-[#CBD5E1] mx-auto mb-3" />
+                            <p className="text-[13px] font-semibold text-[#64748B]">
+                                {`Tidak ada alat dengan kata kunci "${searchQuery}"`}
+                            </p>
                             <button
                                 type="button"
                                 onClick={() => setSearchQuery('')}
@@ -497,101 +526,71 @@ export default function MobileKatalog({
                                 <RefreshCw size={15} />
                                 <span>Reset Pencarian</span>
                             </button>
-                        )}
-                    </div>
+                        </div>
+                    ) : (
+                        renderProductGrid(filteredItems)
+                    )
                 ) : (
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                        {filteredItems.map((item) => {
-                            const categoryName = (item.nama_kategori || 'PERALATAN').toUpperCase();
-                            const itemCode = item.kode_barang || 'WMS';
-                            const badgeColor = getCategoryBadgeColor(item.nama_kategori || '');
-
+                    <div className="flex flex-col gap-3 pt-0.5">
+                        {stackedCards.map((card) => {
+                            const Icon = card.theme.icon;
                             return (
-                                <div
-                                    key={item.id}
+                                <button
+                                    key={card.id ?? 'semua'}
+                                    type="button"
                                     onClick={() => {
-                                        if (item.is_habis_pakai) {
-                                            openPakaiBottomSheet(item);
-                                        } else {
-                                            router.visit(`/user/barang/${item.id}`);
-                                        }
+                                        setSelectedCategoryId(card.id);
+                                        setFilterAvailableOnly(false);
+                                        setIsCategoryListMode(true);
                                     }}
-                                    className="bg-white rounded-[16px] border-[1.2px] border-[#E2E8F0] p-2.5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] flex flex-col justify-between h-[244px] cursor-pointer hover:border-[#CBD5E1] transition-all active:scale-[0.99]"
+                                    style={{
+                                        backgroundColor: card.theme.bgColor,
+                                        borderColor: card.theme.borderColor,
+                                        boxShadow: card.theme.shadow,
+                                    }}
+                                    className="w-full text-left rounded-[14px] border-[1.2px] p-4 transition-all hover:brightness-95 active:scale-[0.99] cursor-pointer"
                                 >
-                                    <div>
-                                        {/* 1. Image Container (With [ X Tersedia ] badge) */}
-                                        <div className="w-full h-[120px] bg-[#F1F5F9] rounded-[12px] overflow-hidden relative flex items-center justify-center">
-                                            {item.gambar_url ? (
-                                                <img
-                                                    src={item.gambar_url}
-                                                    alt={item.nama_barang}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="flex flex-col items-center justify-center text-[#64748B]">
-                                                    <Box size={40} strokeWidth={1.6} />
-                                                    <span className="mt-0.5 text-[9px] font-extrabold text-[#94A3B8] tracking-[0.8px]">
-                                                        WAMS
-                                                    </span>
-                                                </div>
-                                            )}
-
-                                            {/* Top-Right: [ X Tersedia ] */}
-                                            <span className="absolute top-[7px] right-[7px] px-[7px] py-[3px] rounded-full bg-[#DCFCE7]/95 border border-[#A7F3D0] shadow-[0_1px_4px_rgba(0,0,0,0.06)] text-[9.5px] font-extrabold text-[#047857]">
-                                                {item.is_habis_pakai
-                                                    ? `${item.stok_saat_ini} ${item.satuan || 'pcs'}`
-                                                    : `${item.tersedia} Tersedia`}
-                                            </span>
+                                    {/* Top Row: Icon + Category Title + Arrow */}
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-11 h-11 rounded-[10px] bg-white/20 border border-white/25 shadow-[0_2px_4px_rgba(0,0,0,0.1)] flex items-center justify-center shrink-0 text-white">
+                                                <Icon size={21} className="text-white" />
+                                            </div>
+                                            <h3 className="text-[16px] font-black text-white tracking-[-0.2px] truncate">
+                                                {card.title}
+                                            </h3>
                                         </div>
-
-                                        {/* 2. Category & Code Row */}
-                                        <div className="mt-[7px] flex items-center justify-between gap-1">
-                                            <span
-                                                style={{ color: badgeColor }}
-                                                className="text-[9.5px] font-black tracking-[0.5px] truncate"
-                                            >
-                                                {categoryName}
-                                            </span>
-                                            <span className="text-[9.5px] font-bold text-[#94A3B8] shrink-0">
-                                                {itemCode}
-                                            </span>
-                                        </div>
-
-                                        {/* 3. Tool Name */}
-                                        <h4 className="mt-[3px] h-[32px] text-[12.5px] font-extrabold text-[#0F172A] leading-[1.25] line-clamp-2">
-                                            {item.nama_barang}
-                                        </h4>
+                                        <ChevronRight size={20} className="text-white/85 shrink-0" />
                                     </div>
 
-                                    {/* 4. Crimson Button: [ Scan QR Unit ] */}
-                                    {item.is_habis_pakai ? (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                openPakaiBottomSheet(item);
-                                            }}
-                                            className="w-full h-[34px] bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-[9px] flex items-center justify-center gap-1.5 text-[11px] font-extrabold transition-colors cursor-pointer"
-                                        >
-                                            <MinusCircle size={14} />
-                                            <span>Pakai Bahan</span>
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                router.visit(
-                                                    `/user/scanner?target=${encodeURIComponent(item.nama_barang)}`
-                                                );
-                                            }}
-                                            className="w-full h-[34px] bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-[9px] flex items-center justify-center gap-1.5 text-[11px] font-extrabold transition-colors cursor-pointer"
-                                        >
-                                            <QrCode size={14} />
-                                            <span>Scan QR Unit</span>
-                                        </button>
-                                    )}
-                                </div>
+                                    {/* Bottom Row: Ada | Tersedia | Maintenance (tanpa inner card) */}
+                                    <div className="mt-3 pt-2.5 border-t border-white/20 grid grid-cols-3 gap-2 text-center">
+                                        <div>
+                                            <span className="block text-[17px] font-black text-white leading-none">
+                                                {card.totalAda}
+                                            </span>
+                                            <span className="mt-1 block text-[11px] font-bold text-white/90">
+                                                Ada
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[17px] font-black text-white leading-none">
+                                                {card.tersedia}
+                                            </span>
+                                            <span className="mt-1 block text-[11px] font-bold text-white/90">
+                                                Tersedia
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[17px] font-black text-white leading-none">
+                                                {card.maintenance}
+                                            </span>
+                                            <span className="mt-1 block text-[11px] font-bold text-white/90">
+                                                Maintenance
+                                            </span>
+                                        </div>
+                                    </div>
+                                </button>
                             );
                         })}
                     </div>

@@ -309,8 +309,8 @@ export default function MobileProfile({ user = {}, stats = {} }) {
     // SUB-SCREEN 1: MAIN PROFILE SCREEN (profile_screen.dart)
     // =========================================================================
     return (
-        <UserMobileLayout title="Profil Pengguna" noPadding={true}>
-            <Head title="Profil Pengguna - WAMS" />
+        <UserMobileLayout title="Profil" noPadding={true}>
+            <Head title="Profil - WAMS" />
 
             <input
                 ref={cameraInputRef}

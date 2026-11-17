@@ -671,8 +671,8 @@ export default function MobileRiwayat({
     const currentTabObj = TAB_CONFIG[selectedTab] || TAB_CONFIG[0];
 
     return (
-        <UserMobileLayout title="Riwayat Peminjaman" noPadding={true}>
-            <Head title="Riwayat Peminjaman - WAMS" />
+        <UserMobileLayout title="Riwayat" noPadding={true}>
+            <Head title="Riwayat - WAMS" />
 
             <div className="flex flex-col min-h-[calc(100vh-140px)]">
                 {/* 4-Tab Sliding Segmented Control (matching riwayat_screen.dart) */}
